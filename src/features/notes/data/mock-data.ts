@@ -1,0 +1,69 @@
+import type { Chapter, NoteContent } from "../model/types";
+
+function textDocument(text: string): NoteContent {
+  return {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: text ? [{ type: "text", text }] : undefined,
+      },
+    ],
+  };
+}
+
+export const initialChapters: Chapter[] = [
+  {
+    id: "chapter-python",
+    title: "Python",
+    position: 1000,
+    topics: [
+      {
+        id: "topic-basics",
+        title: "Podstawy",
+        content: textDocument("Typy danych, instrukcje warunkowe i pętle."),
+        completed: true,
+        position: 1000,
+      },
+      {
+        id: "topic-functions",
+        title: "Funkcje",
+        content: textDocument(
+          "Argumenty pozycyjne, nazwane oraz wartości domyślne.",
+        ),
+        completed: true,
+        position: 2000,
+      },
+      {
+        id: "topic-async",
+        title: "Async i await",
+        content: textDocument(
+          "Async/await pozwala zapisywać kod asynchroniczny w czytelnej formie. Tutaj pojawią się właściwe notatki użytkownika.",
+        ),
+        completed: false,
+        position: 3000,
+      },
+    ],
+  },
+  {
+    id: "chapter-sql",
+    title: "SQL",
+    position: 2000,
+    topics: [
+      {
+        id: "topic-select",
+        title: "SELECT",
+        content: textDocument("Wybieranie i filtrowanie danych."),
+        completed: false,
+        position: 1000,
+      },
+      {
+        id: "topic-joins",
+        title: "JOIN",
+        content: textDocument("Łączenie rekordów z wielu tabel."),
+        completed: false,
+        position: 2000,
+      },
+    ],
+  },
+];

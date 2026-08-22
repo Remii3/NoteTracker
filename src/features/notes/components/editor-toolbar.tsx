@@ -1,0 +1,383 @@
+import type { Editor } from "@tiptap/core";
+import { useEditorState } from "@tiptap/react";
+import {
+  Bold,
+  Code2,
+  Heading2,
+  Heading3,
+  Italic,
+  Link,
+  List,
+  ListOrdered,
+  Palette,
+  Pilcrow,
+  Quote,
+  Redo2,
+  Strikethrough,
+  Underline,
+  Undo2,
+  Unlink,
+} from "lucide-react";
+import { useState, type ReactNode } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+export function EditorToolbar({ editor }: { editor: Editor }) {
+  const state = useEditorState({
+    editor,
+    selector: ({ editor: currentEditor }) => ({
+      bold: currentEditor.isActive("bold"),
+      italic: currentEditor.isActive("italic"),
+      underline: currentEditor.isActive("underline"),
+      strike: currentEditor.isActive("strike"),
+      paragraph: currentEditor.isActive("paragraph"),
+      heading2: currentEditor.isActive("heading", { level: 2 }),
+      heading3: currentEditor.isActive("heading", { level: 3 }),
+      bulletList: currentEditor.isActive("bulletList"),
+      orderedList: currentEditor.isActive("orderedList"),
+      blockquote: currentEditor.isActive("blockquote"),
+      code: currentEditor.isActive("code"),
+      link: currentEditor.isActive("link"),
+      highlight: currentEditor.isActive("highlight"),
+      canUndo: currentEditor.can().chain().focus().undo().run(),
+      canRedo: currentEditor.can().chain().focus().redo().run(),
+    }),
+  });
+
+  return (
+    <div
+      role="toolbar"
+      aria-label="Formatowanie notatki"
+      className="border-b bg-muted/30 p-2"
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 overflow-hidden">
+        <ToolbarGroup>
+          <ToolbarButton
+            label="Akapit"
+            active={state.paragraph}
+            onClick={() => editor.chain().focus().setParagraph().run()}
+          >
+            <Pilcrow />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Nagłówek 2"
+            active={state.heading2}
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level: 2 }).run()
+            }
+          >
+            <Heading2 />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Nagłówek 3"
+            active={state.heading3}
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level: 3 }).run()
+            }
+          >
+            <Heading3 />
+          </ToolbarButton>
+        </ToolbarGroup>
+        <ToolbarGroup>
+          <ToolbarButton
+            label="Pogrubienie"
+            active={state.bold}
+            onClick={() => editor.chain().focus().toggleBold().run()}
+          >
+            <Bold />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Kursywa"
+            active={state.italic}
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+          >
+            <Italic />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Podkreślenie"
+            active={state.underline}
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+          >
+            <Underline />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Przekreślenie"
+            active={state.strike}
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+          >
+            <Strikethrough />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Kod inline"
+            active={state.code}
+            onClick={() => editor.chain().focus().toggleCode().run()}
+          >
+            <Code2 />
+          </ToolbarButton>
+        </ToolbarGroup>
+        <ToolbarGroup>
+          <ToolbarButton
+            label="Lista punktowana"
+            active={state.bulletList}
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+          >
+            <List />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Lista numerowana"
+            active={state.orderedList}
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          >
+            <ListOrdered />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Cytat"
+            active={state.blockquote}
+            onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          >
+            <Quote />
+          </ToolbarButton>
+        </ToolbarGroup>
+        <ToolbarGroup>
+          <LinkControl editor={editor} active={state.link} />
+          <ToolbarButton
+            label="Usuń link"
+            disabled={!state.link}
+            onClick={() => editor.chain().focus().unsetLink().run()}
+          >
+            <Unlink />
+          </ToolbarButton>
+          <ColorControl editor={editor} active={state.highlight} />
+        </ToolbarGroup>
+        <ToolbarGroup>
+          <ToolbarButton
+            label="Cofnij"
+            disabled={!state.canUndo}
+            onClick={() => editor.chain().focus().undo().run()}
+          >
+            <Undo2 />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Ponów"
+            disabled={!state.canRedo}
+            onClick={() => editor.chain().focus().redo().run()}
+          >
+            <Redo2 />
+          </ToolbarButton>
+        </ToolbarGroup>
+      </div>
+    </div>
+  );
+}
+
+function LinkControl({ editor, active }: { editor: Editor; active: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState("");
+
+  function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen);
+    if (nextOpen) {
+      setUrl((editor.getAttributes("link").href as string | undefined) ?? "");
+    }
+  }
+
+  function saveLink() {
+    const href = url.trim();
+    if (!href) {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+    } else {
+      editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
+    }
+    setOpen(false);
+  }
+
+  return (
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger
+        render={
+          <Button
+            type="button"
+            size="icon-xs"
+            variant={active ? "secondary" : "ghost"}
+            title="Link"
+            aria-label="Dodaj lub edytuj link"
+            aria-pressed={active}
+          />
+        }
+      >
+        <Link />
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-80 gap-3">
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            saveLink();
+          }}
+        >
+          <div>
+            <label htmlFor="note-link" className="text-sm font-medium">
+              Adres linku
+            </label>
+            <Input
+              id="note-link"
+              autoFocus
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              placeholder="https://example.com"
+              className="mt-2"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            {active && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  editor
+                    .chain()
+                    .focus()
+                    .extendMarkRange("link")
+                    .unsetLink()
+                    .run();
+                  setOpen(false);
+                }}
+              >
+                Usuń
+              </Button>
+            )}
+            <Button type="submit" size="sm" disabled={!url.trim()}>
+              Zastosuj
+            </Button>
+          </div>
+        </form>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+const textColors = [
+  "#18181b",
+  "#dc2626",
+  "#ea580c",
+  "#16a34a",
+  "#2563eb",
+  "#9333ea",
+];
+const highlightColors = ["#fef08a", "#fed7aa", "#bbf7d0", "#bfdbfe", "#e9d5ff"];
+
+function ColorControl({ editor, active }: { editor: Editor; active: boolean }) {
+  return (
+    <Popover>
+      <PopoverTrigger
+        render={
+          <Button
+            type="button"
+            size="icon-xs"
+            variant={active ? "secondary" : "ghost"}
+            title="Kolory"
+            aria-label="Kolory tekstu i wyróżnienia"
+          />
+        }
+      >
+        <Palette />
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 gap-3">
+        <ColorPalette
+          label="Kolor tekstu"
+          colors={textColors}
+          onSelect={(color) => editor.chain().focus().setColor(color).run()}
+          onReset={() => editor.chain().focus().unsetColor().run()}
+        />
+        <ColorPalette
+          label="Wyróżnienie"
+          colors={highlightColors}
+          onSelect={(color) =>
+            editor.chain().focus().setHighlight({ color }).run()
+          }
+          onReset={() => editor.chain().focus().unsetHighlight().run()}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function ColorPalette({
+  label,
+  colors,
+  onSelect,
+  onReset,
+}: {
+  label: string;
+  colors: string[];
+  onSelect: (color: string) => void;
+  onReset: () => void;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-xs font-medium text-muted-foreground">{label}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        {colors.map((color) => (
+          <button
+            key={color}
+            type="button"
+            aria-label={`${label}: ${color}`}
+            className="aspect-square size-6 shrink-0 rounded-full border p-0 shadow-xs outline-none hover:scale-110 focus-visible:ring-2 focus-visible:ring-ring"
+            style={{ backgroundColor: color }}
+            onClick={() => onSelect(color)}
+          />
+        ))}
+        <Button type="button" size="xs" variant="ghost" onClick={onReset}>
+          Reset
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ToolbarButton({
+  label,
+  active = false,
+  disabled = false,
+  onClick,
+  children,
+  className,
+}: {
+  label: string;
+  active?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Button
+      type="button"
+      size="icon-xs"
+      variant={active ? "secondary" : "ghost"}
+      title={label}
+      aria-label={label}
+      aria-pressed={active}
+      disabled={disabled}
+      onClick={onClick}
+      className={className}
+    >
+      {children}
+    </Button>
+  );
+}
+
+function ToolbarGroup({ children }: { children: ReactNode }) {
+  return (
+    <span className="relative flex shrink-0 items-center gap-1 before:absolute before:top-1/2 before:-left-1.5 before:h-5 before:w-px before:-translate-y-1/2 before:bg-border">
+      {children}
+    </span>
+  );
+}
