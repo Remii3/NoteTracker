@@ -142,3 +142,8 @@
     content: attr(data-placeholder);
   }
 }
+
+.tiptap-content :where(p, h2, h3, ul, ol, li, blockquote, pre, hr) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
