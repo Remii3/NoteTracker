@@ -37,7 +37,7 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
     editorProps: {
       attributes: {
         class:
-          "tiptap-content min-h-72 px-4 py-3 text-base leading-7 outline-none",
+          "tiptap-content prose prose-neutral min-h-72 max-w-none px-4 py-3 outline-none prose-p:leading-6 prose-li:leading-6 dark:prose-invert",
       },
     },
     onUpdate: ({ editor: currentEditor }) => onChange(currentEditor.getJSON()),
@@ -61,7 +61,8 @@ export function RichTextViewer({ content }: { content: NoteContent }) {
     content,
     editorProps: {
       attributes: {
-        class: "tiptap-content min-h-40 text-base leading-7 outline-none",
+        class:
+          "tiptap-content prose prose-neutral min-h-40 max-w-none outline-none prose-p:leading-6 prose-li:leading-6 dark:prose-invert",
       },
     },
   });
