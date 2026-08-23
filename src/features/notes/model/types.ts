@@ -11,6 +11,7 @@ export type NoteContent = {
 
 export type Topic = {
   id: string;
+  contentLoaded?: boolean;
   slug: string;
   title: string;
   content: NoteContent;
@@ -27,4 +28,12 @@ export type ChapterSummary = {
 
 export type Chapter = ChapterSummary & {
   topics: Topic[];
+};
+
+export type LearningSummary = {
+  completedChapters: number;
+  completedTopics: number;
+  nextTopic: { chapterId: string; id: string } | null;
+  totalChapters: number;
+  totalTopics: number;
 };

@@ -16,7 +16,12 @@ import {
   normalizeChapters,
   type NotesState,
 } from "../model/notes-state";
-import type { Chapter, NoteContent, Topic } from "../model/types";
+import type {
+  Chapter,
+  LearningSummary,
+  NoteContent,
+  Topic,
+} from "../model/types";
 import type { ManagedItem } from "../model/workspace-types";
 
 type Options = {
@@ -41,7 +46,14 @@ export function useNotesStore({
   const [state, setState] = useState<NotesState>(initialState);
   const stateRef = useRef(state);
   const operationLockRef = useRef(false);
+  const searchRequestRef = useRef(0);
   const [isLoading, setIsLoading] = useState(loadOnMount);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreChapters, setHasMoreChapters] = useState(false);
+  const [searchResults, setSearchResults] = useState<Chapter[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [learningSummary, setLearningSummary] =
+    useState<LearningSummary | null>(null);
   const [pendingOperations, setPendingOperations] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const chapters = useMemo(() => materializeChapters(state), [state]);
@@ -72,6 +84,7 @@ export function useNotesStore({
       setPendingOperations((count) => count + 1);
       try {
         await persist(next);
+        setLearningSummary(await repository.getLearningSummary());
         return true;
       } catch (caughtError) {
         applyChapters(previous);
@@ -82,21 +95,20 @@ export function useNotesStore({
         setPendingOperations((count) => Math.max(0, count - 1));
       }
     },
-    [applyChapters],
+    [applyChapters, repository],
   );
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const summaries = await repository.listChapters();
-      const loaded = await Promise.all(
-        summaries.map(async (chapter) => ({
-          ...chapter,
-          topics: await repository.listTopics(chapter.id),
-        })),
-      );
-      applyChapters(loaded);
+      const [page, summary] = await Promise.all([
+        repository.listChapters(),
+        repository.getLearningSummary(),
+      ]);
+      applyChapters(page.chapters);
+      setHasMoreChapters(page.hasMore);
+      setLearningSummary(summary);
       return true;
     } catch (caughtError) {
       setError(
@@ -107,6 +119,100 @@ export function useNotesStore({
       setIsLoading(false);
     }
   }, [applyChapters, repository]);
+
+  const loadMoreChapters = useCallback(async () => {
+    if (isLoadingMore || !hasMoreChapters) return false;
+    setIsLoadingMore(true);
+    try {
+      const current = materializeChapters(stateRef.current);
+      const page = await repository.listChapters(current.length);
+      applyChapters([...current, ...page.chapters]);
+      setHasMoreChapters(page.hasMore);
+      return true;
+    } catch (caughtError) {
+      setError(
+        getErrorMessage(
+          caughtError,
+          "Nie udało się pobrać kolejnych rozdziałów.",
+        ),
+      );
+      return false;
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [applyChapters, hasMoreChapters, isLoadingMore, repository]);
+
+  const loadTopicContent = useCallback(
+    async (chapterId: string, topicId: string) => {
+      const current = materializeChapters(stateRef.current);
+      const currentTopic = current
+        .find((chapter) => chapter.id === chapterId)
+        ?.topics.find((topic) => topic.id === topicId);
+      if (!currentTopic || currentTopic.contentLoaded) return true;
+      try {
+        const content = await repository.getTopicContent(chapterId, topicId);
+        const latest = materializeChapters(stateRef.current);
+        applyChapters(
+          updateTopic(latest, chapterId, topicId, (topic) => ({
+            ...topic,
+            content,
+            contentLoaded: true,
+          })),
+        );
+        return true;
+      } catch (caughtError) {
+        setError(getErrorMessage(caughtError, "Nie udało się pobrać notatki."));
+        return false;
+      }
+    },
+    [applyChapters, repository],
+  );
+
+  const searchChapters = useCallback(
+    async (query: string) => {
+      const requestId = ++searchRequestRef.current;
+      const phrase = query.trim();
+      if (!phrase) {
+        setSearchResults(null);
+        setIsSearching(false);
+        return;
+      }
+      setIsSearching(true);
+      try {
+        const results = await repository.searchChapters(phrase);
+        if (requestId === searchRequestRef.current) setSearchResults(results);
+      } catch (caughtError) {
+        setError(
+          getErrorMessage(caughtError, "Nie udało się wyszukać notatek."),
+        );
+      } finally {
+        if (requestId === searchRequestRef.current) setIsSearching(false);
+      }
+    },
+    [repository],
+  );
+
+  const loadChapterBySlug = useCallback(
+    async (slug: string) => {
+      const existing = materializeChapters(stateRef.current).find(
+        (chapter) => chapter.slug === slug || chapter.id === slug,
+      );
+      if (existing) return true;
+      try {
+        const chapter = await repository.getChapterBySlug(slug);
+        if (!chapter) return false;
+        const current = materializeChapters(stateRef.current);
+        applyChapters([...current, chapter]);
+        return true;
+      } catch (caughtError) {
+        setError(
+          getErrorMessage(caughtError, "Nie udało się pobrać rozdziału."),
+        );
+        return false;
+      }
+    },
+    [applyChapters, repository],
+  );
 
   useEffect(() => {
     if (!loadOnMount) return;
@@ -171,6 +277,7 @@ export function useNotesStore({
             );
           }
         }
+        setLearningSummary(await repository.getLearningSummary());
         return true;
       } catch (caughtError) {
         applyChapters(previous);
@@ -271,8 +378,17 @@ export function useNotesStore({
     commitDrag,
     error,
     isLoading,
+    isLoadingMore,
+    isSearching,
+    hasMoreChapters,
     isSaving: pendingOperations > 0,
     load,
+    loadMoreChapters,
+    loadChapterBySlug,
+    loadTopicContent,
+    searchChapters,
+    searchResults,
+    learningSummary,
     previewChapters,
     removeItem,
     renameItem,

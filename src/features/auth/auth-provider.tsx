@@ -13,12 +13,14 @@ import { AuthContext, type AuthContextValue } from "./auth-context";
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
+      if (event === "PASSWORD_RECOVERY") setIsPasswordRecovery(true);
       setIsLoading(false);
     });
     return () => subscription.unsubscribe();
@@ -53,9 +55,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   }, []);
 
+  const requestPasswordReset = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    if (error) throw error;
+  }, []);
+
+  const updateName = useCallback(async (name: string) => {
+    const { error } = await supabase.auth.updateUser({
+      data: { full_name: name.trim() },
+    });
+    if (error) throw error;
+  }, []);
+
+  const updatePassword = useCallback(async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+  }, []);
+
+  const completePasswordRecovery = useCallback(async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+    setIsPasswordRecovery(false);
+  }, []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ isLoading, user, signIn, signUp, signOut }),
-    [isLoading, signIn, signOut, signUp, user],
+    () => ({
+      completePasswordRecovery,
+      isLoading,
+      isPasswordRecovery,
+      requestPasswordReset,
+      signIn,
+      signOut,
+      signUp,
+      updateName,
+      updatePassword,
+      user,
+    }),
+    [
+      completePasswordRecovery,
+      isLoading,
+      isPasswordRecovery,
+      requestPasswordReset,
+      signIn,
+      signOut,
+      signUp,
+      updateName,
+      updatePassword,
+      user,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

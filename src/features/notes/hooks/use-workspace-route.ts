@@ -8,12 +8,14 @@ type Options = {
   chapters: Chapter[];
   isTopicDirty: (topicId: string) => boolean;
   isLoading?: boolean;
+  resolveChapter?: (slug: string) => Promise<boolean>;
 };
 
 export function useWorkspaceRoute({
   chapters,
   isTopicDirty,
   isLoading = false,
+  resolveChapter,
 }: Options) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -63,8 +65,17 @@ export function useWorkspaceRoute({
     if (isLoading) return;
     if (activeView !== "notes") return;
     if (!chapter) {
-      navigate("/", { replace: true });
-      return;
+      if (!resolveChapter) {
+        navigate("/", { replace: true });
+        return;
+      }
+      let cancelled = false;
+      void resolveChapter(chapterSlug).then((found) => {
+        if (!cancelled && !found) navigate("/", { replace: true });
+      });
+      return () => {
+        cancelled = true;
+      };
     }
     if (topic) {
       if (chapterSlug !== chapter.slug || topicSlug !== topic.slug) {
@@ -81,7 +92,16 @@ export function useWorkspaceRoute({
     } else if (chapterSlug !== chapter.slug || topicSlug) {
       navigate(`/chapters/${chapter.slug}`, { replace: true });
     }
-  }, [activeView, chapter, chapterSlug, isLoading, navigate, topic, topicSlug]);
+  }, [
+    activeView,
+    chapter,
+    chapterSlug,
+    isLoading,
+    navigate,
+    resolveChapter,
+    topic,
+    topicSlug,
+  ]);
 
   return {
     activeView,

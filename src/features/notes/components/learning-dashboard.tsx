@@ -14,30 +14,30 @@ import {
   selectChapterNextTopic,
   selectDashboardSummary,
 } from "../lib/chapter-selectors";
-import type { Chapter } from "../model/types";
+import type { Chapter, LearningSummary } from "../model/types";
 
 const DASHBOARD_CHAPTER_LIMIT = 6;
 
 type Props = {
   chapters: Chapter[];
   userName?: string;
+  summary?: LearningSummary | null;
   onOpenChapter: (chapterId: string, topicId: string) => void;
 };
 
 export function LearningDashboard({
   chapters,
   userName,
+  summary,
   onOpenChapter,
 }: Props) {
   const firstName = userName?.trim().split(/\s+/)[0];
   const dashboardChapters = chapters.slice(0, DASHBOARD_CHAPTER_LIMIT);
-  const {
-    completedChapters,
-    completedTopics,
-    nextTopic,
-    progress,
-    totalTopics,
-  } = selectDashboardSummary(chapters);
+  const localSummary = selectDashboardSummary(chapters);
+  const { completedChapters, completedTopics, nextTopic, totalTopics } =
+    summary ?? localSummary;
+  const totalChapters = summary?.totalChapters ?? chapters.length;
+  const progress = getProgress(completedTopics, totalTopics);
 
   const message =
     progress === 100
@@ -111,7 +111,7 @@ export function LearningDashboard({
           />
           <SummaryItem
             icon={<BookOpenCheck />}
-            value={`${completedChapters}/${chapters.length}`}
+            value={`${completedChapters}/${totalChapters}`}
             label="Ukończone rozdziały"
           />
         </section>

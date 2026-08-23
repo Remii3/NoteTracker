@@ -106,12 +106,12 @@ export function SidebarChapter(props: Props) {
             onClick={() => onSelectChapter(chapter)}
             className={
               isEditing
-                ? "flex-1 pr-7 hover:bg-transparent active:bg-transparent data-active:bg-transparent"
-                : "flex-1 hover:bg-transparent active:bg-transparent data-active:bg-transparent"
+                ? "min-w-0 flex-1 pr-7 hover:bg-transparent active:bg-transparent data-active:bg-transparent"
+                : "min-w-0 flex-1 hover:bg-transparent active:bg-transparent data-active:bg-transparent"
             }
           >
-            <span>{chapter.title}</span>
-            <span className="ml-auto text-xs text-muted-foreground">
+            <span className="min-w-0 flex-1 truncate">{chapter.title}</span>
+            <span className="shrink-0 text-xs text-muted-foreground">
               {count}/{allTopics.length}
             </span>
           </SidebarMenuButton>

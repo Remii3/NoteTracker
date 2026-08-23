@@ -1,5 +1,10 @@
 import { Toaster } from "@/components/ui/sonner";
-import { AuthPage, AuthProvider, useAuth } from "@/features/auth";
+import {
+  AuthPage,
+  AuthProvider,
+  PasswordRecoveryPage,
+  useAuth,
+} from "@/features/auth";
 import { Navigate, RouterProvider, createBrowserRouter } from "react-router";
 
 async function loadNoteWorkspace() {
@@ -31,9 +36,10 @@ const router = createBrowserRouter([
 ]);
 
 function AuthenticatedApp() {
-  const { isLoading, user } = useAuth();
+  const { isLoading, isPasswordRecovery, user } = useAuth();
 
   if (isLoading) return <AppLoading />;
+  if (isPasswordRecovery) return <PasswordRecoveryPage />;
   if (!user) return <AuthPage />;
 
   return <RouterProvider router={router} />;

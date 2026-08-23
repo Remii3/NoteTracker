@@ -133,7 +133,7 @@ export function AddContentDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Dodaj zawartość</DialogTitle>
           <DialogDescription>
@@ -159,92 +159,96 @@ export function AddContentDialog({
           </Button>
         </div>
 
-        <form className="space-y-5" onSubmit={handleSubmit}>
-          {mode === "chapter" ? (
-            <div className="space-y-2">
-              <label htmlFor="chapter-title" className="text-sm font-medium">
-                Nazwa rozdziału
-              </label>
-              <Input
-                id="chapter-title"
-                autoFocus
-                value={chapterTitle}
-                onChange={(event) => {
-                  setChapterTitle(event.target.value);
-                  setError(null);
-                }}
-                placeholder="np. JavaScript"
-              />
-            </div>
-          ) : (
-            <>
+        <form className="flex min-h-0 flex-col gap-5" onSubmit={handleSubmit}>
+          <div className="-mx-1 min-h-0 flex-1 space-y-5 overflow-y-auto px-1">
+            {mode === "chapter" ? (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Rozdział docelowy</label>
-                <Combobox
-                  items={chapterOptions}
-                  value={selectedChapterOption}
-                  onValueChange={(option) => {
-                    setTargetChapterId(option?.value ?? "");
-                    setError(null);
-                  }}
-                  itemToStringLabel={(option) => option.label}
-                  itemToStringValue={(option) => option.value}
-                  isItemEqualToValue={(option, value) =>
-                    option.value === value.value
-                  }
-                >
-                  <ComboboxInput
-                    placeholder="Wyszukaj rozdział…"
-                    disabled={!chapterOptions.length}
-                    className="w-full"
-                  />
-                  <ComboboxContent>
-                    <ComboboxEmpty>Nie znaleziono rozdziału.</ComboboxEmpty>
-                    <ComboboxList>
-                      <ComboboxCollection>
-                        {(option: ChapterOption) => (
-                          <ComboboxItem key={option.value} value={option}>
-                            {option.label}
-                          </ComboboxItem>
-                        )}
-                      </ComboboxCollection>
-                    </ComboboxList>
-                  </ComboboxContent>
-                </Combobox>
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="topic-titles" className="text-sm font-medium">
-                  Nazwy tematów
+                <label htmlFor="chapter-title" className="text-sm font-medium">
+                  Nazwa rozdziału
                 </label>
-                <Textarea
-                  id="topic-titles"
+                <Input
+                  id="chapter-title"
                   autoFocus
-                  value={topicTitles}
+                  value={chapterTitle}
                   onChange={(event) => {
-                    setTopicTitles(event.target.value);
+                    setChapterTitle(event.target.value);
                     setError(null);
                   }}
-                  placeholder={"Podstawy\nFunkcje\nAsync i await"}
-                  className="min-h-36"
-                  aria-describedby="topic-titles-hint"
+                  placeholder="np. JavaScript"
                 />
-                <p
-                  id="topic-titles-hint"
-                  className="text-xs text-muted-foreground"
-                >
-                  Każdy wiersz utworzy osobny temat.
-                </p>
               </div>
-            </>
-          )}
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Rozdział docelowy
+                  </label>
+                  <Combobox
+                    items={chapterOptions}
+                    value={selectedChapterOption}
+                    onValueChange={(option) => {
+                      setTargetChapterId(option?.value ?? "");
+                      setError(null);
+                    }}
+                    itemToStringLabel={(option) => option.label}
+                    itemToStringValue={(option) => option.value}
+                    isItemEqualToValue={(option, value) =>
+                      option.value === value.value
+                    }
+                  >
+                    <ComboboxInput
+                      placeholder="Wyszukaj rozdział…"
+                      disabled={!chapterOptions.length}
+                      className="w-full"
+                    />
+                    <ComboboxContent>
+                      <ComboboxEmpty>Nie znaleziono rozdziału.</ComboboxEmpty>
+                      <ComboboxList>
+                        <ComboboxCollection>
+                          {(option: ChapterOption) => (
+                            <ComboboxItem key={option.value} value={option}>
+                              {option.label}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxCollection>
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="topic-titles" className="text-sm font-medium">
+                    Nazwy tematów
+                  </label>
+                  <Textarea
+                    id="topic-titles"
+                    autoFocus
+                    value={topicTitles}
+                    onChange={(event) => {
+                      setTopicTitles(event.target.value);
+                      setError(null);
+                    }}
+                    placeholder={"Podstawy\nFunkcje\nAsync i await"}
+                    className="min-h-36"
+                    aria-describedby="topic-titles-hint"
+                  />
+                  <p
+                    id="topic-titles-hint"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Każdy wiersz utworzy osobny temat.
+                  </p>
+                </div>
+              </>
+            )}
 
-          {error && (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          )}
+            {error && (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            )}
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button
               type="button"
               variant="outline"

@@ -118,6 +118,7 @@ export function useWorkspaceActions({
         slug,
         title,
         content: EMPTY_RICH_TEXT,
+        contentLoaded: true,
         completed: false,
         position: (targetChapter.topics.length + index + 1) * 1000,
       };

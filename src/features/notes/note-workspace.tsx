@@ -1,4 +1,11 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { toast } from "sonner";
 
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -52,6 +59,7 @@ type Props = {
   userName?: string;
   userEmail?: string;
   onSignOut?: () => void;
+  onOpenAccount?: () => void;
 };
 
 export function NoteWorkspace({
@@ -61,7 +69,9 @@ export function NoteWorkspace({
   userName,
   userEmail,
   onSignOut,
+  onOpenAccount,
 }: Props) {
+  const [isSearchPending, setIsSearchPending] = useState(false);
   const { richTextModule, preloadRichTextEditor } = useRichTextModule();
   const notesStore = useNotesStore({
     repository,
@@ -73,6 +83,7 @@ export function NoteWorkspace({
     clearError: clearNotesError,
     error: notesError,
   } = notesStore;
+  const { loadTopicContent, searchChapters, searchResults } = notesStore;
   const {
     clearDraft,
     getContent: getDraftContent,
@@ -94,6 +105,7 @@ export function NoteWorkspace({
     chapters,
     isTopicDirty,
     isLoading: notesStore.isLoading,
+    resolveChapter: notesStore.loadChapterBySlug,
   });
   const {
     addDialogOpen,
@@ -198,15 +210,46 @@ export function NoteWorkspace({
     clearNotesError();
   }, [clearNotesError, notesError]);
 
+  useEffect(() => {
+    if (!chapter || !topic || topic.contentLoaded !== false) return;
+    void loadTopicContent(chapter.id, topic.id);
+  }, [chapter, loadTopicContent, topic]);
+
   useStudyKeyboardNavigation({
     enabled: activeView === "notes" && !isEditing,
     topics: studyTopics,
     currentIndex: studyTopicIndex,
     onOpenTopic: openStudyTopic,
   });
+  function changeSearch(value: string) {
+    setSearch(value);
+    setIsSearchPending(Boolean(value.trim()));
+  }
+
+  useEffect(() => {
+    if (!search.trim()) {
+      void searchChapters("");
+      return;
+    }
+    let cancelled = false;
+    const timeout = window.setTimeout(() => {
+      void searchChapters(search).finally(() => {
+        if (!cancelled) setIsSearchPending(false);
+      });
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [search, searchChapters]);
   const visibleChapters = useMemo(
-    () => selectVisibleChapters(chapters, search, sortMode),
-    [search, sortMode, chapters],
+    () =>
+      selectVisibleChapters(
+        search.trim() ? (searchResults ?? []) : chapters,
+        search,
+        sortMode,
+      ),
+    [chapters, search, searchResults, sortMode],
   );
 
   function selectChapter(item: Chapter) {
@@ -282,7 +325,7 @@ export function NoteWorkspace({
           sortMode={sortMode}
           error={sidebarError}
           sensors={sensors}
-          onSearchChange={setSearch}
+          onSearchChange={changeSearch}
           onSortModeChange={setSortMode}
           onOpenHome={openHome}
           onOpenAddDialog={() => setAddDialogOpen(true)}
@@ -300,6 +343,11 @@ export function NoteWorkspace({
           userEmail={userEmail}
           userName={userName}
           onSignOut={onSignOut}
+          onOpenAccount={onOpenAccount}
+          hasMoreChapters={notesStore.hasMoreChapters}
+          isLoadingMore={notesStore.isLoadingMore}
+          isSearching={isSearchPending || notesStore.isSearching}
+          onLoadMore={() => void notesStore.loadMoreChapters()}
         />
 
         <SidebarInset className="h-dvh max-h-dvh min-w-0 overflow-hidden">
@@ -316,6 +364,7 @@ export function NoteWorkspace({
             <LearningDashboard
               chapters={chapters}
               userName={userName}
+              summary={notesStore.learningSummary}
               onOpenChapter={openChapter}
             />
           ) : (
@@ -326,7 +375,9 @@ export function NoteWorkspace({
               content={draftContent}
               editorDirty={editorDirty}
               isSaving={notesStore.isSaving}
-              richTextModule={richTextModule}
+              richTextModule={
+                topic?.contentLoaded === false ? null : richTextModule
+              }
               onContentChange={(content) => {
                 if (isEditing && topic) updateDraft(topic, content);
               }}

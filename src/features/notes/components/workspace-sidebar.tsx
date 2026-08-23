@@ -30,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sidebar,
   SidebarContent,
@@ -82,6 +83,11 @@ type Props = {
   userEmail?: string;
   userName?: string;
   onSignOut?: () => void;
+  onOpenAccount?: () => void;
+  hasMoreChapters?: boolean;
+  isLoadingMore?: boolean;
+  isSearching?: boolean;
+  onLoadMore?: () => void;
 };
 
 export function WorkspaceSidebar({
@@ -114,6 +120,11 @@ export function WorkspaceSidebar({
   userEmail,
   userName,
   onSignOut,
+  onOpenAccount,
+  hasMoreChapters,
+  isLoadingMore,
+  isSearching,
+  onLoadMore,
 }: Props) {
   const hasSearch = search.trim().length > 0;
   const isEmpty = chapters.length === 0 && !hasSearch;
@@ -195,7 +206,19 @@ export function WorkspaceSidebar({
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent
+        onScroll={(event) => {
+          const element = event.currentTarget;
+          if (
+            hasMoreChapters &&
+            !isLoadingMore &&
+            element.scrollHeight - element.scrollTop - element.clientHeight <
+              160
+          ) {
+            onLoadMore?.();
+          }
+        }}
+      >
         <SidebarGroup className="pb-0">
           <SidebarMenu>
             <SidebarMenuItem>
@@ -235,7 +258,7 @@ export function WorkspaceSidebar({
                 strategy={verticalListSortingStrategy}
               >
                 <SidebarMenu>
-                  {!visibleChapters.length && (
+                  {!visibleChapters.length && !isSearching && (
                     <li className="px-3 py-8 text-center">
                       {isEmpty ? (
                         <>
@@ -277,31 +300,65 @@ export function WorkspaceSidebar({
                       )}
                     </li>
                   )}
-                  {visibleChapters.map((chapter) => (
-                    <SidebarChapter
-                      key={chapter.id}
-                      chapter={chapter}
-                      completeChapter={chapters.find(
-                        (item) => item.id === chapter.id,
-                      )}
-                      expanded={expandedChapters.has(chapter.id)}
-                      chapterId={chapterId}
-                      topicId={topicId}
-                      isHome={isHome}
-                      isEditing={isEditing}
-                      search={search}
-                      sortMode={sortMode}
-                      allChapters={chapters}
-                      onSelectChapter={onSelectChapter}
-                      onSelectTopic={onSelectTopic}
-                      onToggleExpanded={onToggleExpanded}
-                      onToggleChapter={onToggleChapter}
-                      onToggleTopic={onToggleTopic}
-                      onRenameItem={onRenameItem}
-                      onDeleteItem={onDeleteItem}
-                    />
-                  ))}
+                  {!isSearching &&
+                    visibleChapters.map((chapter) => (
+                      <SidebarChapter
+                        key={chapter.id}
+                        chapter={chapter}
+                        completeChapter={chapters.find(
+                          (item) => item.id === chapter.id,
+                        )}
+                        expanded={expandedChapters.has(chapter.id)}
+                        chapterId={chapterId}
+                        topicId={topicId}
+                        isHome={isHome}
+                        isEditing={isEditing}
+                        search={search}
+                        sortMode={sortMode}
+                        allChapters={chapters}
+                        onSelectChapter={onSelectChapter}
+                        onSelectTopic={onSelectTopic}
+                        onToggleExpanded={onToggleExpanded}
+                        onToggleChapter={onToggleChapter}
+                        onToggleTopic={onToggleTopic}
+                        onRenameItem={onRenameItem}
+                        onDeleteItem={onDeleteItem}
+                      />
+                    ))}
+                  {isSearching && (
+                    <li
+                      className="space-y-2 px-1 py-1"
+                      aria-label="Wyszukiwanie rozdziałów"
+                    >
+                      {Array.from({ length: 4 }, (_, index) => (
+                        <div
+                          key={index}
+                          className="flex h-8 items-center gap-2 px-2"
+                        >
+                          <Skeleton className="size-4 shrink-0 rounded-sm" />
+                          <Skeleton
+                            className={
+                              index % 2 === 0 ? "h-3 w-32" : "h-3 w-24"
+                            }
+                          />
+                          <Skeleton className="ml-auto h-3 w-7" />
+                        </div>
+                      ))}
+                    </li>
+                  )}
                 </SidebarMenu>
+                {hasMoreChapters && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 w-full"
+                    disabled={isLoadingMore}
+                    onClick={onLoadMore}
+                  >
+                    {isLoadingMore ? "Pobieranie…" : "Załaduj więcej"}
+                  </Button>
+                )}
               </SortableContext>
             </DndContext>
           </SidebarGroupContent>
@@ -313,14 +370,18 @@ export function WorkspaceSidebar({
           <span className="grid size-9 place-items-center rounded-full bg-secondary text-sm font-semibold">
             {(userName?.[0] ?? userEmail?.[0] ?? "U").toLocaleUpperCase("pl")}
           </span>
-          <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            className="min-w-0 flex-1 text-left"
+            onClick={onOpenAccount}
+          >
             <p className="truncate text-sm font-medium">
               {userName ?? "Użytkownik"}
             </p>
             <p className="truncate text-xs text-muted-foreground">
               {userEmail ?? "konto prywatne"}
             </p>
-          </div>
+          </button>
           <Button
             variant="ghost"
             size="icon-sm"

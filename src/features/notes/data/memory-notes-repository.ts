@@ -1,4 +1,5 @@
 import { initialChapters } from "./mock-data";
+import { selectDashboardSummary } from "../lib/chapter-selectors";
 import type {
   ChapterUpdate,
   NotesRepository,
@@ -22,17 +23,51 @@ class MemoryNotesRepository implements NotesRepository {
     return clone(this.chapters);
   }
 
-  async listChapters() {
-    return this.chapters.map(({ id, slug, title, position }) => ({
-      id,
-      slug,
-      title,
-      position,
-    }));
+  async listChapters(offset = 0, limit = 100) {
+    const page = this.chapters.slice(offset, offset + limit + 1);
+    return {
+      chapters: clone(page.slice(0, limit)),
+      hasMore: page.length > limit,
+    };
   }
 
-  async listTopics(chapterId: string) {
-    return clone(this.getChapter(chapterId).topics);
+  async getTopicContent(chapterId: string, topicId: string) {
+    return clone(this.getTopic(chapterId, topicId).content);
+  }
+
+  async searchChapters(query: string, limit = 100) {
+    const phrase = query.toLocaleLowerCase("pl");
+    return clone(
+      this.chapters
+        .flatMap((chapter) => {
+          const topics = chapter.topics.filter((topic) =>
+            topic.title.toLocaleLowerCase("pl").includes(phrase),
+          );
+          return chapter.title.toLocaleLowerCase("pl").includes(phrase) ||
+            topics.length
+            ? [{ ...chapter, topics }]
+            : [];
+        })
+        .slice(0, limit),
+    );
+  }
+
+  async getChapterBySlug(slug: string) {
+    const chapter = this.chapters.find((item) => item.slug === slug);
+    return chapter ? clone(chapter) : null;
+  }
+
+  async getLearningSummary() {
+    const summary = selectDashboardSummary(this.chapters);
+    return {
+      completedChapters: summary.completedChapters,
+      completedTopics: summary.completedTopics,
+      nextTopic: summary.nextTopic
+        ? { chapterId: summary.nextTopic.chapterId, id: summary.nextTopic.id }
+        : null,
+      totalChapters: this.chapters.length,
+      totalTopics: summary.totalTopics,
+    };
   }
 
   async createChapter(chapter: ChapterSummary) {

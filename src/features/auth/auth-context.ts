@@ -5,6 +5,7 @@ export type SignUpResult = { confirmationRequired: boolean };
 
 export type AuthContextValue = {
   isLoading: boolean;
+  isPasswordRecovery: boolean;
   user: User | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (
@@ -13,6 +14,10 @@ export type AuthContextValue = {
     password: string,
   ) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  updateName: (name: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
+  completePasswordRecovery: (password: string) => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

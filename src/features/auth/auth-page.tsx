@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "./auth-context";
 
-type Mode = "sign-in" | "sign-up";
+type Mode = "sign-in" | "sign-up" | "reset";
 
 function getAuthErrorMessage(error: unknown) {
   if (!(error instanceof Error)) return "Nie udało się wykonać operacji.";
@@ -17,7 +17,7 @@ function getAuthErrorMessage(error: unknown) {
 }
 
 export function AuthPage() {
-  const { signIn, signUp } = useAuth();
+  const { requestPasswordReset, signIn, signUp } = useAuth();
   const [mode, setMode] = useState<Mode>("sign-in");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -26,9 +26,9 @@ export function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const canSubmit =
-    (mode === "sign-in" || name.trim().length > 0) &&
+    (mode !== "sign-up" || name.trim().length > 0) &&
     email.trim().length > 0 &&
-    password.length >= 6;
+    (mode === "reset" || password.length >= 6);
 
   function changeMode(nextMode: Mode) {
     setMode(nextMode);
@@ -43,7 +43,10 @@ export function AuthPage() {
     setMessage(null);
     setIsSubmitting(true);
     try {
-      if (mode === "sign-in") {
+      if (mode === "reset") {
+        await requestPasswordReset(email.trim());
+        setMessage("Wysłaliśmy link do ustawienia nowego hasła.");
+      } else if (mode === "sign-in") {
         await signIn(email.trim(), password);
       } else {
         const result = await signUp(name.trim(), email.trim(), password);
@@ -78,12 +81,18 @@ export function AuthPage() {
         </div>
         <section className="rounded-2xl border bg-background p-6 shadow-sm">
           <h1 className="text-2xl font-semibold">
-            {mode === "sign-in" ? "Zaloguj się" : "Utwórz konto"}
+            {mode === "sign-in"
+              ? "Zaloguj się"
+              : mode === "sign-up"
+                ? "Utwórz konto"
+                : "Zresetuj hasło"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {mode === "sign-in"
               ? "Wróć do swoich rozdziałów i notatek."
-              : "Zacznij budować własną bazę wiedzy."}
+              : mode === "sign-up"
+                ? "Zacznij budować własną bazę wiedzy."
+                : "Podaj e-mail przypisany do konta."}
           </p>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             {mode === "sign-up" && (
@@ -106,24 +115,26 @@ export function AuthPage() {
                 />
               </div>
             )}
-            <div className="space-y-2">
-              <label htmlFor="auth-email" className="text-sm font-medium">
-                E-mail
-              </label>
-              <Input
-                id="auth-email"
-                type="email"
-                autoComplete="email"
-                autoFocus={mode === "sign-in"}
-                value={email}
-                disabled={isSubmitting}
-                onChange={(event) => {
-                  setEmail(event.target.value);
-                  setError(null);
-                }}
-                placeholder="ty@example.com"
-              />
-            </div>
+            {mode !== "reset" && (
+              <div className="space-y-2">
+                <label htmlFor="auth-email" className="text-sm font-medium">
+                  E-mail
+                </label>
+                <Input
+                  id="auth-email"
+                  type="email"
+                  autoComplete="email"
+                  autoFocus={mode === "sign-in"}
+                  value={email}
+                  disabled={isSubmitting}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setError(null);
+                  }}
+                  placeholder="ty@example.com"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <label htmlFor="auth-password" className="text-sm font-medium">
                 Hasło
@@ -167,22 +178,45 @@ export function AuthPage() {
                 ? "Proszę czekać…"
                 : mode === "sign-in"
                   ? "Zaloguj się"
-                  : "Utwórz konto"}
+                  : mode === "sign-up"
+                    ? "Utwórz konto"
+                    : "Wyślij link"}
             </Button>
           </form>
-          <p className="mt-5 text-center text-sm text-muted-foreground">
-            {mode === "sign-in" ? "Nie masz konta?" : "Masz już konto?"}{" "}
+          {mode === "sign-in" && (
             <button
               type="button"
-              className="font-medium text-primary hover:underline"
-              disabled={isSubmitting}
-              onClick={() =>
-                changeMode(mode === "sign-in" ? "sign-up" : "sign-in")
-              }
+              className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-foreground"
+              onClick={() => changeMode("reset")}
             >
-              {mode === "sign-in" ? "Zarejestruj się" : "Zaloguj się"}
+              Nie pamiętasz hasła?
             </button>
-          </p>
+          )}
+          {mode === "reset" ? (
+            <p className="mt-5 text-center text-sm text-muted-foreground">
+              <button
+                type="button"
+                className="font-medium text-primary hover:underline"
+                onClick={() => changeMode("sign-in")}
+              >
+                Wróć do logowania
+              </button>
+            </p>
+          ) : (
+            <p className="mt-5 text-center text-sm text-muted-foreground">
+              {mode === "sign-in" ? "Nie masz konta?" : "Masz już konto?"}{" "}
+              <button
+                type="button"
+                className="font-medium text-primary hover:underline"
+                disabled={isSubmitting}
+                onClick={() =>
+                  changeMode(mode === "sign-in" ? "sign-up" : "sign-in")
+                }
+              >
+                {mode === "sign-in" ? "Zarejestruj się" : "Zaloguj się"}
+              </button>
+            </p>
+          )}
         </section>
       </div>
     </main>

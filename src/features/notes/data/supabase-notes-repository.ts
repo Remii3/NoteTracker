@@ -6,23 +6,13 @@ import type {
   NotesRepository,
   TopicUpdate,
 } from "./notes-repository";
-import type { ChapterSummary, NoteContent, Topic } from "../model/types";
-
-type ChapterRow = {
-  id: string;
-  slug: string;
-  title: string;
-  position: number;
-};
-
-type TopicRow = {
-  id: string;
-  slug: string;
-  title: string;
-  content: NoteContent;
-  completed: boolean;
-  position: number;
-};
+import type {
+  ChapterSummary,
+  LearningSummary,
+  NoteContent,
+  Topic,
+} from "../model/types";
+import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
 
 function throwIfError(error: { message: string } | null) {
   if (error) throw new Error(error.message);
@@ -37,25 +27,122 @@ export class SupabaseNotesRepository implements NotesRepository {
     this.userId = userId;
   }
 
-  async listChapters(): Promise<ChapterSummary[]> {
+  async listChapters(offset = 0, limit = 100) {
     const { data, error } = await this.client
       .from("chapters")
-      .select("id,slug,title,position")
+      .select("id,slug,title,position,topics(id,slug,title,completed,position)")
       .order("position")
-      .order("id");
+      .order("id")
+      .range(offset, offset + limit);
     throwIfError(error);
-    return (data ?? []) as ChapterRow[];
+    const rows = data ?? [];
+    return {
+      chapters: rows.slice(0, limit).map((chapter) => ({
+        id: chapter.id,
+        slug: chapter.slug,
+        title: chapter.title,
+        position: chapter.position,
+        topics: [...chapter.topics]
+          .sort(
+            (first, second) =>
+              first.position - second.position ||
+              first.id.localeCompare(second.id),
+          )
+          .map((topic) => ({
+            ...topic,
+            content: EMPTY_RICH_TEXT,
+            contentLoaded: false,
+          })),
+      })),
+      hasMore: rows.length > limit,
+    };
   }
 
-  async listTopics(chapterId: string): Promise<Topic[]> {
+  async getTopicContent(chapterId: string, topicId: string) {
     const { data, error } = await this.client
       .from("topics")
-      .select("id,slug,title,content,completed,position")
+      .select("content")
+      .eq("id", topicId)
       .eq("chapter_id", chapterId)
-      .order("position")
-      .order("id");
+      .eq("user_id", this.userId)
+      .single();
     throwIfError(error);
-    return (data ?? []) as TopicRow[];
+    if (!data) throw new Error("Nie znaleziono notatki.");
+    return data.content as NoteContent;
+  }
+
+  async searchChapters(query: string, limit = 100) {
+    const pattern = `%${query.replaceAll("%", "\\%").replaceAll("_", "\\_")}%`;
+    const [chapterResult, topicResult] = await Promise.all([
+      this.client
+        .from("chapters")
+        .select("id,slug,title,position")
+        .ilike("title", pattern)
+        .order("position")
+        .limit(limit),
+      this.client
+        .from("topics")
+        .select(
+          "id,slug,title,completed,position,chapter_id,chapters!inner(id,slug,title,position)",
+        )
+        .ilike("title", pattern)
+        .order("position")
+        .limit(limit),
+    ]);
+    throwIfError(chapterResult.error);
+    throwIfError(topicResult.error);
+
+    const chapters = new Map<string, import("../model/types").Chapter>();
+    for (const chapter of chapterResult.data ?? []) {
+      chapters.set(chapter.id, { ...chapter, topics: [] });
+    }
+    for (const topic of topicResult.data ?? []) {
+      const chapter = topic.chapters;
+      const current = chapters.get(chapter.id) ?? { ...chapter, topics: [] };
+      current.topics.push({
+        id: topic.id,
+        slug: topic.slug,
+        title: topic.title,
+        completed: topic.completed,
+        position: topic.position,
+        content: EMPTY_RICH_TEXT,
+        contentLoaded: false,
+      });
+      chapters.set(chapter.id, current);
+    }
+    return [...chapters.values()].sort(
+      (first, second) => first.position - second.position,
+    );
+  }
+
+  async getChapterBySlug(slug: string) {
+    const { data, error } = await this.client
+      .from("chapters")
+      .select("id,slug,title,position,topics(id,slug,title,completed,position)")
+      .eq("slug", slug)
+      .eq("user_id", this.userId)
+      .maybeSingle();
+    throwIfError(error);
+    if (!data) return null;
+    return {
+      id: data.id,
+      slug: data.slug,
+      title: data.title,
+      position: data.position,
+      topics: [...data.topics]
+        .sort((first, second) => first.position - second.position)
+        .map((topic) => ({
+          ...topic,
+          content: EMPTY_RICH_TEXT,
+          contentLoaded: false,
+        })),
+    };
+  }
+
+  async getLearningSummary() {
+    const { data, error } = await this.client.rpc("get_learning_summary");
+    throwIfError(error);
+    return data as LearningSummary;
   }
 
   async createChapter(chapter: ChapterSummary) {
@@ -157,21 +244,18 @@ export class SupabaseNotesRepository implements NotesRepository {
   }
 
   async reorderChapters(chapterIds: string[]) {
-    await Promise.all(
-      chapterIds.map((chapterId, index) =>
-        this.updateChapter(chapterId, { position: (index + 1) * 1000 }),
-      ),
-    );
+    const { error } = await this.client.rpc("reorder_chapters", {
+      chapter_ids: chapterIds,
+    });
+    throwIfError(error);
   }
 
   async reorderTopics(chapterId: string, topicIds: string[]) {
-    await Promise.all(
-      topicIds.map((topicId, index) =>
-        this.updateTopic(chapterId, topicId, {
-          position: (index + 1) * 1000,
-        }),
-      ),
-    );
+    const { error } = await this.client.rpc("reorder_topics", {
+      target_chapter_id: chapterId,
+      topic_ids: topicIds,
+    });
+    throwIfError(error);
   }
 
   async moveTopic(
@@ -182,24 +266,14 @@ export class SupabaseNotesRepository implements NotesRepository {
     sourceTopicIds: string[],
     targetTopicIds: string[],
   ) {
-    const targetPosition =
-      (Math.max(0, targetTopicIds.indexOf(topicId)) + 1) * 1000;
-    const { error } = await this.client
-      .from("topics")
-      .update({
-        chapter_id: targetChapterId,
-        position: targetPosition,
-        slug: targetSlug,
-      })
-      .eq("id", topicId)
-      .eq("chapter_id", sourceChapterId)
-      .eq("user_id", this.userId)
-      .select("id")
-      .single();
+    const { error } = await this.client.rpc("move_topic", {
+      moved_topic_id: topicId,
+      source_chapter_id: sourceChapterId,
+      source_topic_ids: sourceTopicIds,
+      target_chapter_id: targetChapterId,
+      target_slug: targetSlug,
+      target_topic_ids: targetTopicIds,
+    });
     throwIfError(error);
-    await Promise.all([
-      this.reorderTopics(sourceChapterId, sourceTopicIds),
-      this.reorderTopics(targetChapterId, targetTopicIds),
-    ]);
   }
 }

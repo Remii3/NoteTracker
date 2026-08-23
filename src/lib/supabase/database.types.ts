@@ -76,7 +76,31 @@ export type Database = {
       };
     };
     Views: Record<never, never>;
-    Functions: Record<never, never>;
+    Functions: {
+      get_learning_summary: {
+        Args: Record<never, never>;
+        Returns: Json;
+      };
+      move_topic: {
+        Args: {
+          moved_topic_id: string;
+          source_chapter_id: string;
+          source_topic_ids: string[];
+          target_chapter_id: string;
+          target_slug: string;
+          target_topic_ids: string[];
+        };
+        Returns: undefined;
+      };
+      reorder_chapters: {
+        Args: { chapter_ids: string[] };
+        Returns: undefined;
+      };
+      reorder_topics: {
+        Args: { target_chapter_id: string; topic_ids: string[] };
+        Returns: undefined;
+      };
+    };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;
   };
