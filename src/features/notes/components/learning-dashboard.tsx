@@ -9,7 +9,11 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { getProgress, selectDashboardSummary } from "../lib/chapter-selectors";
+import {
+  getProgress,
+  selectChapterNextTopic,
+  selectDashboardSummary,
+} from "../lib/chapter-selectors";
 import type { Chapter } from "../model/types";
 
 const DASHBOARD_CHAPTER_LIMIT = 6;
@@ -116,6 +120,7 @@ export function LearningDashboard({ chapters, onOpenChapter }: Props) {
           {chapters.length ? (
             <div className="grid gap-4 md:grid-cols-2">
               {dashboardChapters.map((chapter) => {
+                const nextChapterTopic = selectChapterNextTopic(chapter);
                 const completed = chapter.topics.filter(
                   (topic) => topic.completed,
                 ).length;
@@ -129,7 +134,7 @@ export function LearningDashboard({ chapters, onOpenChapter }: Props) {
                     type="button"
                     className="group rounded-xl border bg-background p-5 text-left transition-colors hover:border-primary/40 hover:bg-muted/20 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
                     onClick={() =>
-                      onOpenChapter(chapter.id, chapter.topics[0]?.id ?? "")
+                      onOpenChapter(chapter.id, nextChapterTopic?.id ?? "")
                     }
                   >
                     <div className="mb-5 flex items-start justify-between gap-4">

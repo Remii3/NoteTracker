@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { memoryNotesRepository } from "../data/memory-notes-repository";
 import type { NotesRepository } from "../data/notes-repository";
@@ -22,6 +22,7 @@ import type { ManagedItem } from "../model/workspace-types";
 type Options = {
   repository?: NotesRepository;
   initialChapters?: Chapter[];
+  loadOnMount?: boolean;
 };
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -31,6 +32,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 export function useNotesStore({
   repository = memoryNotesRepository,
   initialChapters = memoryNotesRepository.getSnapshot(),
+  loadOnMount = false,
 }: Options = {}) {
   const initialState = useMemo(
     () => normalizeChapters(initialChapters),
@@ -39,7 +41,7 @@ export function useNotesStore({
   const [state, setState] = useState<NotesState>(initialState);
   const stateRef = useRef(state);
   const operationLockRef = useRef(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(loadOnMount);
   const [pendingOperations, setPendingOperations] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const chapters = useMemo(() => materializeChapters(state), [state]);
@@ -106,6 +108,17 @@ export function useNotesStore({
     }
   }, [applyChapters, repository]);
 
+  useEffect(() => {
+    if (!loadOnMount) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void load();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [load, loadOnMount]);
+
   const previewChapters = useCallback(
     (updater: (chapters: Chapter[]) => Chapter[]) => {
       applyChapters(updater(materializeChapters(stateRef.current)));
@@ -150,6 +163,7 @@ export function useNotesStore({
               activeId,
               source.id,
               target.id,
+              target.topics.find((topic) => topic.id === activeId)?.slug ?? "",
               next
                 .find((chapter) => chapter.id === source.id)
                 ?.topics.map((topic) => topic.id) ?? [],

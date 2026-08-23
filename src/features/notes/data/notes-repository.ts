@@ -30,6 +30,7 @@ export interface NotesRepository {
     topicId: string,
     sourceChapterId: string,
     targetChapterId: string,
+    targetSlug: string,
     sourceTopicIds: string[],
     targetTopicIds: string[],
   ): Promise<void>;

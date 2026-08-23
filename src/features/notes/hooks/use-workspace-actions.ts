@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 
 import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
+import { createUniqueSlug } from "../lib/slug-utils";
 import type { Chapter, NoteContent, Topic } from "../model/types";
 import type { ManagedItem } from "../model/workspace-types";
 
@@ -83,6 +84,11 @@ export function useWorkspaceActions({
     if (!isEditing || isSaving) return false;
     const newChapter: Chapter = {
       id: crypto.randomUUID(),
+      slug: createUniqueSlug(
+        title,
+        chapters.map((chapter) => chapter.slug),
+        "rozdzial",
+      ),
       title,
       position: (chapters.length + 1) * 1000,
       topics: [],
@@ -99,11 +105,17 @@ export function useWorkspaceActions({
     let firstTopicId = "";
     const targetChapter = chapters.find((item) => item.id === targetChapterId);
     if (!targetChapter) return false;
+    const usedTopicSlugs = new Set(
+      targetChapter.topics.map((topic) => topic.slug),
+    );
     const newTopics = titles.map((title, index) => {
       const id = crypto.randomUUID();
+      const slug = createUniqueSlug(title, usedTopicSlugs, "temat");
+      usedTopicSlugs.add(slug);
       if (!firstTopicId) firstTopicId = id;
       return {
         id,
+        slug,
         title,
         content: EMPTY_RICH_TEXT,
         completed: false,

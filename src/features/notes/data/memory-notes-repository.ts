@@ -23,8 +23,9 @@ class MemoryNotesRepository implements NotesRepository {
   }
 
   async listChapters() {
-    return this.chapters.map(({ id, title, position }) => ({
+    return this.chapters.map(({ id, slug, title, position }) => ({
       id,
+      slug,
       title,
       position,
     }));
@@ -96,6 +97,7 @@ class MemoryNotesRepository implements NotesRepository {
     topicId: string,
     sourceChapterId: string,
     targetChapterId: string,
+    targetSlug: string,
     sourceTopicIds: string[],
     targetTopicIds: string[],
   ) {
@@ -104,6 +106,7 @@ class MemoryNotesRepository implements NotesRepository {
     const topic = source.topics.find((item) => item.id === topicId);
     if (!topic) throw new Error("Nie znaleziono przenoszonego tematu.");
     source.topics = source.topics.filter((item) => item.id !== topicId);
+    topic.slug = targetSlug;
     target.topics.push(topic);
     await this.reorderTopics(sourceChapterId, sourceTopicIds);
     await this.reorderTopics(targetChapterId, targetTopicIds);

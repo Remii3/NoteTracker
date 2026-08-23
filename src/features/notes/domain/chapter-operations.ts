@@ -1,5 +1,6 @@
 import { arrayMove } from "@dnd-kit/sortable";
 
+import { createUniqueSlug } from "../lib/slug-utils";
 import type { Chapter, NoteContent, Topic } from "../model/types";
 import type { ManagedItem } from "../model/workspace-types";
 
@@ -138,7 +139,19 @@ export function moveTopic(
     chapter.topics.some((topic) => topic.id === topicId),
   );
   const topic = source?.topics.find((item) => item.id === topicId);
-  if (!source || !topic || source.id === targetChapterId) return chapters;
+  const target = chapters.find((chapter) => chapter.id === targetChapterId);
+  if (!source || !topic || !target || source.id === targetChapterId)
+    return chapters;
+  const topicForTarget = target.topics.some((item) => item.slug === topic.slug)
+    ? {
+        ...topic,
+        slug: createUniqueSlug(
+          topic.title,
+          target.topics.map((item) => item.slug),
+          "temat",
+        ),
+      }
+    : topic;
 
   return chapters.map((chapter) => {
     if (chapter.id === source.id) {
@@ -151,7 +164,11 @@ export function moveTopic(
     }
     if (chapter.id === targetChapterId) {
       const topics = [...chapter.topics];
-      topics.splice(targetIndex < 0 ? topics.length : targetIndex, 0, topic);
+      topics.splice(
+        targetIndex < 0 ? topics.length : targetIndex,
+        0,
+        topicForTarget,
+      );
       return { ...chapter, topics: withPositions(topics) };
     }
     return chapter;

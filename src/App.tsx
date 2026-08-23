@@ -1,9 +1,10 @@
 import { Toaster } from "@/components/ui/sonner";
+import { AuthPage, AuthProvider, useAuth } from "@/features/auth";
 import { Navigate, RouterProvider, createBrowserRouter } from "react-router";
 
 async function loadNoteWorkspace() {
   const module = await import("@/features/notes");
-  return { Component: module.NoteWorkspace };
+  return { Component: module.SupabaseNoteWorkspace };
 }
 
 function AppLoading() {
@@ -17,24 +18,33 @@ function AppLoading() {
 const router = createBrowserRouter([
   { path: "/", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
   {
-    path: "/chapters/:chapterId",
+    path: "/chapters/:chapterSlug",
     lazy: loadNoteWorkspace,
     HydrateFallback: AppLoading,
   },
   {
-    path: "/chapters/:chapterId/:topicId",
+    path: "/chapters/:chapterSlug/:topicSlug",
     lazy: loadNoteWorkspace,
     HydrateFallback: AppLoading,
   },
   { path: "*", element: <Navigate to="/" replace /> },
 ]);
 
+function AuthenticatedApp() {
+  const { isLoading, user } = useAuth();
+
+  if (isLoading) return <AppLoading />;
+  if (!user) return <AuthPage />;
+
+  return <RouterProvider router={router} />;
+}
+
 function App() {
   return (
-    <>
-      <RouterProvider router={router} />
+    <AuthProvider>
+      <AuthenticatedApp />
       <Toaster position="bottom-right" />
-    </>
+    </AuthProvider>
   );
 }
 

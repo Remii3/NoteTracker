@@ -7,55 +7,81 @@ import type { ActiveView } from "../model/workspace-types";
 type Options = {
   chapters: Chapter[];
   isTopicDirty: (topicId: string) => boolean;
+  isLoading?: boolean;
 };
 
-export function useWorkspaceRoute({ chapters, isTopicDirty }: Options) {
+export function useWorkspaceRoute({
+  chapters,
+  isTopicDirty,
+  isLoading = false,
+}: Options) {
   const location = useLocation();
   const navigate = useNavigate();
   const topicRoute = matchPath(
-    "/chapters/:chapterId/:topicId",
+    "/chapters/:chapterSlug/:topicSlug",
     location.pathname,
   );
-  const chapterRoute = matchPath("/chapters/:chapterId", location.pathname);
-  const chapterId =
-    topicRoute?.params.chapterId ?? chapterRoute?.params.chapterId ?? "";
-  const topicId = topicRoute?.params.topicId ?? "";
-  const activeView: ActiveView = chapterId ? "notes" : "home";
-  const chapter = chapters.find((item) => item.id === chapterId);
-  const topic = chapter?.topics.find((item) => item.id === topicId);
+  const chapterRoute = matchPath("/chapters/:chapterSlug", location.pathname);
+  const chapterSlug =
+    topicRoute?.params.chapterSlug ?? chapterRoute?.params.chapterSlug ?? "";
+  const topicSlug = topicRoute?.params.topicSlug ?? "";
+  const activeView: ActiveView = chapterSlug ? "notes" : "home";
+  const chapter = chapters.find(
+    (item) => item.slug === chapterSlug || item.id === chapterSlug,
+  );
+  const topic = chapter?.topics.find(
+    (item) => item.slug === topicSlug || item.id === topicSlug,
+  );
+  const chapterId = chapter?.id ?? "";
+  const topicId = topic?.id ?? "";
   const editorDirty = Boolean(topic && isTopicDirty(topic.id));
 
   const navigateToChapter = useCallback(
     (nextChapterId: string, nextTopicId = "", replace = false) => {
-      const path = nextTopicId
-        ? `/chapters/${nextChapterId}/${nextTopicId}`
-        : `/chapters/${nextChapterId}`;
+      const nextChapter = chapters.find((item) => item.id === nextChapterId);
+      if (!nextChapter) return;
+      const nextTopic = nextChapter.topics.find(
+        (item) => item.id === nextTopicId,
+      );
+      const path = nextTopic
+        ? `/chapters/${nextChapter.slug}/${nextTopic.slug}`
+        : `/chapters/${nextChapter.slug}`;
       navigate(path, { replace });
     },
-    [navigate],
+    [chapters, navigate],
   );
   const navigateHome = useCallback(() => navigate("/"), [navigate]);
 
   const navigationBlocker = useBlocker(
     ({ nextLocation }) =>
       editorDirty &&
-      matchPath("/chapters/:chapterId/:topicId", nextLocation.pathname)?.params
-        .topicId !== topicId,
+      matchPath("/chapters/:chapterSlug/:topicSlug", nextLocation.pathname)
+        ?.params.topicSlug !== topic?.slug,
   );
 
   useEffect(() => {
+    if (isLoading) return;
     if (activeView !== "notes") return;
     if (!chapter) {
       navigate("/", { replace: true });
       return;
     }
-    if (topic) return;
+    if (topic) {
+      if (chapterSlug !== chapter.slug || topicSlug !== topic.slug) {
+        navigate(`/chapters/${chapter.slug}/${topic.slug}`, { replace: true });
+      }
+      return;
+    }
 
     const firstTopic = chapter.topics[0];
     if (firstTopic) {
-      navigate(`/chapters/${chapter.id}/${firstTopic.id}`, { replace: true });
+      navigate(`/chapters/${chapter.slug}/${firstTopic.slug}`, {
+        replace: true,
+      });
+    } else if (chapterSlug !== chapter.slug) {
+      navigate(`/chapters/${chapter.slug}`, { replace: true });
     }
-  }, [activeView, chapter, navigate, topic]);
+  }, [activeView, chapter, chapterSlug, isLoading, navigate, topic, topicSlug]);
 
   return {
     activeView,

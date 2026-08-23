@@ -11,6 +11,7 @@ export type NoteContent = {
 
 export type Topic = {
   id: string;
+  slug: string;
   title: string;
   content: NoteContent;
   completed: boolean;
@@ -19,6 +20,7 @@ export type Topic = {
 
 export type ChapterSummary = {
   id: string;
+  slug: string;
   title: string;
   position: number;
 };

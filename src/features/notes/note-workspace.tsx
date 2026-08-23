@@ -23,6 +23,7 @@ import {
 import { EMPTY_RICH_TEXT } from "./model/rich-text-content";
 import type { Chapter } from "./model/types";
 import type { StudyTopic } from "./model/workspace-types";
+import type { NotesRepository } from "./data/notes-repository";
 
 const AddContentDialog = lazy(() =>
   import("./components/add-content-dialog").then((module) => ({
@@ -44,9 +45,27 @@ const UnsavedChangesDialog = lazy(() =>
     default: module.UnsavedChangesDialog,
   })),
 );
-export function NoteWorkspace() {
+type Props = {
+  repository?: NotesRepository;
+  initialChapters?: Chapter[];
+  loadOnMount?: boolean;
+  userEmail?: string;
+  onSignOut?: () => void;
+};
+
+export function NoteWorkspace({
+  repository,
+  initialChapters,
+  loadOnMount,
+  userEmail,
+  onSignOut,
+}: Props) {
   const { richTextModule, preloadRichTextEditor } = useRichTextModule();
-  const notesStore = useNotesStore();
+  const notesStore = useNotesStore({
+    repository,
+    initialChapters,
+    loadOnMount,
+  });
   const {
     chapters,
     clearError: clearNotesError,
@@ -69,7 +88,11 @@ export function NoteWorkspace() {
     navigationBlocker,
     topic,
     topicId,
-  } = useWorkspaceRoute({ chapters, isTopicDirty });
+  } = useWorkspaceRoute({
+    chapters,
+    isTopicDirty,
+    isLoading: notesStore.isLoading,
+  });
   const {
     addDialogOpen,
     closeEditingUi,
@@ -272,6 +295,8 @@ export function NoteWorkspace() {
           onDragOver={handleSidebarDragOver}
           onDragCancel={handleSidebarDragCancel}
           onDragEnd={handleSidebarDragEnd}
+          userEmail={userEmail}
+          onSignOut={onSignOut}
         />
 
         <SidebarInset className="h-dvh max-h-dvh min-w-0 overflow-hidden">

@@ -15,11 +15,13 @@ function textDocument(text: string): NoteContent {
 export const initialChapters: Chapter[] = [
   {
     id: "chapter-python",
+    slug: "python",
     title: "Python",
     position: 1000,
     topics: [
       {
         id: "topic-basics",
+        slug: "podstawy",
         title: "Podstawy",
         content: textDocument("Typy danych, instrukcje warunkowe i pętle."),
         completed: true,
@@ -27,6 +29,7 @@ export const initialChapters: Chapter[] = [
       },
       {
         id: "topic-functions",
+        slug: "funkcje",
         title: "Funkcje",
         content: textDocument(
           "Argumenty pozycyjne, nazwane oraz wartości domyślne.",
@@ -36,6 +39,7 @@ export const initialChapters: Chapter[] = [
       },
       {
         id: "topic-async",
+        slug: "async-i-await",
         title: "Async i await",
         content: textDocument(
           "Async/await pozwala zapisywać kod asynchroniczny w czytelnej formie. Tutaj pojawią się właściwe notatki użytkownika.",
@@ -47,11 +51,13 @@ export const initialChapters: Chapter[] = [
   },
   {
     id: "chapter-sql",
+    slug: "sql",
     title: "SQL",
     position: 2000,
     topics: [
       {
         id: "topic-select",
+        slug: "select",
         title: "SELECT",
         content: textDocument("Wybieranie i filtrowanie danych."),
         completed: false,
@@ -59,6 +65,7 @@ export const initialChapters: Chapter[] = [
       },
       {
         id: "topic-joins",
+        slug: "join",
         title: "JOIN",
         content: textDocument("Łączenie rekordów z wielu tabel."),
         completed: false,

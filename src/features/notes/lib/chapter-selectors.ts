@@ -12,6 +12,15 @@ export function getProgress(completed: number, total: number) {
   return total ? Math.round((completed / total) * 100) : 0;
 }
 
+export function selectChapterNextTopic(chapter: Chapter) {
+  const orderedTopics = [...chapter.topics].sort(
+    (first, second) => first.position - second.position,
+  );
+  return (
+    orderedTopics.find((topic) => !topic.completed) ?? orderedTopics[0] ?? null
+  );
+}
+
 export function selectDashboardSummary(chapters: Chapter[]) {
   const topics = chapters.flatMap((chapter) =>
     chapter.topics.map((topic) => ({ ...topic, chapterId: chapter.id })),

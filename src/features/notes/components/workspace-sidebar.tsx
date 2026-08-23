@@ -79,6 +79,8 @@ type Props = {
   onDragOver: (event: DragOverEvent) => void;
   onDragCancel: () => void;
   onDragEnd: (event: DragEndEvent) => void;
+  userEmail?: string;
+  onSignOut?: () => void;
 };
 
 export function WorkspaceSidebar({
@@ -108,7 +110,12 @@ export function WorkspaceSidebar({
   onDragOver,
   onDragCancel,
   onDragEnd,
+  userEmail,
+  onSignOut,
 }: Props) {
+  const hasSearch = search.trim().length > 0;
+  const isEmpty = chapters.length === 0 && !hasSearch;
+
   return (
     <Sidebar collapsible="offcanvas">
       <SidebarHeader className="border-b p-3">
@@ -228,20 +235,44 @@ export function WorkspaceSidebar({
                 <SidebarMenu>
                   {!visibleChapters.length && (
                     <li className="px-3 py-8 text-center">
-                      <p className="text-sm font-medium">Brak wyników</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Nie znaleziono rozdziału ani tematu pasującego do „
-                        {search.trim()}”.
-                      </p>
-                      <Button
-                        type="button"
-                        variant="link"
-                        size="sm"
-                        className="mt-2"
-                        onClick={() => onSearchChange("")}
-                      >
-                        Wyczyść wyszukiwanie
-                      </Button>
+                      {isEmpty ? (
+                        <>
+                          <p className="text-sm font-medium">
+                            Nie masz jeszcze rozdziałów
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Dodaj pierwszy rozdział, aby zacząć tworzyć notatki.
+                          </p>
+                          {isEditing && (
+                            <Button
+                              type="button"
+                              variant="link"
+                              size="sm"
+                              className="mt-2"
+                              onClick={onOpenAddDialog}
+                            >
+                              Dodaj pierwszy rozdział
+                            </Button>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm font-medium">Brak wyników</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Nie znaleziono rozdziału ani tematu pasującego do „
+                            {search.trim()}”.
+                          </p>
+                          <Button
+                            type="button"
+                            variant="link"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => onSearchChange("")}
+                          >
+                            Wyczyść wyszukiwanie
+                          </Button>
+                        </>
+                      )}
                     </li>
                   )}
                   {visibleChapters.map((chapter) => (
@@ -278,15 +309,22 @@ export function WorkspaceSidebar({
       <SidebarFooter className="h-16 shrink-0 justify-center border-t p-3">
         <div className="flex items-center gap-3">
           <span className="grid size-9 place-items-center rounded-full bg-secondary text-sm font-semibold">
-            RK
+            {(userEmail?.[0] ?? "U").toLocaleUpperCase("pl")}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">Remi</p>
+            <p className="truncate text-sm font-medium">
+              {userEmail ?? "Użytkownik"}
+            </p>
             <p className="truncate text-xs text-muted-foreground">
               konto prywatne
             </p>
           </div>
-          <Button variant="ghost" size="icon-sm" aria-label="Wyloguj">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Wyloguj"
+            onClick={onSignOut}
+          >
             <LogOut />
           </Button>
         </div>
