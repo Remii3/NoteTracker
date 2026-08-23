@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import type { Database, Json } from "@/lib/supabase/database.types";
 import type {
   ChapterUpdate,
   NotesRepository,
@@ -28,10 +29,10 @@ function throwIfError(error: { message: string } | null) {
 }
 
 export class SupabaseNotesRepository implements NotesRepository {
-  private readonly client: SupabaseClient;
+  private readonly client: SupabaseClient<Database>;
   private readonly userId: string;
 
-  constructor(client: SupabaseClient, userId: string) {
+  constructor(client: SupabaseClient<Database>, userId: string) {
     this.client = client;
     this.userId = userId;
   }
@@ -96,7 +97,7 @@ export class SupabaseNotesRepository implements NotesRepository {
         id: topic.id,
         slug: topic.slug,
         title: topic.title,
-        content: topic.content,
+        content: topic.content as Json,
         completed: topic.completed,
         position: topic.position,
         chapter_id: chapterId,
@@ -125,7 +126,7 @@ export class SupabaseNotesRepository implements NotesRepository {
   ) {
     const { error } = await this.client
       .from("topics")
-      .update({ content })
+      .update({ content: content as Json })
       .eq("id", topicId)
       .eq("chapter_id", chapterId)
       .eq("user_id", this.userId)

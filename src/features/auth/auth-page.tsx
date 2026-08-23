@@ -19,12 +19,16 @@ function getAuthErrorMessage(error: unknown) {
 export function AuthPage() {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<Mode>("sign-in");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const canSubmit = email.trim().length > 0 && password.length >= 6;
+  const canSubmit =
+    (mode === "sign-in" || name.trim().length > 0) &&
+    email.trim().length > 0 &&
+    password.length >= 6;
 
   function changeMode(nextMode: Mode) {
     setMode(nextMode);
@@ -42,7 +46,7 @@ export function AuthPage() {
       if (mode === "sign-in") {
         await signIn(email.trim(), password);
       } else {
-        const result = await signUp(email.trim(), password);
+        const result = await signUp(name.trim(), email.trim(), password);
         if (result.confirmationRequired) {
           setMessage(
             "Sprawdź skrzynkę e-mail i potwierdź rejestrację, a następnie się zaloguj.",
@@ -82,6 +86,26 @@ export function AuthPage() {
               : "Zacznij budować własną bazę wiedzy."}
           </p>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+            {mode === "sign-up" && (
+              <div className="space-y-2">
+                <label htmlFor="auth-name" className="text-sm font-medium">
+                  Imię
+                </label>
+                <Input
+                  id="auth-name"
+                  type="text"
+                  autoComplete="name"
+                  autoFocus
+                  value={name}
+                  disabled={isSubmitting}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    setError(null);
+                  }}
+                  placeholder="Jak mamy się do Ciebie zwracać?"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <label htmlFor="auth-email" className="text-sm font-medium">
                 E-mail
@@ -90,7 +114,7 @@ export function AuthPage() {
                 id="auth-email"
                 type="email"
                 autoComplete="email"
-                autoFocus
+                autoFocus={mode === "sign-in"}
                 value={email}
                 disabled={isSubmitting}
                 onChange={(event) => {

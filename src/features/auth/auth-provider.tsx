@@ -32,15 +32,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    if (error) throw error;
-    return { confirmationRequired: !data.session };
-  }, []);
+  const signUp = useCallback(
+    async (name: string, email: string, password: string) => {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: name.trim() },
+          emailRedirectTo: window.location.origin,
+        },
+      });
+      if (error) throw error;
+      return { confirmationRequired: !data.session };
+    },
+    [],
+  );
 
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();

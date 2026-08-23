@@ -20,10 +20,16 @@ const DASHBOARD_CHAPTER_LIMIT = 6;
 
 type Props = {
   chapters: Chapter[];
+  userName?: string;
   onOpenChapter: (chapterId: string, topicId: string) => void;
 };
 
-export function LearningDashboard({ chapters, onOpenChapter }: Props) {
+export function LearningDashboard({
+  chapters,
+  userName,
+  onOpenChapter,
+}: Props) {
+  const firstName = userName?.trim().split(/\s+/)[0];
   const dashboardChapters = chapters.slice(0, DASHBOARD_CHAPTER_LIMIT);
   const {
     completedChapters,
@@ -47,7 +53,7 @@ export function LearningDashboard({ chapters, onOpenChapter }: Props) {
           <div className="max-w-2xl">
             <p className="mb-2 text-sm font-medium text-primary">Twoja nauka</p>
             <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              Dzień dobry, Remi
+              Dzień dobry{firstName ? `, ${firstName}` : ""}
             </h1>
             <p className="mt-3 text-muted-foreground">{message}</p>
           </div>

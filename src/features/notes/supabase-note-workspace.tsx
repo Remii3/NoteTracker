@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { toast } from "sonner";
 
-import { useAuth } from "@/features/auth";
+import { getUserDisplayName, useAuth } from "@/features/auth";
 import { supabase } from "@/lib/supabase/client";
 import { SupabaseNotesRepository } from "./data/supabase-notes-repository";
 import { NoteWorkspace } from "./note-workspace";
@@ -21,6 +21,7 @@ export function SupabaseNoteWorkspace() {
       repository={repository}
       initialChapters={[]}
       loadOnMount
+      userName={getUserDisplayName(user)}
       userEmail={user.email}
       onSignOut={() => {
         void signOut().catch((error: unknown) => {

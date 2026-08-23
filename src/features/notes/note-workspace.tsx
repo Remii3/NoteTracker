@@ -49,6 +49,7 @@ type Props = {
   repository?: NotesRepository;
   initialChapters?: Chapter[];
   loadOnMount?: boolean;
+  userName?: string;
   userEmail?: string;
   onSignOut?: () => void;
 };
@@ -57,6 +58,7 @@ export function NoteWorkspace({
   repository,
   initialChapters,
   loadOnMount,
+  userName,
   userEmail,
   onSignOut,
 }: Props) {
@@ -296,6 +298,7 @@ export function NoteWorkspace({
           onDragCancel={handleSidebarDragCancel}
           onDragEnd={handleSidebarDragEnd}
           userEmail={userEmail}
+          userName={userName}
           onSignOut={onSignOut}
         />
 
@@ -312,6 +315,7 @@ export function NoteWorkspace({
           {activeView === "home" ? (
             <LearningDashboard
               chapters={chapters}
+              userName={userName}
               onOpenChapter={openChapter}
             />
           ) : (

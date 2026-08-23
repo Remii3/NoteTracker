@@ -78,7 +78,7 @@ export function useWorkspaceRoute({
       navigate(`/chapters/${chapter.slug}/${firstTopic.slug}`, {
         replace: true,
       });
-    } else if (chapterSlug !== chapter.slug) {
+    } else if (chapterSlug !== chapter.slug || topicSlug) {
       navigate(`/chapters/${chapter.slug}`, { replace: true });
     }
   }, [activeView, chapter, chapterSlug, isLoading, navigate, topic, topicSlug]);

@@ -80,6 +80,7 @@ type Props = {
   onDragCancel: () => void;
   onDragEnd: (event: DragEndEvent) => void;
   userEmail?: string;
+  userName?: string;
   onSignOut?: () => void;
 };
 
@@ -111,6 +112,7 @@ export function WorkspaceSidebar({
   onDragCancel,
   onDragEnd,
   userEmail,
+  userName,
   onSignOut,
 }: Props) {
   const hasSearch = search.trim().length > 0;
@@ -309,14 +311,14 @@ export function WorkspaceSidebar({
       <SidebarFooter className="h-16 shrink-0 justify-center border-t p-3">
         <div className="flex items-center gap-3">
           <span className="grid size-9 place-items-center rounded-full bg-secondary text-sm font-semibold">
-            {(userEmail?.[0] ?? "U").toLocaleUpperCase("pl")}
+            {(userName?.[0] ?? userEmail?.[0] ?? "U").toLocaleUpperCase("pl")}
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">
-              {userEmail ?? "Użytkownik"}
+              {userName ?? "Użytkownik"}
             </p>
             <p className="truncate text-xs text-muted-foreground">
-              konto prywatne
+              {userEmail ?? "konto prywatne"}
             </p>
           </div>
           <Button
