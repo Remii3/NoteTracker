@@ -151,24 +151,22 @@ export function useWorkspaceActions({
 
   async function deleteItem(item: ManagedItem) {
     if (!isEditing || isSaving) return false;
-    try {
-      if (item.kind === "chapter") {
-        const deletedChapter = chapters.find(
-          (chapter) => chapter.id === item.id,
-        );
-        for (const child of deletedChapter?.topics ?? []) {
-          await imagesService?.removeAll(child.id);
-        }
-      } else {
-        await imagesService?.removeAll(item.id);
-      }
-    } catch {
-      toast.error("Nie udało się usunąć zdjęć powiązanych z tym elementem.");
-      return false;
-    }
     if (item.kind === "chapter") {
+      const deletedTopicIds =
+        chapters
+          .find((chapter) => chapter.id === item.id)
+          ?.topics.map((child) => child.id) ?? [];
       const remaining = chapters.filter((chapter) => chapter.id !== item.id);
       if (!(await commands.removeItem(item))) return false;
+      try {
+        await Promise.all(
+          deletedTopicIds.map((id) => imagesService?.removeAll(id)),
+        );
+      } catch {
+        toast.error(
+          "Rozdział usunięto, ale nie udało się posprzątać wszystkich zdjęć.",
+        );
+      }
       if (chapterId === item.id && topic) clearDraft(topic.id);
       if (chapterId === item.id) {
         const nextChapter = remaining[0];
@@ -186,6 +184,11 @@ export function useWorkspaceActions({
     const remainingTopics =
       parent?.topics.filter((child) => child.id !== item.id) ?? [];
     if (!(await commands.removeItem(item))) return false;
+    try {
+      await imagesService?.removeAll(item.id);
+    } catch {
+      toast.error("Temat usunięto, ale nie udało się posprzątać jego zdjęć.");
+    }
     clearDraft(item.id);
     if (topicId === item.id)
       navigateToChapter(item.chapterId, remainingTopics[0]?.id ?? "");

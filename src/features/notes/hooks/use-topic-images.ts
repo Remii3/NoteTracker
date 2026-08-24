@@ -58,16 +58,26 @@ export function useTopicImages(
       setIsUploading(true);
       setError(null);
       try {
-        const uploaded = await service.upload(topicId, files);
-        applyImages([...imagesRef.current, ...uploaded]);
-        return true;
+        const result = await service.upload(topicId, files);
+        applyImages([...imagesRef.current, ...result.uploaded]);
+        if (result.failed.length) {
+          const filenames = result.failed
+            .slice(0, 3)
+            .map((failure) => failure.filename)
+            .join(", ");
+          const remaining = result.failed.length - 3;
+          setError(
+            `Nie udało się dodać: ${filenames}${remaining > 0 ? ` i ${remaining} więcej` : ""}.`,
+          );
+        }
+        return result;
       } catch (caughtError) {
         setError(
           caughtError instanceof Error
             ? caughtError.message
             : "Nie udało się dodać zdjęć.",
         );
-        return false;
+        return null;
       } finally {
         setIsUploading(false);
       }

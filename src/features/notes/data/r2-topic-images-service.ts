@@ -3,7 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 import { prepareImage } from "../lib/prepare-image";
 import type { TopicImage } from "../model/topic-image";
-import type { TopicImagesService } from "./topic-images-service";
+import type {
+  TopicImagesService,
+  TopicImagesUploadResult,
+} from "./topic-images-service";
 
 type ImageMetadata = Omit<TopicImage, "url">;
 
@@ -61,20 +64,31 @@ export class R2TopicImagesService implements TopicImagesService {
 
   async upload(topicId: string, files: File[]) {
     const images: ImageMetadata[] = [];
+    const failed: TopicImagesUploadResult["failed"] = [];
     for (const sourceFile of files) {
-      const prepared = await prepareImage(sourceFile);
-      const formData = new FormData();
-      formData.set("file", prepared.file);
-      formData.set("originalFilename", sourceFile.name);
-      formData.set("width", String(prepared.width));
-      formData.set("height", String(prepared.height));
-      const response = await this.request(`/topics/${topicId}/images`, {
-        method: "POST",
-        body: formData,
-      });
-      images.push((await response.json()) as ImageMetadata);
+      try {
+        const prepared = await prepareImage(sourceFile);
+        const formData = new FormData();
+        formData.set("file", prepared.file);
+        formData.set("originalFilename", sourceFile.name);
+        formData.set("width", String(prepared.width));
+        formData.set("height", String(prepared.height));
+        const response = await this.request(`/topics/${topicId}/images`, {
+          method: "POST",
+          body: formData,
+        });
+        images.push((await response.json()) as ImageMetadata);
+      } catch (error) {
+        failed.push({
+          filename: sourceFile.name,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Nie udało się dodać zdjęcia.",
+        });
+      }
     }
-    return this.attachUrls(images);
+    return { uploaded: await this.attachUrls(images), failed };
   }
 
   async remove(imageId: string) {

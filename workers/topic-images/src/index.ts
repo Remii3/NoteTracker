@@ -204,7 +204,6 @@ async function serveImage(request: Request, env: Env, imageId: string) {
 async function deleteImage(request: Request, env: Env, imageId: string) {
   const row = await getImageRow(request, env, imageId);
   if (!row) return json(request, env, { error: "Image not found" }, 404);
-  await env.IMAGES.delete(row.storage_key);
   const response = await databaseRequest(
     request,
     env,
@@ -212,27 +211,26 @@ async function deleteImage(request: Request, env: Env, imageId: string) {
     { method: "DELETE" },
   );
   if (!response.ok) throw new Error("Image metadata delete failed");
+  await env.IMAGES.delete(row.storage_key);
   return json(request, env, { success: true });
 }
 
-async function deleteTopicImages(request: Request, env: Env, topicId: string) {
-  const response = await databaseRequest(
-    request,
-    env,
-    `topic_images?select=storage_key&topic_id=eq.${encodeURIComponent(topicId)}`,
-  );
-  if (!response.ok) throw new Error("Image list failed");
-  const images = (await response.json()) as Array<{ storage_key: string }>;
-  if (images.length) {
-    await env.IMAGES.delete(images.map((image) => image.storage_key));
-    const deleteResponse = await databaseRequest(
-      request,
-      env,
-      `topic_images?topic_id=eq.${encodeURIComponent(topicId)}`,
-      { method: "DELETE" },
-    );
-    if (!deleteResponse.ok) throw new Error("Image metadata delete failed");
-  }
+async function deleteTopicImages(
+  request: Request,
+  env: Env,
+  user: User,
+  topicId: string,
+) {
+  const prefix = `${user.id}/${topicId}/`;
+  let cursor: string | undefined;
+  do {
+    const result = await env.IMAGES.list({ prefix, cursor });
+    if (result.objects.length) {
+      await env.IMAGES.delete(result.objects.map((object) => object.key));
+    }
+    cursor = result.truncated ? result.cursor : undefined;
+  } while (cursor);
+
   return json(request, env, { success: true });
 }
 
@@ -263,6 +261,7 @@ export default {
         return deleteTopicImages(
           request,
           env,
+          user,
           decodeURIComponent(topicMatch[1]),
         );
       }

@@ -34,13 +34,21 @@ export function TopicImagesSection({ topicId, isEditing, service }: Props) {
     useTopicImages(service, topicId);
 
   async function uploadFiles(files: File[]) {
-    const uploaded = await upload(files);
-    if (uploaded)
+    const result = await upload(files);
+    if (!result) return;
+    if (result.uploaded.length)
       toast.success(
-        files.length === 1
+        result.uploaded.length === 1
           ? "Dodano zdjęcie."
-          : `Dodano ${files.length} zdjęć.`,
+          : `Dodano ${result.uploaded.length} zdjęć.`,
       );
+    if (result.failed.length) {
+      toast.error(
+        result.uploaded.length
+          ? `Nie udało się dodać ${result.failed.length} z ${files.length} zdjęć.`
+          : "Nie udało się dodać zdjęć.",
+      );
+    }
   }
 
   function handleDrop(event: DragEvent<HTMLButtonElement>) {
