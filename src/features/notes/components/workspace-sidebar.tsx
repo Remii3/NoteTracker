@@ -13,6 +13,7 @@ import {
   ArrowUpDown,
   BookOpen,
   LibraryBig,
+  Layers3,
   Home,
   LogOut,
   Plus,
@@ -58,6 +59,7 @@ type Props = {
   topicId: string;
   isHome: boolean;
   isChapters: boolean;
+  isFlashcards: boolean;
   isEditing: boolean;
   search: string;
   sortMode: SortMode;
@@ -67,6 +69,7 @@ type Props = {
   onSortModeChange: (value: SortMode) => void;
   onOpenHome: () => void;
   onOpenChapters: () => void;
+  onOpenFlashcards: () => void;
   onOpenAddDialog: () => void;
   onSelectChapter: (chapter: Chapter) => void;
   onSelectTopic: (chapterId: string, topicId: string) => void;
@@ -99,6 +102,7 @@ export function WorkspaceSidebar({
   topicId,
   isHome,
   isChapters,
+  isFlashcards,
   isEditing,
   search,
   sortMode,
@@ -108,6 +112,7 @@ export function WorkspaceSidebar({
   onSortModeChange,
   onOpenHome,
   onOpenChapters,
+  onOpenFlashcards,
   onOpenAddDialog,
   onSelectChapter,
   onSelectTopic,
@@ -220,6 +225,15 @@ export function WorkspaceSidebar({
               <SidebarMenuButton isActive={isChapters} onClick={onOpenChapters}>
                 <LibraryBig />
                 <span>Wszystkie rozdziały</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={isFlashcards}
+                onClick={onOpenFlashcards}
+              >
+                <Layers3 />
+                <span>Fiszki</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

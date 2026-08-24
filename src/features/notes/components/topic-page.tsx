@@ -5,6 +5,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { TopicImagesService } from "../data/topic-images-service";
 import type { Chapter, NoteContent, Topic } from "../model/types";
 import { TopicImagesSection } from "./topic-images-section";
+import { TopicFlashcardsSection } from "@/features/flashcards/components/topic-flashcards-section";
+import type { FlashcardsRepository } from "@/features/flashcards/data/flashcards-repository";
 
 type RichTextModule = typeof import("./rich-text-editor");
 
@@ -17,6 +19,7 @@ type Props = {
   isSaving: boolean;
   richTextModule: RichTextModule | null;
   imagesService?: TopicImagesService;
+  flashcardsRepository?: FlashcardsRepository;
   onContentChange: (content: NoteContent) => void;
   onSaveContent: () => void;
   onToggleCompleted: (completed: boolean) => void;
@@ -32,6 +35,7 @@ export function TopicPage({
   isSaving,
   richTextModule,
   imagesService,
+  flashcardsRepository,
   onContentChange,
   onSaveContent,
   onToggleCompleted,
@@ -115,6 +119,12 @@ export function TopicPage({
             topicId={topic.id}
             isEditing={isEditing}
             service={imagesService}
+          />
+          <TopicFlashcardsSection
+            key={`flashcards-${topic.id}`}
+            topicId={topic.id}
+            isEditing={isEditing}
+            repository={flashcardsRepository}
           />
         </div>
       ) : (

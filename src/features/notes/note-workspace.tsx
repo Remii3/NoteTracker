@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
+import { useParams } from "react-router";
 
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -29,6 +30,9 @@ import { EMPTY_RICH_TEXT } from "./model/rich-text-content";
 import type { Chapter, TopicNavigationItem } from "./model/types";
 import type { NotesRepository } from "./data/notes-repository";
 import type { TopicImagesService } from "./data/topic-images-service";
+import { FlashcardsHome } from "@/features/flashcards/components/flashcards-home";
+import { FlashcardSession } from "@/features/flashcards/components/flashcard-session";
+import type { FlashcardsRepository } from "@/features/flashcards/data/flashcards-repository";
 
 const AddContentDialog = lazy(() =>
   import("./components/add-content-dialog").then((module) => ({
@@ -53,6 +57,7 @@ const UnsavedChangesDialog = lazy(() =>
 type Props = {
   repository?: NotesRepository;
   imagesService?: TopicImagesService;
+  flashcardsRepository?: FlashcardsRepository;
   initialChapters?: Chapter[];
   loadOnMount?: boolean;
   userName?: string;
@@ -64,6 +69,7 @@ type Props = {
 export function NoteWorkspace({
   repository,
   imagesService,
+  flashcardsRepository,
   initialChapters,
   loadOnMount,
   userName,
@@ -71,6 +77,7 @@ export function NoteWorkspace({
   onSignOut,
   onOpenAccount,
 }: Props) {
+  const { sessionId } = useParams<{ sessionId: string }>();
   const [isSearchPending, setIsSearchPending] = useState(false);
   const { richTextModule, preloadRichTextEditor } = useRichTextModule();
   const notesStore = useNotesStore({
@@ -104,6 +111,8 @@ export function NoteWorkspace({
     editorDirty,
     navigateHome,
     navigateChapters,
+    navigateFlashcards,
+    navigateFlashcardSession,
     navigateToChapter,
     navigationBlocker,
     topic,
@@ -294,6 +303,11 @@ export function NoteWorkspace({
     navigateChapters();
   }
 
+  function openFlashcards() {
+    if (activeView === "flashcards" && !sessionId) return;
+    navigateFlashcards();
+  }
+
   async function openChapter(nextChapterId: string, nextTopicId: string) {
     await loadChapterTopics(nextChapterId);
     navigateToChapter(nextChapterId, nextTopicId);
@@ -338,6 +352,7 @@ export function NoteWorkspace({
           topicId={topicId}
           isHome={activeView === "home"}
           isChapters={activeView === "chapters"}
+          isFlashcards={activeView === "flashcards"}
           isEditing={isEditing}
           search={search}
           sortMode={sortMode}
@@ -347,6 +362,7 @@ export function NoteWorkspace({
           onSortModeChange={setSortMode}
           onOpenHome={openHome}
           onOpenChapters={openChapters}
+          onOpenFlashcards={openFlashcards}
           onOpenAddDialog={() => setAddDialogOpen(true)}
           onSelectChapter={selectChapter}
           onSelectTopic={requestTopicSelection}
@@ -376,6 +392,7 @@ export function NoteWorkspace({
           <WorkspaceHeader
             isHome={activeView === "home"}
             isChapters={activeView === "chapters"}
+            isFlashcards={activeView === "flashcards"}
             chapterTitle={chapter?.title}
             topicTitle={topic?.title}
             isEditing={isEditing}
@@ -393,6 +410,21 @@ export function NoteWorkspace({
             />
           ) : activeView === "chapters" ? (
             <ChaptersOverview chapters={chapters} onOpenChapter={openChapter} />
+          ) : activeView === "flashcards" && flashcardsRepository ? (
+            sessionId ? (
+              <FlashcardSession
+                sessionId={sessionId}
+                repository={flashcardsRepository}
+                onOpenSession={navigateFlashcardSession}
+                onClose={navigateFlashcards}
+              />
+            ) : (
+              <FlashcardsHome
+                chapters={chapters}
+                repository={flashcardsRepository}
+                onOpenSession={navigateFlashcardSession}
+              />
+            )
           ) : (
             <TopicPage
               chapter={chapter}
@@ -405,6 +437,7 @@ export function NoteWorkspace({
                 topic?.contentLoaded === false ? null : richTextModule
               }
               imagesService={imagesService}
+              flashcardsRepository={flashcardsRepository}
               onContentChange={(content) => {
                 if (isEditing && topic) updateDraft(topic, content);
               }}

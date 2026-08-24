@@ -1,6 +1,8 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 
 const CONSTRAINT_MESSAGES: Record<string, string> = {
+  flashcards_answer_not_blank: "Odpowiedź fiszki nie może być pusta.",
+  flashcards_question_not_blank: "Pytanie fiszki nie może być puste.",
   chapters_id_users_id_unique:
     "Nie udało się zapisać rozdziału. Odśwież stronę i spróbuj ponownie.",
   chapters_title_not_blank: "Nazwa rozdziału nie może być pusta.",
