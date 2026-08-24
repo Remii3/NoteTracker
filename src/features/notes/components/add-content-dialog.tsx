@@ -133,7 +133,7 @@ export function AddContentDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Dodaj zawartość</DialogTitle>
           <DialogDescription>
@@ -160,7 +160,7 @@ export function AddContentDialog({
         </div>
 
         <form className="flex min-h-0 flex-col gap-5" onSubmit={handleSubmit}>
-          <div className="-mx-1 min-h-0 flex-1 space-y-5 overflow-y-auto px-1">
+          <div className="-mx-2 -my-1 min-h-0 flex-1 space-y-5 overflow-y-auto px-2 py-1">
             {mode === "chapter" ? (
               <div className="space-y-2">
                 <label htmlFor="chapter-title" className="text-sm font-medium">

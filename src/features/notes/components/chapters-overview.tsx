@@ -1,13 +1,30 @@
-import { ArrowLeft, ArrowRight, Search } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpDown, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { getProgress } from "../lib/chapter-selectors";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { compareChapterTitles, getProgress } from "../lib/chapter-selectors";
 import type { Chapter } from "../model/types";
 
 const CHAPTERS_PER_PAGE = 20;
+type OverviewSortMode =
+  "manual" | "az" | "za" | "progress-desc" | "progress-asc";
+
+const SORT_LABELS: Record<OverviewSortMode, string> = {
+  manual: "Ustalona kolejność",
+  az: "Alfabetycznie A–Z",
+  za: "Alfabetycznie Z–A",
+  "progress-desc": "Największy postęp",
+  "progress-asc": "Najmniejszy postęp",
+};
 
 type Props = {
   chapters: Chapter[];
@@ -17,14 +34,36 @@ type Props = {
 export function ChaptersOverview({ chapters, onOpenChapter }: Props) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [sortMode, setSortMode] = useState<OverviewSortMode>("manual");
   const filteredChapters = useMemo(() => {
     const phrase = query.trim().toLocaleLowerCase("pl");
-    return phrase
+    const filtered = phrase
       ? chapters.filter((chapter) =>
           chapter.title.toLocaleLowerCase("pl").includes(phrase),
         )
       : chapters;
-  }, [chapters, query]);
+    return [...filtered].sort((first, second) => {
+      if (sortMode === "manual") return first.position - second.position;
+      if (sortMode === "az")
+        return compareChapterTitles(first.title, second.title);
+      if (sortMode === "za")
+        return compareChapterTitles(second.title, first.title);
+
+      const firstProgress = getProgress(
+        first.completedTopicsCount,
+        first.topicsCount,
+      );
+      const secondProgress = getProgress(
+        second.completedTopicsCount,
+        second.topicsCount,
+      );
+      const progressOrder =
+        sortMode === "progress-desc"
+          ? secondProgress - firstProgress
+          : firstProgress - secondProgress;
+      return progressOrder || first.position - second.position;
+    });
+  }, [chapters, query, sortMode]);
   const totalPages = Math.max(
     1,
     Math.ceil(filteredChapters.length / CHAPTERS_PER_PAGE),
@@ -52,17 +91,39 @@ export function ChaptersOverview({ chapters, onOpenChapter }: Props) {
               kolejności.
             </p>
           </div>
-          <div className="relative w-full sm:max-w-sm">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
+          <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setPage(1);
+                }}
+                placeholder="Szukaj rozdziału"
+                className="pl-9"
+              />
+            </div>
+            <Select
+              value={sortMode}
+              onValueChange={(value) => {
+                if (!value) return;
+                setSortMode(value as OverviewSortMode);
                 setPage(1);
               }}
-              placeholder="Szukaj rozdziału"
-              className="pl-9"
-            />
+            >
+              <SelectTrigger className="w-full sm:w-56">
+                <ArrowUpDown />
+                <SelectValue>{SORT_LABELS[sortMode]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent align="end">
+                {Object.entries(SORT_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

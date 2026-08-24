@@ -6,6 +6,10 @@ const naturalPolishCollator = new Intl.Collator("pl", {
   sensitivity: "base",
 });
 
+export function compareChapterTitles(first: string, second: string) {
+  return naturalPolishCollator.compare(first, second);
+}
+
 export function isChapterCompleted(chapter: Chapter) {
   return (
     chapter.topicsCount > 0 &&
@@ -64,9 +68,9 @@ export function selectVisibleChapters(
   return [...filtered].sort((first, second) => {
     if (sortMode === "manual") return first.position - second.position;
     if (sortMode === "az")
-      return naturalPolishCollator.compare(first.title, second.title);
+      return compareChapterTitles(first.title, second.title);
     if (sortMode === "za")
-      return naturalPolishCollator.compare(second.title, first.title);
+      return compareChapterTitles(second.title, first.title);
 
     const firstCompleted = Number(isChapterCompleted(first));
     const secondCompleted = Number(isChapterCompleted(second));
