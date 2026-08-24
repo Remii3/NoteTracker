@@ -17,6 +17,7 @@ type Options = {
   commands: {
     addChapter: (chapter: Chapter) => Promise<boolean>;
     addTopics: (chapterId: string, topics: Topic[]) => Promise<boolean>;
+    loadChapterTopics: (chapterId: string) => Promise<Topic[] | null>;
     removeItem: (item: ManagedItem) => Promise<boolean>;
     renameItem: (item: ManagedItem, title: string) => Promise<boolean>;
     saveContent: (
@@ -94,7 +95,12 @@ export function useWorkspaceActions({
       ),
       title,
       position: (chapters.length + 1) * 1000,
+      topicsCount: 0,
+      completedTopicsCount: 0,
+      firstIncompleteTopicId: null,
+      firstIncompleteTopicSlug: null,
       topics: [],
+      topicsStatus: "loaded",
     };
     if (!(await commands.addChapter(newChapter))) return false;
     navigateToChapter(newChapter.id);
@@ -106,10 +112,11 @@ export function useWorkspaceActions({
   async function addTopics(targetChapterId: string, titles: string[]) {
     if (!isEditing || isSaving) return false;
     let firstTopicId = "";
+    const loadedTopics = await commands.loadChapterTopics(targetChapterId);
     const targetChapter = chapters.find((item) => item.id === targetChapterId);
     if (!targetChapter) return false;
     const usedTopicSlugs = new Set(
-      targetChapter.topics.map((topic) => topic.slug),
+      (loadedTopics ?? targetChapter.topics).map((topic) => topic.slug),
     );
     const newTopics = titles.map((title, index) => {
       const id = crypto.randomUUID();
@@ -123,7 +130,9 @@ export function useWorkspaceActions({
         content: EMPTY_RICH_TEXT,
         contentLoaded: true,
         completed: false,
-        position: (targetChapter.topics.length + index + 1) * 1000,
+        position:
+          ((loadedTopics?.length ?? targetChapter.topics.length) + index + 1) *
+          1000,
       };
     });
     if (!(await commands.addTopics(targetChapterId, newTopics))) return false;
@@ -152,10 +161,11 @@ export function useWorkspaceActions({
   async function deleteItem(item: ManagedItem) {
     if (!isEditing || isSaving) return false;
     if (item.kind === "chapter") {
-      const deletedTopicIds =
-        chapters
-          .find((chapter) => chapter.id === item.id)
-          ?.topics.map((child) => child.id) ?? [];
+      const deletedTopicIds = imagesService
+        ? ((await commands.loadChapterTopics(item.id)) ?? []).map(
+            (child) => child.id,
+          )
+        : [];
       const remaining = chapters.filter((chapter) => chapter.id !== item.id);
       if (!(await commands.removeItem(item))) return false;
       try {

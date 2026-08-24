@@ -77,8 +77,16 @@ export type Database = {
     };
     Views: Record<never, never>;
     Functions: {
+      get_chapter_summaries: {
+        Args: Record<never, never>;
+        Returns: Json;
+      };
       get_learning_summary: {
         Args: Record<never, never>;
+        Returns: Json;
+      };
+      get_topic_navigation: {
+        Args: { current_topic_id: string };
         Returns: Json;
       };
       move_topic: {

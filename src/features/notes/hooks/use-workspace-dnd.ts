@@ -44,6 +44,10 @@ type Options = {
   expandChapter: (chapterId: string) => void;
   setError: Dispatch<SetStateAction<string | null>>;
   navigateToChapter: NavigateToChapter;
+  loadChapterTopics: (
+    chapterId: string,
+    options?: { prefetch?: boolean },
+  ) => Promise<unknown>;
 };
 
 export function useWorkspaceDnd({
@@ -59,6 +63,7 @@ export function useWorkspaceDnd({
   expandChapter,
   setError,
   navigateToChapter,
+  loadChapterTopics,
 }: Options) {
   const dragSnapshot = useRef<Chapter[] | null>(null);
   const dragSelectionSnapshot = useRef<{
@@ -121,6 +126,11 @@ export function useWorkspaceDnd({
     );
     const targetChapter = chapters.find((item) => item.id === targetChapterId);
     if (!movedTopic || !targetChapter) return;
+    if (targetChapter.topicsStatus !== "loaded") {
+      expandChapter(targetChapterId);
+      void loadChapterTopics(targetChapterId, { prefetch: true });
+      return;
+    }
 
     const duplicate = targetChapter.topics.some((item) =>
       titlesAreEqual(item.title, movedTopic.title),

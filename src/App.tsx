@@ -22,6 +22,7 @@ function AppLoading() {
 
 const router = createBrowserRouter([
   { path: "/", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
+  { path: "/chapters", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
   {
     path: "/chapters/:chapterSlug",
     lazy: loadNoteWorkspace,

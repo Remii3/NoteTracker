@@ -3,26 +3,22 @@ import {
   BookOpenCheck,
   CheckCircle2,
   CircleDashed,
+  LibraryBig,
   Target,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import {
-  getProgress,
-  selectChapterNextTopic,
-  selectDashboardSummary,
-} from "../lib/chapter-selectors";
+import { getProgress, selectDashboardSummary } from "../lib/chapter-selectors";
 import type { Chapter, LearningSummary } from "../model/types";
-
-const DASHBOARD_CHAPTER_LIMIT = 6;
 
 type Props = {
   chapters: Chapter[];
   userName?: string;
   summary?: LearningSummary | null;
   onOpenChapter: (chapterId: string, topicId: string) => void;
+  onBrowseChapters: () => void;
 };
 
 export function LearningDashboard({
@@ -30,9 +26,9 @@ export function LearningDashboard({
   userName,
   summary,
   onOpenChapter,
+  onBrowseChapters,
 }: Props) {
   const firstName = userName?.trim().split(/\s+/)[0];
-  const dashboardChapters = chapters.slice(0, DASHBOARD_CHAPTER_LIMIT);
   const localSummary = selectDashboardSummary(chapters);
   const { completedChapters, completedTopics, nextTopic, totalTopics } =
     summary ?? localSummary;
@@ -57,14 +53,19 @@ export function LearningDashboard({
             </h1>
             <p className="mt-3 text-muted-foreground">{message}</p>
           </div>
-          {nextTopic && (
-            <Button
-              size="lg"
-              onClick={() => onOpenChapter(nextTopic.chapterId, nextTopic.id)}
-            >
-              Kontynuuj naukę <ArrowRight />
+          <div className="flex flex-wrap gap-2">
+            {nextTopic && (
+              <Button
+                size="lg"
+                onClick={() => onOpenChapter(nextTopic.chapterId, nextTopic.id)}
+              >
+                Kontynuuj naukę <ArrowRight />
+              </Button>
+            )}
+            <Button size="lg" variant="outline" onClick={onBrowseChapters}>
+              <LibraryBig /> Przeglądaj rozdziały
             </Button>
-          )}
+          </div>
         </section>
 
         <section className="rounded-2xl border bg-muted/20 p-6 sm:p-8">
@@ -114,69 +115,6 @@ export function LearningDashboard({
             value={`${completedChapters}/${totalChapters}`}
             label="Ukończone rozdziały"
           />
-        </section>
-
-        <section>
-          <div className="mb-5">
-            <h2 className="text-xl font-semibold">Postęp w rozdziałach</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Wybierz rozdział, aby wrócić do jego tematów.
-            </p>
-          </div>
-          {chapters.length ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              {dashboardChapters.map((chapter) => {
-                const nextChapterTopic = selectChapterNextTopic(chapter);
-                const completed = chapter.topics.filter(
-                  (topic) => topic.completed,
-                ).length;
-                const chapterProgress = getProgress(
-                  completed,
-                  chapter.topics.length,
-                );
-                return (
-                  <button
-                    key={chapter.id}
-                    type="button"
-                    className="group rounded-xl border bg-background p-5 text-left transition-colors hover:border-primary/40 hover:bg-muted/20 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-                    onClick={() =>
-                      onOpenChapter(chapter.id, nextChapterTopic?.id ?? "")
-                    }
-                  >
-                    <div className="mb-5 flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <h3 className="truncate font-semibold">
-                          {chapter.title}
-                        </h3>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {completed} z {chapter.topics.length} tematów
-                        </p>
-                      </div>
-                      <span className="text-sm font-semibold text-primary">
-                        {chapterProgress}%
-                      </span>
-                    </div>
-                    <Progress
-                      value={chapterProgress}
-                      aria-label={`Postęp rozdziału ${chapter.title}`}
-                    />
-                    <div className="mt-4 flex items-center justify-end gap-1 text-xs font-medium text-muted-foreground transition-colors group-hover:text-primary">
-                      Otwórz rozdział <ArrowRight className="size-3.5" />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
-              Dodaj pierwszy rozdział, aby rozpocząć naukę.
-            </div>
-          )}
-          {chapters.length > DASHBOARD_CHAPTER_LIMIT && (
-            <p className="mt-4 text-center text-sm text-muted-foreground">
-              Pozostałe rozdziały znajdziesz w panelu bocznym.
-            </p>
-          )}
         </section>
       </div>
     </main>

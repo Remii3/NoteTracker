@@ -8,14 +8,14 @@ type Options = {
   chapters: Chapter[];
   isTopicDirty: (topicId: string) => boolean;
   isLoading?: boolean;
-  resolveChapter?: (slug: string) => Promise<boolean>;
+  resolveChapterTopics: (chapterId: string) => Promise<unknown>;
 };
 
 export function useWorkspaceRoute({
   chapters,
   isTopicDirty,
   isLoading = false,
-  resolveChapter,
+  resolveChapterTopics,
 }: Options) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -27,7 +27,11 @@ export function useWorkspaceRoute({
   const chapterSlug =
     topicRoute?.params.chapterSlug ?? chapterRoute?.params.chapterSlug ?? "";
   const topicSlug = topicRoute?.params.topicSlug ?? "";
-  const activeView: ActiveView = chapterSlug ? "notes" : "home";
+  const activeView: ActiveView = chapterSlug
+    ? "notes"
+    : location.pathname === "/chapters"
+      ? "chapters"
+      : "home";
   const chapter = chapters.find(
     (item) => item.slug === chapterSlug || item.id === chapterSlug,
   );
@@ -53,6 +57,7 @@ export function useWorkspaceRoute({
     [chapters, navigate],
   );
   const navigateHome = useCallback(() => navigate("/"), [navigate]);
+  const navigateChapters = useCallback(() => navigate("/chapters"), [navigate]);
 
   const navigationBlocker = useBlocker(
     ({ nextLocation }) =>
@@ -65,17 +70,12 @@ export function useWorkspaceRoute({
     if (isLoading) return;
     if (activeView !== "notes") return;
     if (!chapter) {
-      if (!resolveChapter) {
-        navigate("/", { replace: true });
-        return;
-      }
-      let cancelled = false;
-      void resolveChapter(chapterSlug).then((found) => {
-        if (!cancelled && !found) navigate("/", { replace: true });
-      });
-      return () => {
-        cancelled = true;
-      };
+      navigate("/", { replace: true });
+      return;
+    }
+    if (chapter.topicsStatus !== "loaded") {
+      void resolveChapterTopics(chapter.id);
+      return;
     }
     if (topic) {
       if (chapterSlug !== chapter.slug || topicSlug !== topic.slug) {
@@ -98,7 +98,7 @@ export function useWorkspaceRoute({
     chapterSlug,
     isLoading,
     navigate,
-    resolveChapter,
+    resolveChapterTopics,
     topic,
     topicSlug,
   ]);
@@ -109,6 +109,7 @@ export function useWorkspaceRoute({
     chapterId,
     editorDirty,
     navigateHome,
+    navigateChapters,
     navigateToChapter,
     navigationBlocker,
     topic,

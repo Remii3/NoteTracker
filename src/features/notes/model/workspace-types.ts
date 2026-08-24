@@ -1,13 +1,6 @@
-export type ActiveView = "home" | "notes";
+export type ActiveView = "home" | "chapters" | "notes";
 
 export type SortMode = "manual" | "az" | "za" | "completed" | "incomplete";
-
-export type StudyTopic = {
-  chapterId: string;
-  chapterTitle: string;
-  topicId: string;
-  topicTitle: string;
-};
 
 export type ManagedItem =
   | {
