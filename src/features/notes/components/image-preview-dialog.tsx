@@ -1,6 +1,8 @@
 import {
   ChevronLeft,
   ChevronRight,
+  Keyboard,
+  Move,
   RotateCcw,
   X,
   ZoomIn,
@@ -21,15 +23,24 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { TopicImage } from "../model/topic-image";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 5;
 const SCALE_STEP = 0.5;
+const PAN_STEP = 50;
+const PRECISE_PAN_STEP = 15;
+const PAN_MODE_STORAGE_KEY = "notetracker:image-viewer-pan-mode";
 const VIEWER_BUTTON_CLASS =
   "transition-[color,background-color,opacity,transform] duration-100 active:scale-95 active:not-aria-[haspopup]:translate-y-0!";
 
 type Point = { x: number; y: number };
+type PanMode = "viewport" | "image";
 
 type Props = {
   images: TopicImage[];
@@ -39,6 +50,16 @@ type Props = {
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value));
+}
+
+function getInitialPanMode(): PanMode {
+  try {
+    return localStorage.getItem(PAN_MODE_STORAGE_KEY) === "image"
+      ? "image"
+      : "viewport";
+  } catch {
+    return "viewport";
+  }
 }
 
 export function ImagePreviewDialog({
@@ -52,6 +73,7 @@ export function ImagePreviewDialog({
     : -1;
   const [scale, setScale] = useState(MIN_SCALE);
   const [offset, setOffset] = useState<Point>({ x: 0, y: 0 });
+  const [panMode, setPanMode] = useState<PanMode>(getInitialPanMode);
   const dragRef = useRef<{
     pointerId: number;
     origin: Point;
@@ -115,16 +137,52 @@ export function ImagePreviewDialog({
   }
 
   useEffect(() => {
+    try {
+      localStorage.setItem(PAN_MODE_STORAGE_KEY, panMode);
+    } catch {
+      // Preferencja nie jest krytyczna, jeśli pamięć przeglądarki jest niedostępna.
+    }
+  }, [panMode]);
+
+  useEffect(() => {
     if (!previewId) return;
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "ArrowLeft") {
+      if (event.metaKey || event.ctrlKey) return;
+
+      const isHorizontalArrow =
+        event.key === "ArrowLeft" || event.key === "ArrowRight";
+      const isVerticalArrow =
+        event.key === "ArrowUp" || event.key === "ArrowDown";
+
+      if (event.shiftKey && isHorizontalArrow) {
         event.preventDefault();
         event.stopPropagation();
-        changeImage(-1);
-      } else if (event.key === "ArrowRight") {
+        changeImage(event.key === "ArrowLeft" ? -1 : 1);
+      } else if (scale > MIN_SCALE && (isHorizontalArrow || isVerticalArrow)) {
         event.preventDefault();
         event.stopPropagation();
-        changeImage(1);
+        const step = event.altKey ? PRECISE_PAN_STEP : PAN_STEP;
+        const direction = panMode === "viewport" ? -1 : 1;
+        setOffset((current) => ({
+          x:
+            current.x +
+            (event.key === "ArrowLeft"
+              ? -step * direction
+              : event.key === "ArrowRight"
+                ? step * direction
+                : 0),
+          y:
+            current.y +
+            (event.key === "ArrowUp"
+              ? -step * direction
+              : event.key === "ArrowDown"
+                ? step * direction
+                : 0),
+        }));
+      } else if (isHorizontalArrow) {
+        event.preventDefault();
+        event.stopPropagation();
+        changeImage(event.key === "ArrowLeft" ? -1 : 1);
       } else if (event.key === "+" || event.key === "=") {
         event.preventDefault();
         changeScale(scale + SCALE_STEP);
@@ -223,6 +281,58 @@ export function ImagePreviewDialog({
             {images.length > 1 && ` · ${imageIndex + 1} z ${images.length}`}
           </p>
           <div className="flex shrink-0 items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className={`${VIEWER_BUTTON_CLASS} text-white hover:bg-white/15 hover:text-white active:bg-white/25 ${panMode === "viewport" ? "bg-white/15" : ""}`}
+                    aria-label={`Tryb przesuwania: ${panMode === "viewport" ? "widok" : "obraz"}`}
+                    aria-pressed={panMode === "viewport"}
+                    onClick={() =>
+                      setPanMode((mode) =>
+                        mode === "viewport" ? "image" : "viewport",
+                      )
+                    }
+                  />
+                }
+              >
+                <Move />
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                Tryb: przesuwanie {panMode === "viewport" ? "widoku" : "obrazu"}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className={`${VIEWER_BUTTON_CLASS} text-white hover:bg-white/15 hover:text-white active:bg-white/25`}
+                    aria-label="Skróty klawiaturowe"
+                  />
+                }
+              >
+                <Keyboard />
+              </TooltipTrigger>
+              <TooltipContent
+                side="top"
+                align="end"
+                className="block space-y-1.5 py-2"
+              >
+                <p>
+                  Strzałki: przesuwanie{" "}
+                  {panMode === "viewport" ? "widoku" : "obrazu"}
+                </p>
+                <p>Shift + ←/→: poprzednie lub następne zdjęcie</p>
+                <p>Alt + strzałki: precyzyjne przesuwanie</p>
+                <p>+/−: zoom · 0: reset</p>
+              </TooltipContent>
+            </Tooltip>
             <Button
               type="button"
               variant="ghost"
