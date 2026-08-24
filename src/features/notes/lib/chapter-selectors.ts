@@ -1,10 +1,10 @@
 import type { Chapter } from "../model/types";
-import type { SortMode, StudyTopic } from "../model/workspace-types";
+import type { SortMode } from "../model/workspace-types";
 
 export function isChapterCompleted(chapter: Chapter) {
   return (
-    chapter.topics.length > 0 &&
-    chapter.topics.every((topic) => topic.completed)
+    chapter.topicsCount > 0 &&
+    chapter.completedTopicsCount === chapter.topicsCount
   );
 }
 
@@ -12,45 +12,28 @@ export function getProgress(completed: number, total: number) {
   return total ? Math.round((completed / total) * 100) : 0;
 }
 
-export function selectChapterNextTopic(chapter: Chapter) {
-  const orderedTopics = [...chapter.topics].sort(
-    (first, second) => first.position - second.position,
-  );
-  return (
-    orderedTopics.find((topic) => !topic.completed) ?? orderedTopics[0] ?? null
-  );
-}
-
 export function selectDashboardSummary(chapters: Chapter[]) {
   const topics = chapters.flatMap((chapter) =>
     chapter.topics.map((topic) => ({ ...topic, chapterId: chapter.id })),
   );
-  const completedTopics = topics.filter((topic) => topic.completed).length;
+  const completedTopics = chapters.reduce(
+    (sum, chapter) => sum + chapter.completedTopicsCount,
+    0,
+  );
   const completedChapters = chapters.filter(isChapterCompleted).length;
-  const progress = getProgress(completedTopics, topics.length);
+  const totalTopics = chapters.reduce(
+    (sum, chapter) => sum + chapter.topicsCount,
+    0,
+  );
+  const progress = getProgress(completedTopics, totalTopics);
 
   return {
     completedChapters,
     completedTopics,
     nextTopic: topics.find((topic) => !topic.completed),
     progress,
-    totalTopics: topics.length,
+    totalTopics,
   };
-}
-
-export function selectStudyTopics(chapters: Chapter[]): StudyTopic[] {
-  return [...chapters]
-    .sort((first, second) => first.position - second.position)
-    .flatMap((chapter) =>
-      [...chapter.topics]
-        .sort((first, second) => first.position - second.position)
-        .map((topic) => ({
-          chapterId: chapter.id,
-          chapterTitle: chapter.title,
-          topicId: topic.id,
-          topicTitle: topic.title,
-        })),
-    );
 }
 
 export function selectVisibleChapters(

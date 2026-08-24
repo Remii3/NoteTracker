@@ -12,6 +12,7 @@ import {
 import {
   ArrowUpDown,
   BookOpen,
+  LibraryBig,
   Home,
   LogOut,
   Plus,
@@ -56,6 +57,7 @@ type Props = {
   chapterId: string;
   topicId: string;
   isHome: boolean;
+  isChapters: boolean;
   isEditing: boolean;
   search: string;
   sortMode: SortMode;
@@ -64,10 +66,12 @@ type Props = {
   onSearchChange: (value: string) => void;
   onSortModeChange: (value: SortMode) => void;
   onOpenHome: () => void;
+  onOpenChapters: () => void;
   onOpenAddDialog: () => void;
   onSelectChapter: (chapter: Chapter) => void;
   onSelectTopic: (chapterId: string, topicId: string) => void;
   onToggleExpanded: (chapterId: string, open: boolean) => void;
+  onPrefetchTopics: (chapterId: string) => void;
   onToggleChapter: (chapterId: string, completed: boolean) => void;
   onToggleTopic: (
     chapterId: string,
@@ -84,10 +88,7 @@ type Props = {
   userName?: string;
   onSignOut?: () => void;
   onOpenAccount?: () => void;
-  hasMoreChapters?: boolean;
-  isLoadingMore?: boolean;
   isSearching?: boolean;
-  onLoadMore?: () => void;
 };
 
 export function WorkspaceSidebar({
@@ -97,6 +98,7 @@ export function WorkspaceSidebar({
   chapterId,
   topicId,
   isHome,
+  isChapters,
   isEditing,
   search,
   sortMode,
@@ -105,10 +107,12 @@ export function WorkspaceSidebar({
   onSearchChange,
   onSortModeChange,
   onOpenHome,
+  onOpenChapters,
   onOpenAddDialog,
   onSelectChapter,
   onSelectTopic,
   onToggleExpanded,
+  onPrefetchTopics,
   onToggleChapter,
   onToggleTopic,
   onRenameItem,
@@ -121,10 +125,7 @@ export function WorkspaceSidebar({
   userName,
   onSignOut,
   onOpenAccount,
-  hasMoreChapters,
-  isLoadingMore,
   isSearching,
-  onLoadMore,
 }: Props) {
   const hasSearch = search.trim().length > 0;
   const isEmpty = chapters.length === 0 && !hasSearch;
@@ -206,25 +207,19 @@ export function WorkspaceSidebar({
         </div>
       </SidebarHeader>
 
-      <SidebarContent
-        onScroll={(event) => {
-          const element = event.currentTarget;
-          if (
-            hasMoreChapters &&
-            !isLoadingMore &&
-            element.scrollHeight - element.scrollTop - element.clientHeight <
-              160
-          ) {
-            onLoadMore?.();
-          }
-        }}
-      >
+      <SidebarContent>
         <SidebarGroup className="pb-0">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton isActive={isHome} onClick={onOpenHome}>
                 <Home />
                 <span>Strona główna</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton isActive={isChapters} onClick={onOpenChapters}>
+                <LibraryBig />
+                <span>Wszystkie rozdziały</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -319,6 +314,7 @@ export function WorkspaceSidebar({
                         onSelectChapter={onSelectChapter}
                         onSelectTopic={onSelectTopic}
                         onToggleExpanded={onToggleExpanded}
+                        onPrefetchTopics={onPrefetchTopics}
                         onToggleChapter={onToggleChapter}
                         onToggleTopic={onToggleTopic}
                         onRenameItem={onRenameItem}
@@ -347,18 +343,6 @@ export function WorkspaceSidebar({
                     </li>
                   )}
                 </SidebarMenu>
-                {hasMoreChapters && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2 w-full"
-                    disabled={isLoadingMore}
-                    onClick={onLoadMore}
-                  >
-                    {isLoadingMore ? "Pobieranie…" : "Załaduj więcej"}
-                  </Button>
-                )}
               </SortableContext>
             </DndContext>
           </SidebarGroupContent>

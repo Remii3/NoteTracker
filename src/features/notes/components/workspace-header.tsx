@@ -10,6 +10,7 @@ import {
 
 type Props = {
   isHome: boolean;
+  isChapters?: boolean;
   chapterTitle?: string;
   topicTitle?: string;
   isEditing: boolean;
@@ -19,6 +20,7 @@ type Props = {
 
 export function WorkspaceHeader({
   isHome,
+  isChapters,
   chapterTitle,
   topicTitle,
   isEditing,
@@ -31,10 +33,16 @@ export function WorkspaceHeader({
         <SidebarTrigger />
         <div className="min-w-0">
           <p className="text-xs font-medium text-primary">
-            {isHome ? "NoteTracker" : (chapterTitle ?? "Rozdział")}
+            {isHome || isChapters
+              ? "NoteTracker"
+              : (chapterTitle ?? "Rozdział")}
           </p>
           <h1 className="truncate font-semibold">
-            {isHome ? "Strona główna" : (topicTitle ?? "Wybierz temat")}
+            {isHome
+              ? "Strona główna"
+              : isChapters
+                ? "Wszystkie rozdziały"
+                : (topicTitle ?? "Wybierz temat")}
           </h1>
         </div>
       </div>

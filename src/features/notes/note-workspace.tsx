@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LearningDashboard } from "./components/learning-dashboard";
+import { ChaptersOverview } from "./components/chapters-overview";
 import { StudyNavigation } from "./components/study-navigation";
 import { TopicPage } from "./components/topic-page";
 import { WorkspaceHeader } from "./components/workspace-header";
@@ -23,13 +24,9 @@ import { useStudyKeyboardNavigation } from "./hooks/use-study-keyboard-navigatio
 import { useWorkspaceDnd } from "./hooks/use-workspace-dnd";
 import { useWorkspaceRoute } from "./hooks/use-workspace-route";
 import { useWorkspaceUiState } from "./hooks/use-workspace-ui-state";
-import {
-  selectStudyTopics,
-  selectVisibleChapters,
-} from "./lib/chapter-selectors";
+import { selectVisibleChapters } from "./lib/chapter-selectors";
 import { EMPTY_RICH_TEXT } from "./model/rich-text-content";
-import type { Chapter } from "./model/types";
-import type { StudyTopic } from "./model/workspace-types";
+import type { Chapter, TopicNavigationItem } from "./model/types";
 import type { NotesRepository } from "./data/notes-repository";
 import type { TopicImagesService } from "./data/topic-images-service";
 
@@ -86,7 +83,13 @@ export function NoteWorkspace({
     clearError: clearNotesError,
     error: notesError,
   } = notesStore;
-  const { loadTopicContent, searchChapters, searchResults } = notesStore;
+  const {
+    loadChapterTopics,
+    loadTopicContent,
+    loadTopicNavigation,
+    searchChapters,
+    searchResults,
+  } = notesStore;
   const {
     clearDraft,
     getContent: getDraftContent,
@@ -100,6 +103,7 @@ export function NoteWorkspace({
     chapterId,
     editorDirty,
     navigateHome,
+    navigateChapters,
     navigateToChapter,
     navigationBlocker,
     topic,
@@ -108,7 +112,7 @@ export function NoteWorkspace({
     chapters,
     isTopicDirty,
     isLoading: notesStore.isLoading,
-    resolveChapter: notesStore.loadChapterBySlug,
+    resolveChapterTopics: loadChapterTopics,
   });
   const {
     addDialogOpen,
@@ -136,16 +140,8 @@ export function NoteWorkspace({
     initialChapterId: chapterId,
   });
   const draftContent = topic ? getDraftContent(topic) : EMPTY_RICH_TEXT;
-  const studyTopics = useMemo(() => selectStudyTopics(chapters), [chapters]);
-  const studyTopicIndex = studyTopics.findIndex(
-    (item) => item.topicId === topicId,
-  );
-  const previousStudyTopic =
-    studyTopicIndex > 0 ? studyTopics[studyTopicIndex - 1] : null;
-  const nextStudyTopic =
-    studyTopicIndex >= 0 && studyTopicIndex < studyTopics.length - 1
-      ? studyTopics[studyTopicIndex + 1]
-      : null;
+  const previousStudyTopic = notesStore.topicNavigation?.previous ?? null;
+  const nextStudyTopic = notesStore.topicNavigation?.next ?? null;
   const {
     sensors,
     handleDragCancel: handleSidebarDragCancel,
@@ -165,6 +161,7 @@ export function NoteWorkspace({
     expandChapter,
     setError: setSidebarError,
     navigateToChapter,
+    loadChapterTopics,
   });
   const {
     addChapter,
@@ -191,11 +188,12 @@ export function NoteWorkspace({
     navigateHome,
   });
   const openStudyTopic = useCallback(
-    (item: StudyTopic) => {
+    async (item: TopicNavigationItem) => {
+      await loadChapterTopics(item.chapterId);
       navigateToChapter(item.chapterId, item.topicId);
       expandChapter(item.chapterId);
     },
-    [expandChapter, navigateToChapter],
+    [expandChapter, loadChapterTopics, navigateToChapter],
   );
 
   useEffect(() => {
@@ -219,10 +217,15 @@ export function NoteWorkspace({
     void loadTopicContent(chapter.id, topic.id);
   }, [chapter, loadTopicContent, topic]);
 
+  useEffect(() => {
+    if (!topicId) return;
+    void loadTopicNavigation(topicId);
+  }, [loadTopicNavigation, topicId]);
+
   useStudyKeyboardNavigation({
     enabled: activeView === "notes" && !isEditing,
-    topics: studyTopics,
-    currentIndex: studyTopicIndex,
+    previousTopic: previousStudyTopic,
+    nextTopic: nextStudyTopic,
     onOpenTopic: openStudyTopic,
   });
   function changeSearch(value: string) {
@@ -256,8 +259,12 @@ export function NoteWorkspace({
     [chapters, search, searchResults, sortMode],
   );
 
-  function selectChapter(item: Chapter) {
-    requestTopicSelection(item.id, item.topics[0]?.id ?? "");
+  async function selectChapter(item: Chapter) {
+    const topics = await loadChapterTopics(item.id);
+    requestTopicSelection(
+      item.id,
+      item.firstIncompleteTopicId ?? topics?.[0]?.id ?? "",
+    );
     expandChapter(item.id);
   }
 
@@ -282,7 +289,13 @@ export function NoteWorkspace({
     navigateHome();
   }
 
-  function openChapter(nextChapterId: string, nextTopicId: string) {
+  function openChapters() {
+    if (activeView === "chapters") return;
+    navigateChapters();
+  }
+
+  async function openChapter(nextChapterId: string, nextTopicId: string) {
+    await loadChapterTopics(nextChapterId);
     navigateToChapter(nextChapterId, nextTopicId);
     expandChapter(nextChapterId);
   }
@@ -324,6 +337,7 @@ export function NoteWorkspace({
           chapterId={chapterId}
           topicId={topicId}
           isHome={activeView === "home"}
+          isChapters={activeView === "chapters"}
           isEditing={isEditing}
           search={search}
           sortMode={sortMode}
@@ -332,10 +346,17 @@ export function NoteWorkspace({
           onSearchChange={changeSearch}
           onSortModeChange={setSortMode}
           onOpenHome={openHome}
+          onOpenChapters={openChapters}
           onOpenAddDialog={() => setAddDialogOpen(true)}
           onSelectChapter={selectChapter}
           onSelectTopic={requestTopicSelection}
-          onToggleExpanded={toggleExpanded}
+          onToggleExpanded={(nextChapterId, open) => {
+            toggleExpanded(nextChapterId, open);
+            if (open) void loadChapterTopics(nextChapterId, { prefetch: true });
+          }}
+          onPrefetchTopics={(nextChapterId) =>
+            void loadChapterTopics(nextChapterId, { prefetch: true })
+          }
           onToggleChapter={toggleChapter}
           onToggleTopic={toggleTopic}
           onRenameItem={setRenameItem}
@@ -348,15 +369,13 @@ export function NoteWorkspace({
           userName={userName}
           onSignOut={onSignOut}
           onOpenAccount={onOpenAccount}
-          hasMoreChapters={notesStore.hasMoreChapters}
-          isLoadingMore={notesStore.isLoadingMore}
           isSearching={isSearchPending || notesStore.isSearching}
-          onLoadMore={() => void notesStore.loadMoreChapters()}
         />
 
         <SidebarInset className="h-dvh max-h-dvh min-w-0 overflow-hidden">
           <WorkspaceHeader
             isHome={activeView === "home"}
+            isChapters={activeView === "chapters"}
             chapterTitle={chapter?.title}
             topicTitle={topic?.title}
             isEditing={isEditing}
@@ -370,7 +389,10 @@ export function NoteWorkspace({
               userName={userName}
               summary={notesStore.learningSummary}
               onOpenChapter={openChapter}
+              onBrowseChapters={openChapters}
             />
+          ) : activeView === "chapters" ? (
+            <ChaptersOverview chapters={chapters} onOpenChapter={openChapter} />
           ) : (
             <TopicPage
               chapter={chapter}
@@ -397,8 +419,8 @@ export function NoteWorkspace({
             <StudyNavigation
               previousTopic={previousStudyTopic}
               nextTopic={nextStudyTopic}
-              currentIndex={studyTopicIndex}
-              total={studyTopics.length}
+              currentIndex={notesStore.topicNavigation?.currentIndex ?? 0}
+              total={notesStore.topicNavigation?.total ?? 0}
               onOpenTopic={openStudyTopic}
             />
           )}

@@ -1,14 +1,14 @@
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { StudyTopic } from "../model/workspace-types";
+import type { TopicNavigationItem } from "../model/types";
 
 type Props = {
-  previousTopic: StudyTopic | null;
-  nextTopic: StudyTopic | null;
+  previousTopic: TopicNavigationItem | null;
+  nextTopic: TopicNavigationItem | null;
   currentIndex: number;
   total: number;
-  onOpenTopic: (topic: StudyTopic) => void;
+  onOpenTopic: (topic: TopicNavigationItem) => void;
 };
 
 export function StudyNavigation({

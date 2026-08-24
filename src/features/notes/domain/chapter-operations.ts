@@ -21,15 +21,37 @@ export function updateChapter(
   );
 }
 
+function syncChapterSummary(chapter: Chapter): Chapter {
+  if (chapter.topicsStatus !== "loaded") return chapter;
+  const firstIncomplete = chapter.topics.find((topic) => !topic.completed);
+  return {
+    ...chapter,
+    topicsCount: chapter.topics.length,
+    completedTopicsCount: chapter.topics.filter((topic) => topic.completed)
+      .length,
+    firstIncompleteTopicId: firstIncomplete?.id ?? null,
+    firstIncompleteTopicSlug: firstIncomplete?.slug ?? null,
+  };
+}
+
 export function toggleChapterTopics(
   chapters: Chapter[],
   chapterId: string,
   completed: boolean,
 ) {
-  return updateChapter(chapters, chapterId, (chapter) => ({
-    ...chapter,
-    topics: chapter.topics.map((topic) => ({ ...topic, completed })),
-  }));
+  return updateChapter(chapters, chapterId, (chapter) =>
+    syncChapterSummary({
+      ...chapter,
+      topics: chapter.topics.map((topic) => ({ ...topic, completed })),
+      completedTopicsCount: completed ? chapter.topicsCount : 0,
+      firstIncompleteTopicId: completed
+        ? null
+        : (chapter.topics[0]?.id ?? chapter.firstIncompleteTopicId),
+      firstIncompleteTopicSlug: completed
+        ? null
+        : (chapter.topics[0]?.slug ?? chapter.firstIncompleteTopicSlug),
+    }),
+  );
 }
 
 export function updateTopic(
@@ -38,12 +60,14 @@ export function updateTopic(
   topicId: string,
   updater: (topic: Topic) => Topic,
 ) {
-  return updateChapter(chapters, chapterId, (chapter) => ({
-    ...chapter,
-    topics: chapter.topics.map((topic) =>
-      topic.id === topicId ? updater(topic) : topic,
-    ),
-  }));
+  return updateChapter(chapters, chapterId, (chapter) =>
+    syncChapterSummary({
+      ...chapter,
+      topics: chapter.topics.map((topic) =>
+        topic.id === topicId ? updater(topic) : topic,
+      ),
+    }),
+  );
 }
 
 export function addChapterToCollection(chapters: Chapter[], chapter: Chapter) {
@@ -55,10 +79,13 @@ export function addTopicsToChapter(
   chapterId: string,
   topics: Topic[],
 ) {
-  return updateChapter(chapters, chapterId, (chapter) => ({
-    ...chapter,
-    topics: [...chapter.topics, ...topics],
-  }));
+  return updateChapter(chapters, chapterId, (chapter) =>
+    syncChapterSummary({
+      ...chapter,
+      topics: [...chapter.topics, ...topics],
+      topicsStatus: "loaded",
+    }),
+  );
 }
 
 export function renameManagedItem(
@@ -82,10 +109,12 @@ export function deleteManagedItem(chapters: Chapter[], item: ManagedItem) {
   if (item.kind === "chapter") {
     return chapters.filter((chapter) => chapter.id !== item.id);
   }
-  return updateChapter(chapters, item.chapterId, (chapter) => ({
-    ...chapter,
-    topics: chapter.topics.filter((topic) => topic.id !== item.id),
-  }));
+  return updateChapter(chapters, item.chapterId, (chapter) =>
+    syncChapterSummary({
+      ...chapter,
+      topics: chapter.topics.filter((topic) => topic.id !== item.id),
+    }),
+  );
 }
 
 export function saveTopicContent(
@@ -155,12 +184,12 @@ export function moveTopic(
 
   return chapters.map((chapter) => {
     if (chapter.id === source.id) {
-      return {
+      return syncChapterSummary({
         ...chapter,
         topics: withPositions(
           chapter.topics.filter((item) => item.id !== topicId),
         ),
-      };
+      });
     }
     if (chapter.id === targetChapterId) {
       const topics = [...chapter.topics];
@@ -169,7 +198,7 @@ export function moveTopic(
         0,
         topicForTarget,
       );
-      return { ...chapter, topics: withPositions(topics) };
+      return syncChapterSummary({ ...chapter, topics: withPositions(topics) });
     }
     return chapter;
   });

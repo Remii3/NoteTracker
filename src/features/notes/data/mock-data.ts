@@ -18,6 +18,11 @@ export const initialChapters: Chapter[] = [
     slug: "python",
     title: "Python",
     position: 1000,
+    topicsCount: 3,
+    completedTopicsCount: 2,
+    firstIncompleteTopicId: "topic-async",
+    firstIncompleteTopicSlug: "async-i-await",
+    topicsStatus: "loaded",
     topics: [
       {
         id: "topic-basics",
@@ -54,6 +59,11 @@ export const initialChapters: Chapter[] = [
     slug: "sql",
     title: "SQL",
     position: 2000,
+    topicsCount: 2,
+    completedTopicsCount: 0,
+    firstIncompleteTopicId: "topic-select",
+    firstIncompleteTopicSlug: "select",
+    topicsStatus: "loaded",
     topics: [
       {
         id: "topic-select",

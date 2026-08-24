@@ -6,6 +6,7 @@ import { ChevronRight, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Collapsible,
   CollapsibleContent,
@@ -43,6 +44,7 @@ type Props = {
   onSelectChapter: (chapter: Chapter) => void;
   onSelectTopic: (chapterId: string, topicId: string) => void;
   onToggleExpanded: (chapterId: string, open: boolean) => void;
+  onPrefetchTopics: (chapterId: string) => void;
   onToggleChapter: (chapterId: string, completed: boolean) => void;
   onToggleTopic: (
     chapterId: string,
@@ -68,14 +70,23 @@ export function SidebarChapter(props: Props) {
     onSelectChapter,
     onSelectTopic,
     onToggleExpanded,
+    onPrefetchTopics,
     onToggleChapter,
     onToggleTopic,
     onRenameItem,
     onDeleteItem,
   } = props;
-  const allTopics = completeChapter?.topics ?? chapter.topics;
-  const count = allTopics.filter((child) => child.completed).length;
-  const completed = allTopics.length > 0 && count === allTopics.length;
+  const isSearch = Boolean(search.trim());
+  const allTopics = isSearch
+    ? chapter.topics
+    : (completeChapter?.topics ?? chapter.topics);
+  const count = isSearch
+    ? allTopics.filter((child) => child.completed).length
+    : (completeChapter?.completedTopicsCount ?? chapter.completedTopicsCount);
+  const total = isSearch
+    ? allTopics.length
+    : (completeChapter?.topicsCount ?? chapter.topicsCount);
+  const completed = total > 0 && count === total;
   const partial = count > 0 && !completed;
 
   return (
@@ -83,7 +94,7 @@ export function SidebarChapter(props: Props) {
       open={Boolean(search.trim()) || expanded}
       onOpenChange={(open) => onToggleExpanded(chapter.id, open)}
     >
-      <SidebarMenuItem>
+      <SidebarMenuItem onPointerEnter={() => onPrefetchTopics(chapter.id)}>
         <SortableRow
           id={chapter.id}
           active={!isHome && chapter.id === chapterId}
@@ -96,7 +107,7 @@ export function SidebarChapter(props: Props) {
           <Checkbox
             checked={completed}
             indeterminate={partial}
-            disabled={!allTopics.length}
+            disabled={!total}
             aria-label={`Zmień status rozdziału ${chapter.title}`}
             onCheckedChange={(value) => onToggleChapter(chapter.id, value)}
             className="ml-1"
@@ -112,7 +123,7 @@ export function SidebarChapter(props: Props) {
           >
             <span className="min-w-0 flex-1 truncate">{chapter.title}</span>
             <span className="shrink-0 text-xs text-muted-foreground">
-              {count}/{allTopics.length}
+              {count}/{total}
             </span>
           </SidebarMenuButton>
           {isEditing && (
@@ -152,7 +163,7 @@ export function SidebarChapter(props: Props) {
                       kind: "chapter",
                       id: chapter.id,
                       title: chapter.title,
-                      childCount: chapter.topics.length,
+                      childCount: chapter.topicsCount,
                     })
                   }
                 >
@@ -179,6 +190,16 @@ export function SidebarChapter(props: Props) {
             strategy={verticalListSortingStrategy}
           >
             <SidebarMenuSub>
+              {chapter.topicsStatus === "loading" && !isSearch && (
+                <li
+                  className="space-y-2 px-2 py-2"
+                  aria-label="Pobieranie tematów"
+                >
+                  <Skeleton className="h-3 w-4/5" />
+                  <Skeleton className="h-3 w-3/5" />
+                  <Skeleton className="h-3 w-2/3" />
+                </li>
+              )}
               {chapter.topics.map((child) => (
                 <SidebarMenuSubItem key={child.id}>
                   <SortableRow
@@ -260,7 +281,7 @@ export function SidebarChapter(props: Props) {
                   </SortableRow>
                 </SidebarMenuSubItem>
               ))}
-              {!chapter.topics.length && (
+              {!chapter.topics.length && chapter.topicsStatus !== "loading" && (
                 <li className="px-2 py-2 text-xs text-muted-foreground">
                   {search.trim()
                     ? "Brak pasujących tematów."

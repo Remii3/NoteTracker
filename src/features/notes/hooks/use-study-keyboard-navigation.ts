@@ -1,18 +1,18 @@
 import { useEffect } from "react";
 
-import type { StudyTopic } from "../model/workspace-types";
+import type { TopicNavigationItem } from "../model/types";
 
 type Options = {
   enabled: boolean;
-  topics: StudyTopic[];
-  currentIndex: number;
-  onOpenTopic: (topic: StudyTopic) => void;
+  previousTopic: TopicNavigationItem | null;
+  nextTopic: TopicNavigationItem | null;
+  onOpenTopic: (topic: TopicNavigationItem) => void;
 };
 
 export function useStudyKeyboardNavigation({
   enabled,
-  topics,
-  currentIndex,
+  previousTopic,
+  nextTopic,
   onOpenTopic,
 }: Options) {
   useEffect(() => {
@@ -37,15 +37,15 @@ export function useStudyKeyboardNavigation({
       )
         return;
 
-      const nextIndex = currentIndex + (event.key === "ArrowRight" ? 1 : -1);
-      const nextTopic = topics[nextIndex];
-      if (!nextTopic) return;
+      const targetTopic =
+        event.key === "ArrowRight" ? nextTopic : previousTopic;
+      if (!targetTopic) return;
 
       event.preventDefault();
-      onOpenTopic(nextTopic);
+      onOpenTopic(targetTopic);
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, enabled, onOpenTopic, topics]);
+  }, [enabled, nextTopic, onOpenTopic, previousTopic]);
 }

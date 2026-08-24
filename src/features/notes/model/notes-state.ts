@@ -1,8 +1,10 @@
-import type { Chapter, ChapterSummary, Topic } from "./types";
+import type { Chapter, Topic } from "./types";
+
+type StoredChapter = Omit<Chapter, "topics">;
 
 export type NotesState = {
   chapterIds: string[];
-  chaptersById: Record<string, ChapterSummary>;
+  chaptersById: Record<string, StoredChapter>;
   topicIdsByChapterId: Record<string, string[]>;
   topicsById: Record<string, Topic>;
 };

@@ -3,6 +3,7 @@ import type {
   LearningSummary,
   NoteContent,
   Topic,
+  TopicNavigation,
 } from "../model/types";
 
 export type ChapterUpdate = Partial<Pick<ChapterSummary, "title" | "position">>;
@@ -11,21 +12,14 @@ export type TopicUpdate = Partial<
 >;
 
 export interface NotesRepository {
-  listChapters(
-    offset?: number,
-    limit?: number,
-  ): Promise<{
-    chapters: import("../model/types").Chapter[];
-    hasMore: boolean;
-  }>;
+  listChapters(): Promise<import("../model/types").Chapter[]>;
+  listChapterTopics(chapterId: string): Promise<Topic[]>;
   getTopicContent(chapterId: string, topicId: string): Promise<NoteContent>;
+  getTopicNavigation(topicId: string): Promise<TopicNavigation>;
   searchChapters(
     query: string,
     limit?: number,
   ): Promise<import("../model/types").Chapter[]>;
-  getChapterBySlug(
-    slug: string,
-  ): Promise<import("../model/types").Chapter | null>;
   getLearningSummary(): Promise<LearningSummary>;
   createChapter(chapter: ChapterSummary): Promise<void>;
   updateChapter(chapterId: string, update: ChapterUpdate): Promise<void>;

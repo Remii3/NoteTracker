@@ -10,6 +10,7 @@ import type {
   ChapterSummary,
   NoteContent,
   Topic,
+  TopicNavigation,
 } from "../model/types";
 
 function clone<T>(value: T): T {
@@ -23,16 +24,43 @@ class MemoryNotesRepository implements NotesRepository {
     return clone(this.chapters);
   }
 
-  async listChapters(offset = 0, limit = 100) {
-    const page = this.chapters.slice(offset, offset + limit + 1);
-    return {
-      chapters: clone(page.slice(0, limit)),
-      hasMore: page.length > limit,
-    };
+  async listChapters() {
+    return clone(
+      this.chapters.map((chapter) => ({
+        ...this.getSummary(chapter),
+        topics: [],
+        topicsStatus: "idle" as const,
+      })),
+    );
+  }
+
+  async listChapterTopics(chapterId: string) {
+    return clone(this.getChapter(chapterId).topics);
   }
 
   async getTopicContent(chapterId: string, topicId: string) {
     return clone(this.getTopic(chapterId, topicId).content);
+  }
+
+  async getTopicNavigation(topicId: string): Promise<TopicNavigation> {
+    const topics = this.chapters.flatMap((chapter) =>
+      chapter.topics.map((topic) => ({
+        chapterId: chapter.id,
+        chapterSlug: chapter.slug,
+        chapterTitle: chapter.title,
+        topicId: topic.id,
+        topicSlug: topic.slug,
+        topicTitle: topic.title,
+      })),
+    );
+    const currentIndex = topics.findIndex((topic) => topic.topicId === topicId);
+    if (currentIndex < 0) throw new Error("Nie znaleziono tematu.");
+    return {
+      previous: topics[currentIndex - 1] ?? null,
+      next: topics[currentIndex + 1] ?? null,
+      currentIndex,
+      total: topics.length,
+    };
   }
 
   async searchChapters(query: string, limit = 100) {
@@ -52,11 +80,6 @@ class MemoryNotesRepository implements NotesRepository {
     );
   }
 
-  async getChapterBySlug(slug: string) {
-    const chapter = this.chapters.find((item) => item.slug === slug);
-    return chapter ? clone(chapter) : null;
-  }
-
   async getLearningSummary() {
     const summary = selectDashboardSummary(this.chapters);
     return {
@@ -71,7 +94,11 @@ class MemoryNotesRepository implements NotesRepository {
   }
 
   async createChapter(chapter: ChapterSummary) {
-    this.chapters.push({ ...clone(chapter), topics: [] });
+    this.chapters.push({
+      ...clone(chapter),
+      topics: [],
+      topicsStatus: "loaded",
+    });
   }
 
   async updateChapter(chapterId: string, update: ChapterUpdate) {
@@ -151,6 +178,21 @@ class MemoryNotesRepository implements NotesRepository {
     const chapter = this.chapters.find((item) => item.id === chapterId);
     if (!chapter) throw new Error("Nie znaleziono rozdziału.");
     return chapter;
+  }
+
+  private getSummary(chapter: Chapter): ChapterSummary {
+    const firstIncomplete = chapter.topics.find((topic) => !topic.completed);
+    return {
+      id: chapter.id,
+      slug: chapter.slug,
+      title: chapter.title,
+      position: chapter.position,
+      topicsCount: chapter.topics.length,
+      completedTopicsCount: chapter.topics.filter((topic) => topic.completed)
+        .length,
+      firstIncompleteTopicId: firstIncomplete?.id ?? null,
+      firstIncompleteTopicSlug: firstIncomplete?.slug ?? null,
+    };
   }
 
   private getTopic(chapterId: string, topicId: string): Topic {

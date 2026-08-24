@@ -21,6 +21,7 @@ import type {
   LearningSummary,
   NoteContent,
   Topic,
+  TopicNavigation,
 } from "../model/types";
 import type { ManagedItem } from "../model/workspace-types";
 
@@ -29,6 +30,9 @@ type Options = {
   initialChapters?: Chapter[];
   loadOnMount?: boolean;
 };
+
+const CHAPTER_TOPICS_CACHE_LIMIT = 20;
+type ChapterLoadOptions = { prefetch?: boolean };
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
@@ -46,14 +50,19 @@ export function useNotesStore({
   const [state, setState] = useState<NotesState>(initialState);
   const stateRef = useRef(state);
   const operationLockRef = useRef(false);
+  const chapterRequestsRef = useRef(new Map<string, Promise<Topic[] | null>>());
+  const chapterCacheOrderRef = useRef(new Map<string, number>());
+  const activeChapterIdRef = useRef<string | null>(null);
+  const cacheSequenceRef = useRef(0);
   const searchRequestRef = useRef(0);
+  const navigationRequestRef = useRef(0);
   const [isLoading, setIsLoading] = useState(loadOnMount);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMoreChapters, setHasMoreChapters] = useState(false);
   const [searchResults, setSearchResults] = useState<Chapter[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [learningSummary, setLearningSummary] =
     useState<LearningSummary | null>(null);
+  const [topicNavigation, setTopicNavigation] =
+    useState<TopicNavigation | null>(null);
   const [pendingOperations, setPendingOperations] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const chapters = useMemo(() => materializeChapters(state), [state]);
@@ -69,11 +78,38 @@ export function useNotesStore({
     [applyState],
   );
 
+  const refreshSummaries = useCallback(async () => {
+    const [summaries, summary] = await Promise.all([
+      repository.listChapters(),
+      repository.getLearningSummary(),
+    ]);
+    const currentById = new Map(
+      materializeChapters(stateRef.current).map((chapter) => [
+        chapter.id,
+        chapter,
+      ]),
+    );
+    applyChapters(
+      summaries.map((chapter) => {
+        const current = currentById.get(chapter.id);
+        return current?.topicsStatus === "loaded"
+          ? {
+              ...chapter,
+              topics: current.topics,
+              topicsStatus: "loaded",
+            }
+          : chapter;
+      }),
+    );
+    setLearningSummary(summary);
+  }, [applyChapters, repository]);
+
   const runOptimistic = useCallback(
     async (
       updater: (chapters: Chapter[]) => Chapter[],
       persist: (next: Chapter[]) => Promise<void>,
       errorMessage: string,
+      refreshChapterData = false,
     ) => {
       if (operationLockRef.current) return false;
       operationLockRef.current = true;
@@ -84,7 +120,7 @@ export function useNotesStore({
       setPendingOperations((count) => count + 1);
       try {
         await persist(next);
-        setLearningSummary(await repository.getLearningSummary());
+        if (refreshChapterData) await refreshSummaries();
         return true;
       } catch (caughtError) {
         applyChapters(previous);
@@ -95,7 +131,7 @@ export function useNotesStore({
         setPendingOperations((count) => Math.max(0, count - 1));
       }
     },
-    [applyChapters, repository],
+    [applyChapters, refreshSummaries],
   );
 
   const load = useCallback(async () => {
@@ -106,8 +142,7 @@ export function useNotesStore({
         repository.listChapters(),
         repository.getLearningSummary(),
       ]);
-      applyChapters(page.chapters);
-      setHasMoreChapters(page.hasMore);
+      applyChapters(page);
       setLearningSummary(summary);
       return true;
     } catch (caughtError) {
@@ -120,27 +155,97 @@ export function useNotesStore({
     }
   }, [applyChapters, repository]);
 
-  const loadMoreChapters = useCallback(async () => {
-    if (isLoadingMore || !hasMoreChapters) return false;
-    setIsLoadingMore(true);
-    try {
-      const current = materializeChapters(stateRef.current);
-      const page = await repository.listChapters(current.length);
-      applyChapters([...current, ...page.chapters]);
-      setHasMoreChapters(page.hasMore);
-      return true;
-    } catch (caughtError) {
-      setError(
-        getErrorMessage(
-          caughtError,
-          "Nie udało się pobrać kolejnych rozdziałów.",
+  const loadChapterTopics = useCallback(
+    (chapterId: string, options: ChapterLoadOptions = {}) => {
+      if (!options.prefetch) activeChapterIdRef.current = chapterId;
+      chapterCacheOrderRef.current.delete(chapterId);
+      chapterCacheOrderRef.current.set(chapterId, ++cacheSequenceRef.current);
+
+      const chapter = materializeChapters(stateRef.current).find(
+        (item) => item.id === chapterId,
+      );
+      if (!chapter) return Promise.resolve(null);
+      if (chapter.topicsStatus === "loaded")
+        return Promise.resolve(chapter.topics);
+      const pending = chapterRequestsRef.current.get(chapterId);
+      if (pending) return pending;
+
+      applyChapters(
+        materializeChapters(stateRef.current).map((item) =>
+          item.id === chapterId ? { ...item, topicsStatus: "loading" } : item,
         ),
       );
-      return false;
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [applyChapters, hasMoreChapters, isLoadingMore, repository]);
+      const request = repository
+        .listChapterTopics(chapterId)
+        .then((topics) => {
+          const latest = materializeChapters(stateRef.current);
+          const loadedChapterIds = latest
+            .filter(
+              (item) => item.id !== chapterId && item.topicsStatus === "loaded",
+            )
+            .map((item) => item.id);
+          const excess = Math.max(
+            0,
+            loadedChapterIds.length + 1 - CHAPTER_TOPICS_CACHE_LIMIT,
+          );
+          const evictedIds = new Set(
+            loadedChapterIds
+              .filter((id) => id !== activeChapterIdRef.current)
+              .sort(
+                (first, second) =>
+                  (chapterCacheOrderRef.current.get(first) ?? 0) -
+                  (chapterCacheOrderRef.current.get(second) ?? 0),
+              )
+              .slice(0, excess),
+          );
+          for (const id of evictedIds) chapterCacheOrderRef.current.delete(id);
+          applyChapters(
+            latest.map((item) =>
+              item.id === chapterId
+                ? { ...item, topics, topicsStatus: "loaded" }
+                : evictedIds.has(item.id)
+                  ? { ...item, topics: [], topicsStatus: "idle" }
+                  : item,
+            ),
+          );
+          return topics;
+        })
+        .catch((caughtError) => {
+          const latest = materializeChapters(stateRef.current);
+          applyChapters(
+            latest.map((item) =>
+              item.id === chapterId ? { ...item, topicsStatus: "error" } : item,
+            ),
+          );
+          setError(
+            getErrorMessage(caughtError, "Nie udało się pobrać tematów."),
+          );
+          return null;
+        })
+        .finally(() => chapterRequestsRef.current.delete(chapterId));
+      chapterRequestsRef.current.set(chapterId, request);
+      return request;
+    },
+    [applyChapters, repository],
+  );
+
+  const loadTopicNavigation = useCallback(
+    async (topicId: string) => {
+      const requestId = ++navigationRequestRef.current;
+      try {
+        const navigation = await repository.getTopicNavigation(topicId);
+        if (requestId === navigationRequestRef.current)
+          setTopicNavigation(navigation);
+        return navigation;
+      } catch (caughtError) {
+        setError(
+          getErrorMessage(caughtError, "Nie udało się pobrać nawigacji."),
+        );
+        return null;
+      }
+    },
+    [repository],
+  );
 
   const loadTopicContent = useCallback(
     async (chapterId: string, topicId: string) => {
@@ -190,28 +295,6 @@ export function useNotesStore({
       }
     },
     [repository],
-  );
-
-  const loadChapterBySlug = useCallback(
-    async (slug: string) => {
-      const existing = materializeChapters(stateRef.current).find(
-        (chapter) => chapter.slug === slug || chapter.id === slug,
-      );
-      if (existing) return true;
-      try {
-        const chapter = await repository.getChapterBySlug(slug);
-        if (!chapter) return false;
-        const current = materializeChapters(stateRef.current);
-        applyChapters([...current, chapter]);
-        return true;
-      } catch (caughtError) {
-        setError(
-          getErrorMessage(caughtError, "Nie udało się pobrać rozdziału."),
-        );
-        return false;
-      }
-    },
-    [applyChapters, repository],
   );
 
   useEffect(() => {
@@ -277,7 +360,7 @@ export function useNotesStore({
             );
           }
         }
-        setLearningSummary(await repository.getLearningSummary());
+        await refreshSummaries();
         return true;
       } catch (caughtError) {
         applyChapters(previous);
@@ -293,7 +376,7 @@ export function useNotesStore({
         setPendingOperations((count) => Math.max(0, count - 1));
       }
     },
-    [applyChapters, repository],
+    [applyChapters, refreshSummaries, repository],
   );
 
   const addChapter = useCallback(
@@ -302,6 +385,7 @@ export function useNotesStore({
         (current) => addChapterToCollection(current, chapter),
         () => repository.createChapter(chapter),
         "Nie udało się dodać rozdziału.",
+        true,
       ),
     [repository, runOptimistic],
   );
@@ -311,6 +395,7 @@ export function useNotesStore({
         (current) => addTopicsToChapter(current, chapterId, topics),
         () => repository.createTopics(chapterId, topics),
         "Nie udało się dodać tematów.",
+        true,
       ),
     [repository, runOptimistic],
   );
@@ -323,6 +408,7 @@ export function useNotesStore({
             ? repository.deleteChapter(item.id)
             : repository.deleteTopic(item.chapterId, item.id),
         "Nie udało się usunąć elementu.",
+        true,
       ),
     [repository, runOptimistic],
   );
@@ -353,6 +439,7 @@ export function useNotesStore({
         (current) => toggleChapterTopics(current, chapterId, completed),
         () => repository.setChapterCompleted(chapterId, completed),
         "Nie udało się zmienić statusu rozdziału.",
+        true,
       ),
     [repository, runOptimistic],
   );
@@ -366,6 +453,7 @@ export function useNotesStore({
           })),
         () => repository.updateTopic(chapterId, topicId, { completed }),
         "Nie udało się zmienić statusu tematu.",
+        true,
       ),
     [repository, runOptimistic],
   );
@@ -378,17 +466,16 @@ export function useNotesStore({
     commitDrag,
     error,
     isLoading,
-    isLoadingMore,
     isSearching,
-    hasMoreChapters,
     isSaving: pendingOperations > 0,
     load,
-    loadMoreChapters,
-    loadChapterBySlug,
+    loadChapterTopics,
+    loadTopicNavigation,
     loadTopicContent,
     searchChapters,
     searchResults,
     learningSummary,
+    topicNavigation,
     previewChapters,
     removeItem,
     renameItem,

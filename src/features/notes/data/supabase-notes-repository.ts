@@ -11,6 +11,7 @@ import type {
   LearningSummary,
   NoteContent,
   Topic,
+  TopicNavigation,
 } from "../model/types";
 import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
 import { throwIfPostgrestError } from "./supabase-error";
@@ -24,35 +25,30 @@ export class SupabaseNotesRepository implements NotesRepository {
     this.userId = userId;
   }
 
-  async listChapters(offset = 0, limit = 100) {
-    const { data, error } = await this.client
-      .from("chapters")
-      .select("id,slug,title,position,topics(id,slug,title,completed,position)")
-      .order("position")
-      .order("id")
-      .range(offset, offset + limit);
+  async listChapters() {
+    const { data, error } = await this.client.rpc("get_chapter_summaries");
     throwIfPostgrestError(error);
-    const rows = data ?? [];
-    return {
-      chapters: rows.slice(0, limit).map((chapter) => ({
-        id: chapter.id,
-        slug: chapter.slug,
-        title: chapter.title,
-        position: chapter.position,
-        topics: [...chapter.topics]
-          .sort(
-            (first, second) =>
-              first.position - second.position ||
-              first.id.localeCompare(second.id),
-          )
-          .map((topic) => ({
-            ...topic,
-            content: EMPTY_RICH_TEXT,
-            contentLoaded: false,
-          })),
-      })),
-      hasMore: rows.length > limit,
-    };
+    return ((data ?? []) as unknown as ChapterSummary[]).map((chapter) => ({
+      ...chapter,
+      topics: [],
+      topicsStatus: "idle" as const,
+    }));
+  }
+
+  async listChapterTopics(chapterId: string) {
+    const { data, error } = await this.client
+      .from("topics")
+      .select("id,slug,title,completed,position")
+      .eq("chapter_id", chapterId)
+      .eq("user_id", this.userId)
+      .order("position")
+      .order("id");
+    throwIfPostgrestError(error);
+    return (data ?? []).map((topic) => ({
+      ...topic,
+      content: EMPTY_RICH_TEXT,
+      contentLoaded: false,
+    }));
   }
 
   async getTopicContent(chapterId: string, topicId: string) {
@@ -66,6 +62,15 @@ export class SupabaseNotesRepository implements NotesRepository {
     throwIfPostgrestError(error);
     if (!data) throw new Error("Nie znaleziono notatki.");
     return data.content as NoteContent;
+  }
+
+  async getTopicNavigation(topicId: string) {
+    const { data, error } = await this.client.rpc("get_topic_navigation", {
+      current_topic_id: topicId,
+    });
+    throwIfPostgrestError(error);
+    if (!data) throw new Error("Nie znaleziono tematu.");
+    return data as unknown as TopicNavigation;
   }
 
   async searchChapters(query: string, limit = 100) {
@@ -91,11 +96,27 @@ export class SupabaseNotesRepository implements NotesRepository {
 
     const chapters = new Map<string, import("../model/types").Chapter>();
     for (const chapter of chapterResult.data ?? []) {
-      chapters.set(chapter.id, { ...chapter, topics: [] });
+      chapters.set(chapter.id, {
+        ...chapter,
+        topicsCount: 0,
+        completedTopicsCount: 0,
+        firstIncompleteTopicId: null,
+        firstIncompleteTopicSlug: null,
+        topics: [],
+        topicsStatus: "loaded",
+      });
     }
     for (const topic of topicResult.data ?? []) {
       const chapter = topic.chapters;
-      const current = chapters.get(chapter.id) ?? { ...chapter, topics: [] };
+      const current = chapters.get(chapter.id) ?? {
+        ...chapter,
+        topicsCount: 0,
+        completedTopicsCount: 0,
+        firstIncompleteTopicId: null,
+        firstIncompleteTopicSlug: null,
+        topics: [],
+        topicsStatus: "loaded" as const,
+      };
       current.topics.push({
         id: topic.id,
         slug: topic.slug,
@@ -105,35 +126,18 @@ export class SupabaseNotesRepository implements NotesRepository {
         content: EMPTY_RICH_TEXT,
         contentLoaded: false,
       });
+      current.topicsCount = current.topics.length;
+      current.completedTopicsCount = current.topics.filter(
+        (item) => item.completed,
+      ).length;
+      const firstIncomplete = current.topics.find((item) => !item.completed);
+      current.firstIncompleteTopicId = firstIncomplete?.id ?? null;
+      current.firstIncompleteTopicSlug = firstIncomplete?.slug ?? null;
       chapters.set(chapter.id, current);
     }
     return [...chapters.values()].sort(
       (first, second) => first.position - second.position,
     );
-  }
-
-  async getChapterBySlug(slug: string) {
-    const { data, error } = await this.client
-      .from("chapters")
-      .select("id,slug,title,position,topics(id,slug,title,completed,position)")
-      .eq("slug", slug)
-      .eq("user_id", this.userId)
-      .maybeSingle();
-    throwIfPostgrestError(error);
-    if (!data) return null;
-    return {
-      id: data.id,
-      slug: data.slug,
-      title: data.title,
-      position: data.position,
-      topics: [...data.topics]
-        .sort((first, second) => first.position - second.position)
-        .map((topic) => ({
-          ...topic,
-          content: EMPTY_RICH_TEXT,
-          contentLoaded: false,
-        })),
-    };
   }
 
   async getLearningSummary() {
