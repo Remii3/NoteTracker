@@ -277,6 +277,10 @@ export function NoteWorkspace({
       ),
     [chapters, search, searchResults, sortMode],
   );
+  const orderedChapters = useMemo(
+    () => selectVisibleChapters(chapters, "", sortMode),
+    [chapters, sortMode],
+  );
 
   async function selectChapter(item: Chapter) {
     const topics = await loadChapterTopics(item.id);
@@ -439,7 +443,7 @@ export function NoteWorkspace({
               />
             ) : (
               <QuestionsPage
-                chapters={chapters}
+                chapters={orderedChapters}
                 repository={questionsRepository}
                 loadTopics={loadChapterTopics}
                 onOpenSession={navigateStudySession}
@@ -459,7 +463,7 @@ export function NoteWorkspace({
               }
               imagesService={imagesService}
               questionsRepository={questionsRepository}
-              chapters={chapters}
+              chapters={orderedChapters}
               loadChapterTopics={loadChapterTopics}
               onContentChange={(content) => {
                 if (isEditing && topic) updateDraft(topic, content);
@@ -485,7 +489,7 @@ export function NoteWorkspace({
           {isEditing && addDialogOpen && (
             <AddContentDialog
               open
-              chapters={chapters}
+              chapters={orderedChapters}
               activeChapterId={chapterId}
               onOpenChange={setAddDialogOpen}
               onAddChapters={addChapters}
@@ -510,7 +514,7 @@ export function NoteWorkspace({
           )}
           {isEditing && bulkDeleteOpen && (
             <BulkDeleteDialog
-              chapters={chapters}
+              chapters={orderedChapters}
               onClose={() => setBulkDeleteOpen(false)}
               onLoadTopics={loadChapterTopics}
               onDelete={deleteManagedItems}
