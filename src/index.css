@@ -147,3 +147,52 @@
   margin-top: 0;
   margin-bottom: 0;
 }
+
+.tiptap-content .tableWrapper {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.tiptap-content table {
+  width: 100%;
+  min-width: 30rem;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin: 0;
+}
+
+.tiptap-content :where(th, td) {
+  position: relative;
+  min-width: 6rem;
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.625rem;
+  vertical-align: top;
+}
+
+.tiptap-content th {
+  background: var(--muted);
+  font-weight: 600;
+  text-align: left;
+}
+
+.tiptap-content .selectedCell::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
+}
+
+.tiptap-content .column-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  bottom: -2px;
+  width: 4px;
+  pointer-events: none;
+  background: var(--primary);
+}
+
+.resize-cursor {
+  cursor: col-resize;
+}

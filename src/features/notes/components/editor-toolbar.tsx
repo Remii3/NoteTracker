@@ -13,7 +13,12 @@ import {
   Pilcrow,
   Quote,
   Redo2,
+  Rows3,
   Strikethrough,
+  Table2,
+  TableColumnsSplit,
+  TableRowsSplit,
+  Trash2,
   Underline,
   Undo2,
   Unlink,
@@ -45,6 +50,7 @@ export function EditorToolbar({ editor }: { editor: Editor }) {
       code: currentEditor.isActive("code"),
       link: currentEditor.isActive("link"),
       highlight: currentEditor.isActive("highlight"),
+      table: currentEditor.isActive("table"),
       canUndo: currentEditor.can().chain().focus().undo().run(),
       canRedo: currentEditor.can().chain().focus().redo().run(),
     }),
@@ -156,6 +162,9 @@ export function EditorToolbar({ editor }: { editor: Editor }) {
           <ColorControl editor={editor} active={state.highlight} />
         </ToolbarGroup>
         <ToolbarGroup>
+          <TableControl editor={editor} active={state.table} />
+        </ToolbarGroup>
+        <ToolbarGroup>
           <ToolbarButton
             label="Cofnij"
             disabled={!state.canUndo}
@@ -173,6 +182,126 @@ export function EditorToolbar({ editor }: { editor: Editor }) {
         </ToolbarGroup>
       </div>
     </div>
+  );
+}
+
+function TableControl({ editor, active }: { editor: Editor; active: boolean }) {
+  const [open, setOpen] = useState(false);
+
+  function run(command: () => void) {
+    command();
+    setOpen(false);
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <Button
+            type="button"
+            size="icon-xs"
+            variant={active ? "secondary" : "ghost"}
+            title="Tabela"
+            aria-label="Tabela"
+            aria-pressed={active}
+          />
+        }
+      >
+        <Table2 />
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 gap-1 p-1.5">
+        {!active ? (
+          <TableMenuButton
+            icon={<Table2 />}
+            label="Wstaw tabelę 3 × 3"
+            onClick={() =>
+              run(() =>
+                editor
+                  .chain()
+                  .focus()
+                  .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+                  .run(),
+              )
+            }
+          />
+        ) : (
+          <>
+            <TableMenuButton
+              icon={<Rows3 />}
+              label="Dodaj wiersz poniżej"
+              onClick={() =>
+                run(() => editor.chain().focus().addRowAfter().run())
+              }
+            />
+            <TableMenuButton
+              icon={<TableRowsSplit />}
+              label="Usuń bieżący wiersz"
+              onClick={() =>
+                run(() => editor.chain().focus().deleteRow().run())
+              }
+            />
+            <TableMenuButton
+              icon={<TableColumnsSplit />}
+              label="Dodaj kolumnę po prawej"
+              onClick={() =>
+                run(() => editor.chain().focus().addColumnAfter().run())
+              }
+            />
+            <TableMenuButton
+              icon={<TableColumnsSplit />}
+              label="Usuń bieżącą kolumnę"
+              onClick={() =>
+                run(() => editor.chain().focus().deleteColumn().run())
+              }
+            />
+            <TableMenuButton
+              icon={<Table2 />}
+              label="Włącz lub wyłącz nagłówek"
+              onClick={() =>
+                run(() => editor.chain().focus().toggleHeaderRow().run())
+              }
+            />
+            <div className="my-1 h-px bg-border" />
+            <TableMenuButton
+              destructive
+              icon={<Trash2 />}
+              label="Usuń tabelę"
+              onClick={() =>
+                run(() => editor.chain().focus().deleteTable().run())
+              }
+            />
+          </>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function TableMenuButton({
+  icon,
+  label,
+  destructive = false,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  destructive?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      className={
+        destructive
+          ? "w-full justify-start text-destructive hover:text-destructive"
+          : "w-full justify-start"
+      }
+      onClick={onClick}
+    >
+      {icon}
+      {label}
+    </Button>
   );
 }
 

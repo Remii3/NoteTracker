@@ -1,5 +1,6 @@
 import Highlight from "@tiptap/extension-highlight";
 import Placeholder from "@tiptap/extension-placeholder";
+import { TableKit } from "@tiptap/extension-table";
 import { TextStyleKit } from "@tiptap/extension-text-style";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -17,6 +18,13 @@ const baseExtensions = [
   }),
   TextStyleKit,
   Highlight.configure({ multicolor: true }),
+  TableKit.configure({
+    table: {
+      resizable: true,
+      lastColumnResizable: false,
+      renderWrapper: true,
+    },
+  }),
 ];
 
 const editorExtensions = [

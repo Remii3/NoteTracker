@@ -140,8 +140,9 @@ export function SidebarChapter(props: Props) {
               >
                 <MoreHorizontal />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="min-w-44">
                 <DropdownMenuItem
+                  className="whitespace-nowrap"
                   onClick={() =>
                     onRenameItem({
                       kind: "chapter",
@@ -157,6 +158,7 @@ export function SidebarChapter(props: Props) {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
+                  className="whitespace-nowrap"
                   variant="destructive"
                   onClick={() =>
                     onDeleteItem({
@@ -245,8 +247,9 @@ export function SidebarChapter(props: Props) {
                         >
                           <MoreHorizontal />
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" className="min-w-44">
                           <DropdownMenuItem
+                            className="whitespace-nowrap"
                             onClick={() =>
                               onRenameItem({
                                 kind: "topic",
@@ -263,6 +266,7 @@ export function SidebarChapter(props: Props) {
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
+                            className="whitespace-nowrap"
                             variant="destructive"
                             onClick={() =>
                               onDeleteItem({
