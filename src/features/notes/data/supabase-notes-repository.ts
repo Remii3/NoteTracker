@@ -13,10 +13,7 @@ import type {
   Topic,
 } from "../model/types";
 import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
-
-function throwIfError(error: { message: string } | null) {
-  if (error) throw new Error(error.message);
-}
+import { throwIfPostgrestError } from "./supabase-error";
 
 export class SupabaseNotesRepository implements NotesRepository {
   private readonly client: SupabaseClient<Database>;
@@ -34,7 +31,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       .order("position")
       .order("id")
       .range(offset, offset + limit);
-    throwIfError(error);
+    throwIfPostgrestError(error);
     const rows = data ?? [];
     return {
       chapters: rows.slice(0, limit).map((chapter) => ({
@@ -66,7 +63,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       .eq("chapter_id", chapterId)
       .eq("user_id", this.userId)
       .single();
-    throwIfError(error);
+    throwIfPostgrestError(error);
     if (!data) throw new Error("Nie znaleziono notatki.");
     return data.content as NoteContent;
   }
@@ -89,8 +86,8 @@ export class SupabaseNotesRepository implements NotesRepository {
         .order("position")
         .limit(limit),
     ]);
-    throwIfError(chapterResult.error);
-    throwIfError(topicResult.error);
+    throwIfPostgrestError(chapterResult.error);
+    throwIfPostgrestError(topicResult.error);
 
     const chapters = new Map<string, import("../model/types").Chapter>();
     for (const chapter of chapterResult.data ?? []) {
@@ -122,7 +119,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       .eq("slug", slug)
       .eq("user_id", this.userId)
       .maybeSingle();
-    throwIfError(error);
+    throwIfPostgrestError(error);
     if (!data) return null;
     return {
       id: data.id,
@@ -141,7 +138,7 @@ export class SupabaseNotesRepository implements NotesRepository {
 
   async getLearningSummary() {
     const { data, error } = await this.client.rpc("get_learning_summary");
-    throwIfError(error);
+    throwIfPostgrestError(error);
     return data as LearningSummary;
   }
 
@@ -153,7 +150,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       position: chapter.position,
       user_id: this.userId,
     });
-    throwIfError(error);
+    throwIfPostgrestError(error);
   }
 
   async updateChapter(chapterId: string, update: ChapterUpdate) {
@@ -164,7 +161,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       .eq("user_id", this.userId)
       .select("id")
       .single();
-    throwIfError(error);
+    throwIfPostgrestError(error);
   }
 
   async deleteChapter(chapterId: string) {
@@ -175,7 +172,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       .eq("user_id", this.userId)
       .select("id")
       .single();
-    throwIfError(error);
+    throwIfPostgrestError(error);
   }
 
   async createTopics(chapterId: string, topics: Topic[]) {
@@ -191,7 +188,7 @@ export class SupabaseNotesRepository implements NotesRepository {
         user_id: this.userId,
       })),
     );
-    throwIfError(error);
+    throwIfPostgrestError(error);
   }
 
   async updateTopic(chapterId: string, topicId: string, update: TopicUpdate) {
@@ -203,7 +200,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       .eq("user_id", this.userId)
       .select("id")
       .single();
-    throwIfError(error);
+    throwIfPostgrestError(error);
   }
 
   async updateTopicContent(
@@ -219,7 +216,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       .eq("user_id", this.userId)
       .select("id")
       .single();
-    throwIfError(error);
+    throwIfPostgrestError(error);
   }
 
   async deleteTopic(chapterId: string, topicId: string) {
@@ -231,7 +228,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       .eq("user_id", this.userId)
       .select("id")
       .single();
-    throwIfError(error);
+    throwIfPostgrestError(error);
   }
 
   async setChapterCompleted(chapterId: string, completed: boolean) {
@@ -240,14 +237,14 @@ export class SupabaseNotesRepository implements NotesRepository {
       .update({ completed })
       .eq("chapter_id", chapterId)
       .eq("user_id", this.userId);
-    throwIfError(error);
+    throwIfPostgrestError(error);
   }
 
   async reorderChapters(chapterIds: string[]) {
     const { error } = await this.client.rpc("reorder_chapters", {
       chapter_ids: chapterIds,
     });
-    throwIfError(error);
+    throwIfPostgrestError(error);
   }
 
   async reorderTopics(chapterId: string, topicIds: string[]) {
@@ -255,7 +252,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       target_chapter_id: chapterId,
       topic_ids: topicIds,
     });
-    throwIfError(error);
+    throwIfPostgrestError(error);
   }
 
   async moveTopic(
@@ -274,6 +271,6 @@ export class SupabaseNotesRepository implements NotesRepository {
       target_slug: targetSlug,
       target_topic_ids: targetTopicIds,
     });
-    throwIfError(error);
+    throwIfPostgrestError(error);
   }
 }
