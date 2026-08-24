@@ -142,9 +142,12 @@ export function WorkspaceSidebar({
     <Sidebar collapsible="offcanvas">
       <SidebarHeader className="border-b p-3">
         <div className="flex items-center gap-3 px-1 py-1">
-          <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground">
+          <Button
+            onClick={onOpenHome}
+            className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"
+          >
             <BookOpen className="size-5" />
-          </span>
+          </Button>
           <div>
             <p className="font-semibold leading-tight">NoteTracker</p>
             <p className="text-xs text-muted-foreground">
@@ -242,24 +245,26 @@ export function WorkspaceSidebar({
           </SidebarMenu>
         </SidebarGroup>
         <SidebarGroup>
-          <SidebarGroupLabel>Rozdziały</SidebarGroupLabel>
-          {isEditing && (
-            <>
-              <SidebarGroupAction
-                className="right-8"
-                aria-label="Usuń wiele rozdziałów lub tematów"
-                onClick={onOpenBulkDelete}
-              >
-                <Trash2 />
-              </SidebarGroupAction>
-              <SidebarGroupAction
-                aria-label="Dodaj rozdział lub tematy"
-                onClick={onOpenAddDialog}
-              >
-                <Plus />
-              </SidebarGroupAction>
-            </>
-          )}
+          <div className="sticky top-0 z-20 -mx-2 bg-sidebar/95 px-2 py-1 backdrop-blur-sm">
+            <SidebarGroupLabel>Rozdziały</SidebarGroupLabel>
+            {isEditing && (
+              <>
+                <SidebarGroupAction
+                  className="right-8"
+                  aria-label="Usuń wiele rozdziałów lub tematów"
+                  onClick={onOpenBulkDelete}
+                >
+                  <Trash2 />
+                </SidebarGroupAction>
+                <SidebarGroupAction
+                  aria-label="Dodaj rozdział lub tematy"
+                  onClick={onOpenAddDialog}
+                >
+                  <Plus />
+                </SidebarGroupAction>
+              </>
+            )}
+          </div>
           <SidebarGroupContent>
             {error && (
               <p role="alert" className="mb-2 px-2 text-xs text-destructive">

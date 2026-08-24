@@ -146,14 +146,16 @@ export class SupabaseNotesRepository implements NotesRepository {
     return data as LearningSummary;
   }
 
-  async createChapter(chapter: ChapterSummary) {
-    const { error } = await this.client.from("chapters").insert({
-      id: chapter.id,
-      slug: chapter.slug,
-      title: chapter.title,
-      position: chapter.position,
-      user_id: this.userId,
-    });
+  async createChapters(chapters: ChapterSummary[]) {
+    const { error } = await this.client.from("chapters").insert(
+      chapters.map((chapter) => ({
+        id: chapter.id,
+        slug: chapter.slug,
+        title: chapter.title,
+        position: chapter.position,
+        user_id: this.userId,
+      })),
+    );
     throwIfPostgrestError(error);
   }
 

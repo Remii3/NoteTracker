@@ -70,8 +70,11 @@ export function updateTopic(
   );
 }
 
-export function addChapterToCollection(chapters: Chapter[], chapter: Chapter) {
-  return [...chapters, chapter];
+export function addChaptersToCollection(
+  chapters: Chapter[],
+  addedChapters: Chapter[],
+) {
+  return [...chapters, ...addedChapters];
 }
 
 export function addTopicsToChapter(

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { memoryNotesRepository } from "../data/memory-notes-repository";
 import type { NotesRepository } from "../data/notes-repository";
 import {
-  addChapterToCollection,
+  addChaptersToCollection,
   addTopicsToChapter,
   deleteManagedItem,
   deleteManagedItems,
@@ -380,12 +380,12 @@ export function useNotesStore({
     [applyChapters, refreshSummaries, repository],
   );
 
-  const addChapter = useCallback(
-    (chapter: Chapter) =>
+  const addChapters = useCallback(
+    (chapters: Chapter[]) =>
       runOptimistic(
-        (current) => addChapterToCollection(current, chapter),
-        () => repository.createChapter(chapter),
-        "Nie udało się dodać rozdziału.",
+        (current) => addChaptersToCollection(current, chapters),
+        () => repository.createChapters(chapters),
+        "Nie udało się dodać rozdziałów.",
         true,
       ),
     [repository, runOptimistic],
@@ -470,7 +470,7 @@ export function useNotesStore({
   );
 
   return {
-    addChapter,
+    addChapters,
     addTopics,
     chapters,
     clearError,

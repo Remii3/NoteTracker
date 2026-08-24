@@ -93,12 +93,14 @@ class MemoryNotesRepository implements NotesRepository {
     };
   }
 
-  async createChapter(chapter: ChapterSummary) {
-    this.chapters.push({
-      ...clone(chapter),
-      topics: [],
-      topicsStatus: "loaded",
-    });
+  async createChapters(chapters: ChapterSummary[]) {
+    this.chapters.push(
+      ...chapters.map((chapter) => ({
+        ...clone(chapter),
+        topics: [],
+        topicsStatus: "loaded" as const,
+      })),
+    );
   }
 
   async updateChapter(chapterId: string, update: ChapterUpdate) {

@@ -15,7 +15,7 @@ type Options = {
   isSaving: boolean;
   editorDirty: boolean;
   commands: {
-    addChapter: (chapter: Chapter) => Promise<boolean>;
+    addChapters: (chapters: Chapter[]) => Promise<boolean>;
     addTopics: (chapterId: string, topics: Topic[]) => Promise<boolean>;
     loadChapterTopics: (chapterId: string) => Promise<Topic[] | null>;
     removeItem: (item: ManagedItem) => Promise<boolean>;
@@ -85,28 +85,34 @@ export function useWorkspaceActions({
     return true;
   }
 
-  async function addChapter(title: string) {
-    if (!isEditing || isSaving) return false;
-    const newChapter: Chapter = {
-      id: crypto.randomUUID(),
-      slug: createUniqueSlug(
+  async function addChapters(titles: string[]) {
+    if (!isEditing || isSaving || !titles.length) return false;
+    const usedSlugs = new Set(chapters.map((chapter) => chapter.slug));
+    const newChapters: Chapter[] = titles.map((title, index) => {
+      const slug = createUniqueSlug(title, usedSlugs, "rozdzial");
+      usedSlugs.add(slug);
+      return {
+        id: crypto.randomUUID(),
+        slug,
         title,
-        chapters.map((chapter) => chapter.slug),
-        "rozdzial",
-      ),
-      title,
-      position: (chapters.length + 1) * 1000,
-      topicsCount: 0,
-      completedTopicsCount: 0,
-      firstIncompleteTopicId: null,
-      firstIncompleteTopicSlug: null,
-      topics: [],
-      topicsStatus: "loaded",
-    };
-    if (!(await commands.addChapter(newChapter))) return false;
-    navigateToChapter(newChapter.id);
-    expandChapter(newChapter.id);
-    toast.success(`Dodano rozdział „${title}”.`);
+        position: (chapters.length + index + 1) * 1000,
+        topicsCount: 0,
+        completedTopicsCount: 0,
+        firstIncompleteTopicId: null,
+        firstIncompleteTopicSlug: null,
+        topics: [],
+        topicsStatus: "loaded",
+      };
+    });
+    if (!(await commands.addChapters(newChapters))) return false;
+    const firstChapter = newChapters[0];
+    navigateToChapter(firstChapter.id);
+    expandChapter(firstChapter.id);
+    toast.success(
+      titles.length === 1
+        ? `Dodano rozdział „${titles[0]}”.`
+        : `Dodano ${titles.length} rozdziałów.`,
+    );
     return true;
   }
 
@@ -255,7 +261,7 @@ export function useWorkspaceActions({
   }
 
   return {
-    addChapter,
+    addChapters,
     addTopics,
     deleteItem,
     deleteItems,

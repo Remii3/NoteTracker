@@ -182,7 +182,7 @@ export function NoteWorkspace({
     loadChapterTopics,
   });
   const {
-    addChapter,
+    addChapters,
     addTopics,
     deleteItem: deleteManagedItem,
     deleteItems: deleteManagedItems,
@@ -487,7 +487,7 @@ export function NoteWorkspace({
               chapters={chapters}
               activeChapterId={chapterId}
               onOpenChange={setAddDialogOpen}
-              onAddChapter={addChapter}
+              onAddChapters={addChapters}
               onAddTopics={addTopics}
             />
           )}

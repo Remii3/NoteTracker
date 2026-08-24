@@ -18,9 +18,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { normalizeTitle, titlesAreEqual } from "../lib/title-utils";
+import { normalizeTitle } from "../lib/title-utils";
 import type { Chapter } from "../model/types";
 
 type AddMode = "chapter" | "topics";
@@ -34,7 +33,7 @@ type Props = {
   chapters: Chapter[];
   activeChapterId: string;
   onOpenChange: (open: boolean) => void;
-  onAddChapter: (title: string) => Promise<boolean>;
+  onAddChapters: (titles: string[]) => Promise<boolean>;
   onAddTopics: (chapterId: string, titles: string[]) => Promise<boolean>;
 };
 
@@ -43,11 +42,11 @@ export function AddContentDialog({
   chapters,
   activeChapterId,
   onOpenChange,
-  onAddChapter,
+  onAddChapters,
   onAddTopics,
 }: Props) {
   const [mode, setMode] = useState<AddMode>("topics");
-  const [chapterTitle, setChapterTitle] = useState("");
+  const [chapterTitles, setChapterTitles] = useState("");
   const [topicTitles, setTopicTitles] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,13 +59,15 @@ export function AddContentDialog({
   }));
   const selectedChapterOption =
     chapterOptions.find((option) => option.value === targetChapterId) ?? null;
-  const hasChapterTitle = chapterTitle.trim().length > 0;
+  const hasChapterTitles = chapterTitles
+    .split("\n")
+    .some((title) => title.trim().length > 0);
   const hasTopicTitles = topicTitles
     .split("\n")
     .some((title) => title.trim().length > 0);
   const canSubmit =
     mode === "chapter"
-      ? hasChapterTitle
+      ? hasChapterTitles
       : selectedChapterOption !== null && hasTopicTitles;
 
   function changeMode(nextMode: AddMode) {
@@ -86,17 +87,31 @@ export function AddContentDialog({
     setError(null);
 
     if (mode === "chapter") {
-      const title = chapterTitle.trim();
-      if (!title) return;
-      if (chapters.some((chapter) => titlesAreEqual(chapter.title, title))) {
-        setError("Rozdział o tej nazwie już istnieje.");
+      const titles = chapterTitles
+        .split("\n")
+        .map((title) => title.trim())
+        .filter(Boolean);
+      if (!titles.length) return;
+      const existingNames = new Set(
+        chapters.map((chapter) => normalizeTitle(chapter.title)),
+      );
+      const submittedNames = new Set<string>();
+      const duplicate = titles.find((title) => {
+        const normalized = normalizeTitle(title);
+        if (existingNames.has(normalized) || submittedNames.has(normalized))
+          return true;
+        submittedNames.add(normalized);
+        return false;
+      });
+      if (duplicate) {
+        setError(`Rozdział „${duplicate}” już istnieje.`);
         return;
       }
       setIsSubmitting(true);
-      const added = await onAddChapter(title);
+      const added = await onAddChapters(titles);
       setIsSubmitting(false);
       if (!added) return;
-      setChapterTitle("");
+      setChapterTitles("");
     } else {
       const titles = topicTitles
         .split("\n")
@@ -137,7 +152,7 @@ export function AddContentDialog({
         <DialogHeader>
           <DialogTitle>Dodaj zawartość</DialogTitle>
           <DialogDescription>
-            Utwórz nowy rozdział albo dodaj jeden lub kilka tematów do wybranego
+            Utwórz jeden lub kilka rozdziałów albo dodaj tematy do wybranego
             rozdziału.
           </DialogDescription>
         </DialogHeader>
@@ -163,19 +178,27 @@ export function AddContentDialog({
           <div className="-mx-2 -my-1 min-h-0 flex-1 space-y-5 overflow-y-auto px-2 py-1">
             {mode === "chapter" ? (
               <div className="space-y-2">
-                <label htmlFor="chapter-title" className="text-sm font-medium">
-                  Nazwa rozdziału
+                <label htmlFor="chapter-titles" className="text-sm font-medium">
+                  Nazwy rozdziałów
                 </label>
-                <Input
-                  id="chapter-title"
+                <Textarea
+                  id="chapter-titles"
                   autoFocus
-                  value={chapterTitle}
+                  value={chapterTitles}
                   onChange={(event) => {
-                    setChapterTitle(event.target.value);
+                    setChapterTitles(event.target.value);
                     setError(null);
                   }}
-                  placeholder="np. JavaScript"
+                  placeholder={"JavaScript\nTypeScript\nReact"}
+                  className="min-h-36"
+                  aria-describedby="chapter-titles-hint"
                 />
+                <p
+                  id="chapter-titles-hint"
+                  className="text-xs text-muted-foreground"
+                >
+                  Każdy wiersz utworzy osobny rozdział.
+                </p>
               </div>
             ) : (
               <>
@@ -261,7 +284,7 @@ export function AddContentDialog({
               {isSubmitting
                 ? "Dodawanie…"
                 : mode === "chapter"
-                  ? "Dodaj rozdział"
+                  ? "Dodaj rozdziały"
                   : "Dodaj tematy"}
             </Button>
           </DialogFooter>

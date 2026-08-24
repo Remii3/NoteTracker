@@ -21,7 +21,7 @@ export interface NotesRepository {
     limit?: number,
   ): Promise<import("../model/types").Chapter[]>;
   getLearningSummary(): Promise<LearningSummary>;
-  createChapter(chapter: ChapterSummary): Promise<void>;
+  createChapters(chapters: ChapterSummary[]): Promise<void>;
   updateChapter(chapterId: string, update: ChapterUpdate): Promise<void>;
   deleteChapter(chapterId: string): Promise<void>;
   createTopics(chapterId: string, topics: Topic[]): Promise<void>;
