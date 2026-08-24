@@ -96,7 +96,7 @@ export function BulkDeleteDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && !submitting && onClose()}>
-      <DialogContent className="flex max-h-[min(90dvh,52rem)] flex-col overflow-hidden sm:max-w-2xl">
+      <DialogContent className="flex max-h-[min(90dvh,52rem)] flex-col overflow-hidden sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Usuń wiele elementów</DialogTitle>
           <DialogDescription>

@@ -206,7 +206,7 @@ export function TopicImagesSection({ topicId, isEditing, service }: Props) {
         open={Boolean(pendingDelete)}
         onOpenChange={(open) => !open && setPendingDelete(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="sm:max-w-xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Usunąć zdjęcie?</AlertDialogTitle>
             <AlertDialogDescription>

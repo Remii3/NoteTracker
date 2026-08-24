@@ -16,11 +16,10 @@ import {
   Layers3,
   Home,
   LogOut,
-  Plus,
   Search,
-  Trash2,
   X,
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -39,9 +38,7 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupAction,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -72,7 +69,6 @@ type Props = {
   onOpenChapters: () => void;
   onOpenQuestions: () => void;
   onOpenAddDialog: () => void;
-  onOpenBulkDelete: () => void;
   onSelectChapter: (chapter: Chapter) => void;
   onSelectTopic: (chapterId: string, topicId: string) => void;
   onToggleExpanded: (chapterId: string, open: boolean) => void;
@@ -116,7 +112,6 @@ export function WorkspaceSidebar({
   onOpenChapters,
   onOpenQuestions,
   onOpenAddDialog,
-  onOpenBulkDelete,
   onSelectChapter,
   onSelectTopic,
   onToggleExpanded,
@@ -137,6 +132,20 @@ export function WorkspaceSidebar({
 }: Props) {
   const hasSearch = search.trim().length > 0;
   const isEmpty = chapters.length === 0 && !hasSearch;
+  const navigationSentinelRef = useRef<HTMLDivElement>(null);
+  const [primaryNavigationVisible, setPrimaryNavigationVisible] =
+    useState(true);
+
+  useEffect(() => {
+    const sentinel = navigationSentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setPrimaryNavigationVisible(entry.isIntersecting),
+      { threshold: 0.01 },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <Sidebar collapsible="offcanvas">
@@ -243,27 +252,49 @@ export function WorkspaceSidebar({
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
+          <div ref={navigationSentinelRef} className="h-px" aria-hidden />
         </SidebarGroup>
         <SidebarGroup>
           <div className="sticky top-0 z-20 -mx-2 bg-sidebar/95 px-2 py-1 backdrop-blur-sm">
-            <SidebarGroupLabel>Rozdziały</SidebarGroupLabel>
-            {isEditing && (
-              <>
-                <SidebarGroupAction
-                  className="right-8"
-                  aria-label="Usuń wiele rozdziałów lub tematów"
-                  onClick={onOpenBulkDelete}
-                >
-                  <Trash2 />
-                </SidebarGroupAction>
-                <SidebarGroupAction
-                  aria-label="Dodaj rozdział lub tematy"
-                  onClick={onOpenAddDialog}
-                >
-                  <Plus />
-                </SidebarGroupAction>
-              </>
-            )}
+            <div className="flex h-8 items-center gap-1 px-2">
+              <span className="mr-auto text-xs font-medium text-sidebar-foreground/70">
+                Rozdziały
+              </span>
+              {!primaryNavigationVisible && (
+                <>
+                  <Button
+                    type="button"
+                    variant={isHome ? "secondary" : "ghost"}
+                    size="icon-xs"
+                    title="Strona główna"
+                    aria-label="Przejdź do strony głównej"
+                    onClick={onOpenHome}
+                  >
+                    <Home />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={isChapters ? "secondary" : "ghost"}
+                    size="icon-xs"
+                    title="Wszystkie rozdziały"
+                    aria-label="Przejdź do wszystkich rozdziałów"
+                    onClick={onOpenChapters}
+                  >
+                    <LibraryBig />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={isQuestions ? "secondary" : "ghost"}
+                    size="icon-xs"
+                    title="Baza pytań"
+                    aria-label="Przejdź do bazy pytań"
+                    onClick={onOpenQuestions}
+                  >
+                    <Layers3 />
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
           <SidebarGroupContent>
             {error && (

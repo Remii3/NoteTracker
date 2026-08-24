@@ -3,6 +3,15 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
+  Combobox,
+  ComboboxCollection,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -26,6 +35,11 @@ type Props = {
   onSaved: () => void;
 };
 
+type SelectOption = {
+  value: string;
+  label: string;
+};
+
 export function QuestionDialog({
   question,
   chapters,
@@ -47,16 +61,52 @@ export function QuestionDialog({
   const [topics, setTopics] = useState<Topic[]>(
     chapters.find((item) => item.id === chapterId)?.topics ?? [],
   );
+  const [topicsLoading, setTopicsLoading] = useState(Boolean(chapterId));
+  const [topicsError, setTopicsError] = useState(false);
   const [options, setOptions] = useState<QuestionOption[]>(
     question?.options ?? [{ content: "", isCorrect: true }],
   );
   const [saving, setSaving] = useState(false);
+  const chapterOptions: SelectOption[] = chapters.map((chapter) => ({
+    value: chapter.id,
+    label: chapter.title,
+  }));
+  const topicOptions: SelectOption[] = topics.map((topic) => ({
+    value: topic.id,
+    label: topic.title,
+  }));
+  const selectedChapterOption =
+    chapterOptions.find((option) => option.value === chapterId) ?? null;
+  const selectedTopicOption =
+    topicOptions.find((option) => option.value === topicId) ?? null;
 
   useEffect(() => {
     if (!chapterId) {
+      queueMicrotask(() => {
+        setTopics([]);
+        setTopicsLoading(false);
+        setTopicsError(false);
+      });
       return;
     }
-    void loadTopics(chapterId).then((items) => setTopics(items ?? []));
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setTopicsLoading(true);
+      setTopicsError(false);
+    });
+    void loadTopics(chapterId).then((items) => {
+      if (cancelled) return;
+      setTopics(items ?? []);
+      setTopicsLoading(false);
+      setTopicsError(items === null);
+      setTopicId((current) =>
+        current && !items?.some((topic) => topic.id === current) ? "" : current,
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [chapterId, loadTopics]);
   const normalized = options.map((option) => option.content.trim());
   const valid = Boolean(
@@ -166,41 +216,92 @@ export function QuestionDialog({
           />
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="space-y-2">
+          <div className="space-y-2">
             <span className="font-medium">Rozdział</span>
-            <select
-              className="h-9 w-full rounded-md border bg-background px-3"
-              value={chapterId}
-              onChange={(event) => {
-                setChapterId(event.target.value);
+            <Combobox
+              items={chapterOptions}
+              value={selectedChapterOption}
+              onValueChange={(option) => {
+                setChapterId(option?.value ?? "");
                 setTopicId("");
                 setTopics([]);
+                setTopicsError(false);
               }}
+              itemToStringLabel={(option) => option.label}
+              itemToStringValue={(option) => option.value}
+              isItemEqualToValue={(option, value) =>
+                option.value === value.value
+              }
             >
-              <option value="">Nieprzypisane</option>
-              {chapters.map((chapter) => (
-                <option key={chapter.id} value={chapter.id}>
-                  {chapter.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-2">
+              <ComboboxInput
+                className="w-full"
+                placeholder="Wyszukaj rozdział…"
+                showClear={Boolean(selectedChapterOption)}
+              />
+              <ComboboxContent>
+                <ComboboxEmpty>Nie znaleziono rozdziału.</ComboboxEmpty>
+                <ComboboxList>
+                  <ComboboxCollection>
+                    {(option: SelectOption) => (
+                      <ComboboxItem key={option.value} value={option}>
+                        {option.label}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxCollection>
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+            {!chapterId && (
+              <span className="block text-xs text-muted-foreground">
+                Pozostaw puste, aby nie przypisywać pytania.
+              </span>
+            )}
+          </div>
+          <div className="space-y-2">
             <span className="font-medium">Temat</span>
-            <select
-              className="h-9 w-full rounded-md border bg-background px-3"
-              value={topicId}
-              disabled={!chapterId}
-              onChange={(event) => setTopicId(event.target.value)}
+            <Combobox
+              items={topicOptions}
+              value={selectedTopicOption}
+              onValueChange={(option) => setTopicId(option?.value ?? "")}
+              itemToStringLabel={(option) => option.label}
+              itemToStringValue={(option) => option.value}
+              isItemEqualToValue={(option, value) =>
+                option.value === value.value
+              }
             >
-              <option value="">Bez konkretnego tematu</option>
-              {topics.map((topic) => (
-                <option key={topic.id} value={topic.id}>
-                  {topic.title}
-                </option>
-              ))}
-            </select>
-          </label>
+              <ComboboxInput
+                className="w-full"
+                disabled={!chapterId || topicsLoading || topicsError}
+                showClear={Boolean(selectedTopicOption)}
+                placeholder={
+                  !chapterId
+                    ? "Najpierw wybierz rozdział"
+                    : topicsLoading
+                      ? "Ładowanie tematów…"
+                      : topicsError
+                        ? "Nie udało się pobrać tematów"
+                        : "Wyszukaj temat…"
+                }
+              />
+              <ComboboxContent>
+                <ComboboxEmpty>Nie znaleziono tematu.</ComboboxEmpty>
+                <ComboboxList>
+                  <ComboboxCollection>
+                    {(option: SelectOption) => (
+                      <ComboboxItem key={option.value} value={option}>
+                        {option.label}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxCollection>
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+            {!topicsLoading && !topicsError && chapterId && !topics.length && (
+              <span className="block text-xs text-muted-foreground">
+                Ten rozdział nie ma jeszcze tematów.
+              </span>
+            )}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>

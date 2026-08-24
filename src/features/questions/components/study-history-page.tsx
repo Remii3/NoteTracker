@@ -151,7 +151,7 @@ export function StudyHistoryPage({ repository, onBack, onOpenSession }: Props) {
         open={Boolean(abandoning)}
         onOpenChange={(open) => !open && setAbandoning(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="sm:max-w-xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Porzucić tę sesję?</AlertDialogTitle>
             <AlertDialogDescription>

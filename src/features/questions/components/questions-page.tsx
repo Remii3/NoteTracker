@@ -355,7 +355,7 @@ function StudySetup({
       : scopeAvailability?.flashcardsCount;
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
             {mode === "test" ? "Rozpocznij test" : "Rozpocznij fiszki"}

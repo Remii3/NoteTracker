@@ -375,7 +375,6 @@ export function NoteWorkspace({
           onOpenChapters={openChapters}
           onOpenQuestions={openQuestions}
           onOpenAddDialog={() => setAddDialogOpen(true)}
-          onOpenBulkDelete={() => setBulkDeleteOpen(true)}
           onSelectChapter={selectChapter}
           onSelectTopic={requestTopicSelection}
           onToggleExpanded={(nextChapterId, open) => {
@@ -411,6 +410,8 @@ export function NoteWorkspace({
             isEditing={isEditing}
             onChangeEditingMode={changeEditingMode}
             onPreloadEditor={preloadRichTextEditor}
+            onOpenAddDialog={() => setAddDialogOpen(true)}
+            onOpenBulkDelete={() => setBulkDeleteOpen(true)}
           />
 
           {activeView === "home" ? (

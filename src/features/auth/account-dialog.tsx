@@ -41,7 +41,7 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Ustawienia konta</DialogTitle>
           <DialogDescription>

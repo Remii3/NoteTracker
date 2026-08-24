@@ -59,7 +59,7 @@ export function RenameItemDialog({ item, onClose, onRename }: RenameProps) {
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
             Zmień nazwę {item.kind === "chapter" ? "rozdziału" : "tematu"}
@@ -110,7 +110,7 @@ export function DeleteItemDialog({ item, onClose, onDelete }: DeleteProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   return (
     <AlertDialog open onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent>
+      <AlertDialogContent className="sm:max-w-xl">
         <AlertDialogHeader>
           <AlertDialogTitle>
             Usunąć {isChapter ? "rozdział" : "temat"} „{item.title}”?
@@ -158,7 +158,7 @@ export function UnsavedChangesDialog({
 }: UnsavedProps) {
   return (
     <AlertDialog open onOpenChange={(open) => !open && onCancel()}>
-      <AlertDialogContent>
+      <AlertDialogContent className="sm:max-w-xl">
         <AlertDialogHeader>
           <AlertDialogTitle>Masz niezapisane zmiany</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
