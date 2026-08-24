@@ -4,6 +4,7 @@ import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
 import { createUniqueSlug } from "../lib/slug-utils";
 import type { Chapter, NoteContent, Topic } from "../model/types";
 import type { ManagedItem } from "../model/workspace-types";
+import type { TopicImagesService } from "../data/topic-images-service";
 
 type Options = {
   chapters: Chapter[];
@@ -30,6 +31,7 @@ type Options = {
       completed: boolean,
     ) => Promise<boolean>;
   };
+  imagesService?: TopicImagesService;
   expandChapter: (chapterId: string) => void;
   clearDraft: (topicId: string) => void;
   getDraftContent: (topic: Topic) => Topic["content"];
@@ -50,6 +52,7 @@ export function useWorkspaceActions({
   isSaving,
   editorDirty,
   commands,
+  imagesService,
   expandChapter,
   clearDraft,
   getDraftContent,
@@ -148,6 +151,21 @@ export function useWorkspaceActions({
 
   async function deleteItem(item: ManagedItem) {
     if (!isEditing || isSaving) return false;
+    try {
+      if (item.kind === "chapter") {
+        const deletedChapter = chapters.find(
+          (chapter) => chapter.id === item.id,
+        );
+        for (const child of deletedChapter?.topics ?? []) {
+          await imagesService?.removeAll(child.id);
+        }
+      } else {
+        await imagesService?.removeAll(item.id);
+      }
+    } catch {
+      toast.error("Nie udało się usunąć zdjęć powiązanych z tym elementem.");
+      return false;
+    }
     if (item.kind === "chapter") {
       const remaining = chapters.filter((chapter) => chapter.id !== item.id);
       if (!(await commands.removeItem(item))) return false;

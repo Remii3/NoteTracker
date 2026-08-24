@@ -31,6 +31,7 @@ import { EMPTY_RICH_TEXT } from "./model/rich-text-content";
 import type { Chapter } from "./model/types";
 import type { StudyTopic } from "./model/workspace-types";
 import type { NotesRepository } from "./data/notes-repository";
+import type { TopicImagesService } from "./data/topic-images-service";
 
 const AddContentDialog = lazy(() =>
   import("./components/add-content-dialog").then((module) => ({
@@ -54,6 +55,7 @@ const UnsavedChangesDialog = lazy(() =>
 );
 type Props = {
   repository?: NotesRepository;
+  imagesService?: TopicImagesService;
   initialChapters?: Chapter[];
   loadOnMount?: boolean;
   userName?: string;
@@ -64,6 +66,7 @@ type Props = {
 
 export function NoteWorkspace({
   repository,
+  imagesService,
   initialChapters,
   loadOnMount,
   userName,
@@ -180,6 +183,7 @@ export function NoteWorkspace({
     isSaving: notesStore.isSaving,
     editorDirty,
     commands: notesStore,
+    imagesService,
     expandChapter,
     clearDraft,
     getDraftContent,
@@ -378,6 +382,7 @@ export function NoteWorkspace({
               richTextModule={
                 topic?.contentLoaded === false ? null : richTextModule
               }
+              imagesService={imagesService}
               onContentChange={(content) => {
                 if (isEditing && topic) updateDraft(topic, content);
               }}

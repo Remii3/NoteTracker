@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { AccountDialog, getUserDisplayName, useAuth } from "@/features/auth";
 import { supabase } from "@/lib/supabase/client";
+import { R2TopicImagesService } from "./data/r2-topic-images-service";
 import { SupabaseNotesRepository } from "./data/supabase-notes-repository";
 import { NoteWorkspace } from "./note-workspace";
 
@@ -13,6 +14,15 @@ export function SupabaseNoteWorkspace() {
     () => new SupabaseNotesRepository(supabase, user?.id ?? ""),
     [user?.id],
   );
+  const imagesApiUrl = import.meta.env.VITE_R2_IMAGES_API_URL as
+    string | undefined;
+  const imagesService = useMemo(
+    () =>
+      imagesApiUrl
+        ? new R2TopicImagesService(supabase, imagesApiUrl.replace(/\/$/, ""))
+        : undefined,
+    [imagesApiUrl],
+  );
 
   if (!user) return null;
 
@@ -21,6 +31,7 @@ export function SupabaseNoteWorkspace() {
       <NoteWorkspace
         key={user.id}
         repository={repository}
+        imagesService={imagesService}
         initialChapters={[]}
         loadOnMount
         userName={getUserDisplayName(user)}

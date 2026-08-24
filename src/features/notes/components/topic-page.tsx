@@ -1,8 +1,10 @@
-import { ImagePlus, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import type { TopicImagesService } from "../data/topic-images-service";
 import type { Chapter, NoteContent, Topic } from "../model/types";
+import { TopicImagesSection } from "./topic-images-section";
 
 type RichTextModule = typeof import("./rich-text-editor");
 
@@ -14,6 +16,7 @@ type Props = {
   editorDirty: boolean;
   isSaving: boolean;
   richTextModule: RichTextModule | null;
+  imagesService?: TopicImagesService;
   onContentChange: (content: NoteContent) => void;
   onSaveContent: () => void;
   onToggleCompleted: (completed: boolean) => void;
@@ -28,6 +31,7 @@ export function TopicPage({
   editorDirty,
   isSaving,
   richTextModule,
+  imagesService,
   onContentChange,
   onSaveContent,
   onToggleCompleted,
@@ -106,37 +110,12 @@ export function TopicPage({
               </div>
             )}
           </section>
-          <section>
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold">Zdjęcia</h3>
-                <p className="text-sm text-muted-foreground">
-                  Prywatne, widoczne tylko dla Ciebie.
-                </p>
-              </div>
-              {isEditing && (
-                <Button variant="outline" size="sm">
-                  <ImagePlus /> Dodaj zdjęcie
-                </Button>
-              )}
-            </div>
-            {isEditing ? (
-              <Button
-                variant="outline"
-                className="flex h-52 w-full flex-col border-dashed bg-muted/20 hover:bg-muted/50"
-              >
-                <ImagePlus className="mb-3 size-7 text-muted-foreground" />
-                <span>Przeciągnij zdjęcia tutaj</span>
-                <span className="text-xs font-normal text-muted-foreground">
-                  albo kliknij, aby wybrać pliki
-                </span>
-              </Button>
-            ) : (
-              <div className="grid h-52 place-items-center rounded-lg border border-dashed bg-muted/20 text-sm text-muted-foreground">
-                Brak zdjęć.
-              </div>
-            )}
-          </section>
+          <TopicImagesSection
+            key={topic.id}
+            topicId={topic.id}
+            isEditing={isEditing}
+            service={imagesService}
+          />
         </div>
       ) : (
         <div className="grid min-h-[70dvh] place-items-center">
