@@ -13,11 +13,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { TopicImagesService } from "../data/topic-images-service";
 import { useTopicImages } from "../hooks/use-topic-images";
 import type { TopicImage } from "../model/topic-image";
+import { ImagePreviewDialog } from "./image-preview-dialog";
 
 type Props = {
   topicId: string;
@@ -27,7 +27,7 @@ type Props = {
 
 export function TopicImagesSection({ topicId, isEditing, service }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<TopicImage | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<TopicImage | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const { error, images, isLoading, isUploading, remove, removingId, upload } =
@@ -117,7 +117,7 @@ export function TopicImagesSection({ topicId, isEditing, service }: Props) {
                   <button
                     type="button"
                     className="block aspect-4/3 w-full cursor-zoom-in"
-                    onClick={() => setPreview(image)}
+                    onClick={() => setPreviewId(image.id)}
                   >
                     <img
                       src={image.url}
@@ -188,23 +188,11 @@ export function TopicImagesSection({ topicId, isEditing, service }: Props) {
         </>
       )}
 
-      <Dialog
-        open={Boolean(preview)}
-        onOpenChange={(open) => !open && setPreview(null)}
-      >
-        <DialogContent className="h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] bg-black/95 p-3 ring-white/10 sm:max-w-[calc(100%-2rem)]">
-          <DialogTitle className="sr-only">
-            {preview?.originalFilename ?? "Podgląd zdjęcia"}
-          </DialogTitle>
-          {preview && (
-            <img
-              src={preview.url}
-              alt={preview.originalFilename}
-              className="size-full object-contain"
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      <ImagePreviewDialog
+        images={images}
+        previewId={previewId}
+        onPreviewChange={setPreviewId}
+      />
 
       <AlertDialog
         open={Boolean(pendingDelete)}
