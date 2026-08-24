@@ -5,8 +5,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { TopicImagesService } from "../data/topic-images-service";
 import type { Chapter, NoteContent, Topic } from "../model/types";
 import { TopicImagesSection } from "./topic-images-section";
-import { TopicFlashcardsSection } from "@/features/flashcards/components/topic-flashcards-section";
-import type { FlashcardsRepository } from "@/features/flashcards/data/flashcards-repository";
+import { TopicQuestionsSection } from "@/features/questions/components/topic-questions-section";
+import type { QuestionsRepository } from "@/features/questions/data/questions-repository";
 
 type RichTextModule = typeof import("./rich-text-editor");
 
@@ -19,7 +19,9 @@ type Props = {
   isSaving: boolean;
   richTextModule: RichTextModule | null;
   imagesService?: TopicImagesService;
-  flashcardsRepository?: FlashcardsRepository;
+  questionsRepository?: QuestionsRepository;
+  chapters: Chapter[];
+  loadChapterTopics: (chapterId: string) => Promise<Topic[] | null>;
   onContentChange: (content: NoteContent) => void;
   onSaveContent: () => void;
   onToggleCompleted: (completed: boolean) => void;
@@ -35,7 +37,9 @@ export function TopicPage({
   isSaving,
   richTextModule,
   imagesService,
-  flashcardsRepository,
+  questionsRepository,
+  chapters,
+  loadChapterTopics,
   onContentChange,
   onSaveContent,
   onToggleCompleted,
@@ -120,11 +124,14 @@ export function TopicPage({
             isEditing={isEditing}
             service={imagesService}
           />
-          <TopicFlashcardsSection
-            key={`flashcards-${topic.id}`}
-            topicId={topic.id}
+          <TopicQuestionsSection
+            key={`questions-${topic.id}`}
+            chapter={chapter}
+            topic={topic}
             isEditing={isEditing}
-            repository={flashcardsRepository}
+            chapters={chapters}
+            repository={questionsRepository}
+            loadTopics={loadChapterTopics}
           />
         </div>
       ) : (

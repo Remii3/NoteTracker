@@ -59,7 +59,7 @@ type Props = {
   topicId: string;
   isHome: boolean;
   isChapters: boolean;
-  isFlashcards: boolean;
+  isQuestions: boolean;
   isEditing: boolean;
   search: string;
   sortMode: SortMode;
@@ -69,7 +69,7 @@ type Props = {
   onSortModeChange: (value: SortMode) => void;
   onOpenHome: () => void;
   onOpenChapters: () => void;
-  onOpenFlashcards: () => void;
+  onOpenQuestions: () => void;
   onOpenAddDialog: () => void;
   onSelectChapter: (chapter: Chapter) => void;
   onSelectTopic: (chapterId: string, topicId: string) => void;
@@ -102,7 +102,7 @@ export function WorkspaceSidebar({
   topicId,
   isHome,
   isChapters,
-  isFlashcards,
+  isQuestions,
   isEditing,
   search,
   sortMode,
@@ -112,7 +112,7 @@ export function WorkspaceSidebar({
   onSortModeChange,
   onOpenHome,
   onOpenChapters,
-  onOpenFlashcards,
+  onOpenQuestions,
   onOpenAddDialog,
   onSelectChapter,
   onSelectTopic,
@@ -229,11 +229,11 @@ export function WorkspaceSidebar({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
-                isActive={isFlashcards}
-                onClick={onOpenFlashcards}
+                isActive={isQuestions}
+                onClick={onOpenQuestions}
               >
                 <Layers3 />
-                <span>Fiszki</span>
+                <span>Baza pytań</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

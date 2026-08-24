@@ -1,4 +1,4 @@
-export type ActiveView = "home" | "chapters" | "flashcards" | "notes";
+export type ActiveView = "home" | "chapters" | "questions" | "notes";
 
 export type SortMode = "manual" | "az" | "za" | "completed" | "incomplete";
 

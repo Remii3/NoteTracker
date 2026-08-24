@@ -9,33 +9,82 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      flashcards: {
+      questions: {
         Row: {
           id: string;
           user_id: string;
-          topic_id: string;
-          question: string;
-          answer: string;
+          chapter_id: string | null;
+          topic_id: string | null;
+          content: string;
+          explanation: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
-          topic_id: string;
-          question: string;
-          answer: string;
-          created_at?: string;
+          chapter_id?: string | null;
+          topic_id?: string | null;
+          content: string;
+          explanation?: string | null;
+        };
+        Update: {
+          chapter_id?: string | null;
+          topic_id?: string | null;
+          content?: string;
+          explanation?: string | null;
           updated_at?: string;
         };
-        Update: { question?: string; answer?: string; updated_at?: string };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "questions_chapter_id_fkey";
+            columns: ["chapter_id"];
+            isOneToOne: false;
+            referencedRelation: "chapters";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "questions_topic_id_fkey";
+            columns: ["topic_id"];
+            isOneToOne: false;
+            referencedRelation: "topics";
+            referencedColumns: ["id"];
+          },
+        ];
       };
-      flashcard_sessions: {
+      question_options: {
         Row: {
           id: string;
           user_id: string;
-          mode: "chapter" | "all" | "random_chapters" | "retry";
+          question_id: string;
+          content: string;
+          is_correct: boolean;
+          position: number;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          question_id: string;
+          content: string;
+          is_correct?: boolean;
+          position: number;
+        };
+        Update: { content?: string; is_correct?: boolean; position?: number };
+        Relationships: [
+          {
+            foreignKeyName: "question_options_question_id_fkey";
+            columns: ["question_id"];
+            isOneToOne: false;
+            referencedRelation: "questions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      study_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          mode: "flashcards" | "test";
           status: "in_progress" | "completed" | "abandoned";
           configuration: Json;
           started_at: string;
@@ -44,11 +93,9 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
-          mode: "chapter" | "all" | "random_chapters" | "retry";
+          mode: "flashcards" | "test";
           status?: "in_progress" | "completed" | "abandoned";
           configuration?: Json;
-          started_at?: string;
-          completed_at?: string | null;
         };
         Update: {
           status?: "in_progress" | "completed" | "abandoned";
@@ -56,31 +103,33 @@ export type Database = {
         };
         Relationships: [];
       };
-      flashcard_session_items: {
+      study_session_items: {
         Row: {
           id: string;
           user_id: string;
           session_id: string;
-          flashcard_id: string | null;
+          question_id: string | null;
           position: number;
           question_snapshot: string;
-          answer_snapshot: string;
-          result: "remembered" | "forgotten" | null;
+          options_snapshot: Json;
+          explanation_snapshot: string | null;
+          selected_option_id: string | null;
+          result: "remembered" | "forgotten" | "correct" | "incorrect" | null;
           answered_at: string | null;
         };
         Insert: {
           id?: string;
           user_id: string;
           session_id: string;
-          flashcard_id?: string | null;
+          question_id?: string | null;
           position: number;
           question_snapshot: string;
-          answer_snapshot: string;
-          result?: "remembered" | "forgotten" | null;
-          answered_at?: string | null;
+          options_snapshot: Json;
+          explanation_snapshot?: string | null;
         };
         Update: {
-          result?: "remembered" | "forgotten" | null;
+          selected_option_id?: string | null;
+          result?: "remembered" | "forgotten" | "correct" | "incorrect" | null;
           answered_at?: string | null;
         };
         Relationships: [];
@@ -153,12 +202,33 @@ export type Database = {
     };
     Views: Record<never, never>;
     Functions: {
-      create_flashcard_session: {
+      get_question_bank_availability: {
         Args: {
-          session_mode: string;
           selected_chapter_id?: string | null;
+          selected_topic_id?: string | null;
+          only_unassigned?: boolean;
+        };
+        Returns: Json;
+      };
+      create_study_session: {
+        Args: {
+          study_mode: string;
+          scope_mode: string;
+          selected_chapter_id?: string | null;
+          selected_topic_id?: string | null;
           random_chapter_count?: number;
-          requested_card_count?: number | null;
+          requested_question_count?: number | null;
+        };
+        Returns: string;
+      };
+      save_question: {
+        Args: {
+          question_id: string | null;
+          question_content: string;
+          question_explanation: string;
+          selected_chapter_id: string | null;
+          selected_topic_id: string | null;
+          options: Json;
         };
         Returns: string;
       };
@@ -192,10 +262,6 @@ export type Database = {
       reorder_topics: {
         Args: { target_chapter_id: string; topic_ids: string[] };
         Returns: undefined;
-      };
-      retry_flashcard_session: {
-        Args: { source_session_id: string };
-        Returns: string;
       };
     };
     Enums: Record<never, never>;

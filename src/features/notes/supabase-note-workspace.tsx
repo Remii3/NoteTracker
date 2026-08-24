@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase/client";
 import { R2TopicImagesService } from "./data/r2-topic-images-service";
 import { SupabaseNotesRepository } from "./data/supabase-notes-repository";
 import { NoteWorkspace } from "./note-workspace";
-import { SupabaseFlashcardsRepository } from "@/features/flashcards/data/supabase-flashcards-repository";
+import { SupabaseQuestionsRepository } from "@/features/questions/data/supabase-questions-repository";
 
 export function SupabaseNoteWorkspace() {
   const { user, signOut } = useAuth();
@@ -15,8 +15,8 @@ export function SupabaseNoteWorkspace() {
     () => new SupabaseNotesRepository(supabase, user?.id ?? ""),
     [user?.id],
   );
-  const flashcardsRepository = useMemo(
-    () => new SupabaseFlashcardsRepository(supabase, user?.id ?? ""),
+  const questionsRepository = useMemo(
+    () => new SupabaseQuestionsRepository(supabase, user?.id ?? ""),
     [user?.id],
   );
   const imagesApiUrl = import.meta.env.VITE_R2_IMAGES_API_URL as
@@ -37,7 +37,7 @@ export function SupabaseNoteWorkspace() {
         key={user.id}
         repository={repository}
         imagesService={imagesService}
-        flashcardsRepository={flashcardsRepository}
+        questionsRepository={questionsRepository}
         initialChapters={[]}
         loadOnMount
         userName={getUserDisplayName(user)}

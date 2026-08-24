@@ -29,8 +29,9 @@ export function useWorkspaceRoute({
   const topicSlug = topicRoute?.params.topicSlug ?? "";
   const activeView: ActiveView = chapterSlug
     ? "notes"
-    : location.pathname.startsWith("/flashcards")
-      ? "flashcards"
+    : location.pathname === "/questions" ||
+        location.pathname.startsWith("/study/")
+      ? "questions"
       : location.pathname === "/chapters"
         ? "chapters"
         : "home";
@@ -60,12 +61,12 @@ export function useWorkspaceRoute({
   );
   const navigateHome = useCallback(() => navigate("/"), [navigate]);
   const navigateChapters = useCallback(() => navigate("/chapters"), [navigate]);
-  const navigateFlashcards = useCallback(
-    () => navigate("/flashcards"),
+  const navigateQuestions = useCallback(
+    () => navigate("/questions"),
     [navigate],
   );
-  const navigateFlashcardSession = useCallback(
-    (id: string) => navigate(`/flashcards/sessions/${id}`),
+  const navigateStudySession = useCallback(
+    (mode: string, id: string) => navigate(`/study/${mode}/${id}`),
     [navigate],
   );
 
@@ -120,8 +121,8 @@ export function useWorkspaceRoute({
     editorDirty,
     navigateHome,
     navigateChapters,
-    navigateFlashcards,
-    navigateFlashcardSession,
+    navigateQuestions,
+    navigateStudySession,
     navigateToChapter,
     navigationBlocker,
     topic,
