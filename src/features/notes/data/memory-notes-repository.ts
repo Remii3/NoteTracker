@@ -130,6 +130,17 @@ class MemoryNotesRepository implements NotesRepository {
     chapter.topics = chapter.topics.filter((topic) => topic.id !== topicId);
   }
 
+  async deleteItems(chapterIds: string[], topicIds: string[]) {
+    const selectedChapters = new Set(chapterIds);
+    const selectedTopics = new Set(topicIds);
+    this.chapters = this.chapters
+      .filter((chapter) => !selectedChapters.has(chapter.id))
+      .map((chapter) => ({
+        ...chapter,
+        topics: chapter.topics.filter((topic) => !selectedTopics.has(topic.id)),
+      }));
+  }
+
   async setChapterCompleted(chapterId: string, completed: boolean) {
     const chapter = this.getChapter(chapterId);
     chapter.topics = chapter.topics.map((topic) => ({

@@ -1,5 +1,6 @@
 import {
   BookOpenCheck,
+  History,
   Layers3,
   Pencil,
   Plus,
@@ -29,6 +30,7 @@ type Props = {
   repository: QuestionsRepository;
   loadTopics: (chapterId: string) => Promise<Topic[] | null>;
   onOpenSession: (mode: StudyMode, id: string) => void;
+  onOpenHistory: () => void;
 };
 
 export function QuestionsPage({
@@ -36,6 +38,7 @@ export function QuestionsPage({
   repository,
   loadTopics,
   onOpenSession,
+  onOpenHistory,
 }: Props) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [total, setTotal] = useState(0);
@@ -86,6 +89,9 @@ export function QuestionsPage({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={onOpenHistory}>
+              <History /> Historia
+            </Button>
             <Button
               variant="outline"
               disabled={!availability || availability.flashcardsCount === 0}

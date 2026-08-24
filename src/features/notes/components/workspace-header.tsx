@@ -12,6 +12,7 @@ type Props = {
   isHome: boolean;
   isChapters?: boolean;
   isQuestions?: boolean;
+  isQuestionHistory?: boolean;
   chapterTitle?: string;
   topicTitle?: string;
   isEditing: boolean;
@@ -23,6 +24,7 @@ export function WorkspaceHeader({
   isHome,
   isChapters,
   isQuestions,
+  isQuestionHistory,
   chapterTitle,
   topicTitle,
   isEditing,
@@ -45,7 +47,9 @@ export function WorkspaceHeader({
               : isChapters
                 ? "Wszystkie rozdziały"
                 : isQuestions
-                  ? "Baza pytań"
+                  ? isQuestionHistory
+                    ? "Historia nauki"
+                    : "Baza pytań"
                   : (topicTitle ?? "Wybierz temat")}
           </h1>
         </div>

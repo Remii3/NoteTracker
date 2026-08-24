@@ -18,6 +18,7 @@ import {
   LogOut,
   Plus,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 
@@ -71,6 +72,7 @@ type Props = {
   onOpenChapters: () => void;
   onOpenQuestions: () => void;
   onOpenAddDialog: () => void;
+  onOpenBulkDelete: () => void;
   onSelectChapter: (chapter: Chapter) => void;
   onSelectTopic: (chapterId: string, topicId: string) => void;
   onToggleExpanded: (chapterId: string, open: boolean) => void;
@@ -114,6 +116,7 @@ export function WorkspaceSidebar({
   onOpenChapters,
   onOpenQuestions,
   onOpenAddDialog,
+  onOpenBulkDelete,
   onSelectChapter,
   onSelectTopic,
   onToggleExpanded,
@@ -241,12 +244,21 @@ export function WorkspaceSidebar({
         <SidebarGroup>
           <SidebarGroupLabel>Rozdziały</SidebarGroupLabel>
           {isEditing && (
-            <SidebarGroupAction
-              aria-label="Dodaj rozdział lub tematy"
-              onClick={onOpenAddDialog}
-            >
-              <Plus />
-            </SidebarGroupAction>
+            <>
+              <SidebarGroupAction
+                className="right-8"
+                aria-label="Usuń wiele rozdziałów lub tematów"
+                onClick={onOpenBulkDelete}
+              >
+                <Trash2 />
+              </SidebarGroupAction>
+              <SidebarGroupAction
+                aria-label="Dodaj rozdział lub tematy"
+                onClick={onOpenAddDialog}
+              >
+                <Plus />
+              </SidebarGroupAction>
+            </>
           )}
           <SidebarGroupContent>
             {error && (

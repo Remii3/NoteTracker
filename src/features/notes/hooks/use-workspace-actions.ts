@@ -19,6 +19,7 @@ type Options = {
     addTopics: (chapterId: string, topics: Topic[]) => Promise<boolean>;
     loadChapterTopics: (chapterId: string) => Promise<Topic[] | null>;
     removeItem: (item: ManagedItem) => Promise<boolean>;
+    removeItems: (chapterIds: string[], topicIds: string[]) => Promise<boolean>;
     renameItem: (item: ManagedItem, title: string) => Promise<boolean>;
     saveContent: (
       chapterId: string,
@@ -206,10 +207,58 @@ export function useWorkspaceActions({
     return true;
   }
 
+  async function deleteItems(chapterIds: string[], topicIds: string[]) {
+    if (!isEditing || isSaving || (!chapterIds.length && !topicIds.length))
+      return false;
+
+    const selectedChapters = new Set(chapterIds);
+    const topicIdsForCleanup = new Set(topicIds);
+    for (const selectedChapterId of chapterIds) {
+      const topics = await commands.loadChapterTopics(selectedChapterId);
+      if (!topics) return false;
+      for (const child of topics) topicIdsForCleanup.add(child.id);
+    }
+
+    if (!(await commands.removeItems(chapterIds, topicIds))) return false;
+
+    const cleanupResults = await Promise.allSettled(
+      [...topicIdsForCleanup].map((id) => imagesService?.removeAll(id)),
+    );
+    if (cleanupResults.some((result) => result.status === "rejected")) {
+      toast.error(
+        "Elementy usunięto, ale nie udało się posprzątać wszystkich zdjęć.",
+      );
+    }
+
+    for (const deletedTopicId of topicIdsForCleanup) clearDraft(deletedTopicId);
+
+    if (
+      selectedChapters.has(chapterId) ||
+      (topicId && topicIdsForCleanup.has(topicId))
+    ) {
+      const remaining = chapters.filter(
+        (chapter) => !selectedChapters.has(chapter.id),
+      );
+      const nextChapter =
+        remaining.find((chapter) => chapter.id === chapterId) ?? remaining[0];
+      if (nextChapter) navigateToChapter(nextChapter.id);
+      else navigateHome();
+    }
+
+    const deletedCount = chapterIds.length + topicIds.length;
+    toast.success(
+      deletedCount === 1
+        ? "Usunięto wybrany element."
+        : `Usunięto ${deletedCount} wybranych elementów.`,
+    );
+    return true;
+  }
+
   return {
     addChapter,
     addTopics,
     deleteItem,
+    deleteItems,
     renameItem,
     saveContent,
     toggleChapter,

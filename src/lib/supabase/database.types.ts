@@ -202,6 +202,13 @@ export type Database = {
     };
     Views: Record<never, never>;
     Functions: {
+      delete_notes_bulk: {
+        Args: {
+          chapter_ids: string[];
+          topic_ids: string[];
+        };
+        Returns: Json;
+      };
       get_question_bank_availability: {
         Args: {
           selected_chapter_id?: string | null;

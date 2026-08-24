@@ -99,31 +99,68 @@ export function StudySession({ sessionId, repository, onClose }: Props) {
     );
   const item = session.items[index];
   const correct = item.options.find((option) => option.isCorrect)!;
-  function choose(optionId: string) {
+  async function choose(optionId: string) {
     if (revealed || saving) return;
     const isCorrect = correct.id === optionId;
+    const result = isCorrect ? "correct" : "incorrect";
+
     setRevealed(true);
-    void repository
-      .answerItem(item.id, isCorrect ? "correct" : "incorrect", optionId)
-      .then(() =>
-        setSession((current) =>
-          current
-            ? {
-                ...current,
-                items: current.items.map((entry) =>
-                  entry.id === item.id
-                    ? {
-                        ...entry,
-                        selectedOptionId: optionId,
-                        result: isCorrect ? "correct" : "incorrect",
-                      }
-                    : entry,
-                ),
-              }
-            : current,
-        ),
-      )
-      .catch(() => toast.error("Nie udało się zapisać odpowiedzi."));
+    setSaving(true);
+    setSession((current) =>
+      current
+        ? {
+            ...current,
+            items: current.items.map((entry) =>
+              entry.id === item.id
+                ? { ...entry, selectedOptionId: optionId, result }
+                : entry,
+            ),
+          }
+        : current,
+    );
+
+    try {
+      await repository.answerItem(item.id, result, optionId);
+    } catch {
+      setRevealed(false);
+      setSession((current) =>
+        current
+          ? {
+              ...current,
+              items: current.items.map((entry) =>
+                entry.id === item.id
+                  ? { ...entry, selectedOptionId: null, result: null }
+                  : entry,
+              ),
+            }
+          : current,
+      );
+      toast.error("Nie udało się zapisać odpowiedzi.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function advanceTest() {
+    if (!session || !item.result || saving) return;
+    const currentSession = session;
+    const last = index === currentSession.items.length - 1;
+
+    if (!last) {
+      setIndex(index + 1);
+      setRevealed(false);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await repository.completeSession(currentSession.id);
+      setSession({ ...currentSession, status: "completed" });
+    } catch {
+      toast.error("Nie udało się zakończyć sesji.");
+    } finally {
+      setSaving(false);
+    }
   }
   return (
     <main className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-8">
@@ -154,7 +191,7 @@ export function StudySession({ sessionId, repository, onClose }: Props) {
                     key={option.id}
                     disabled={revealed}
                     className={`w-full rounded-xl border p-4 text-left ${state}`}
-                    onClick={() => choose(option.id)}
+                    onClick={() => void choose(option.id)}
                   >
                     {String.fromCharCode(65 + optionIndex)}. {option.content}
                   </button>
@@ -210,12 +247,7 @@ export function StudySession({ sessionId, repository, onClose }: Props) {
               className="mt-4 w-full"
               size="lg"
               disabled={!item.result || saving}
-              onClick={() =>
-                void record(
-                  item.result ?? "incorrect",
-                  item.selectedOptionId ?? undefined,
-                )
-              }
+              onClick={() => void advanceTest()}
             >
               Następne pytanie
             </Button>

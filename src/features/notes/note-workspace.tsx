@@ -32,6 +32,7 @@ import type { NotesRepository } from "./data/notes-repository";
 import type { TopicImagesService } from "./data/topic-images-service";
 import { QuestionsPage } from "@/features/questions/components/questions-page";
 import { StudySession } from "@/features/questions/components/study-session";
+import { StudyHistoryPage } from "@/features/questions/components/study-history-page";
 import type { QuestionsRepository } from "@/features/questions/data/questions-repository";
 
 const AddContentDialog = lazy(() =>
@@ -52,6 +53,11 @@ const DeleteItemDialog = lazy(() =>
 const UnsavedChangesDialog = lazy(() =>
   import("./components/item-dialogs").then((module) => ({
     default: module.UnsavedChangesDialog,
+  })),
+);
+const BulkDeleteDialog = lazy(() =>
+  import("./components/bulk-delete-dialog").then((module) => ({
+    default: module.BulkDeleteDialog,
   })),
 );
 type Props = {
@@ -79,6 +85,7 @@ export function NoteWorkspace({
 }: Props) {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [isSearchPending, setIsSearchPending] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const { richTextModule, preloadRichTextEditor } = useRichTextModule();
   const notesStore = useNotesStore({
     repository,
@@ -112,11 +119,13 @@ export function NoteWorkspace({
     navigateHome,
     navigateChapters,
     navigateQuestions,
+    navigateQuestionHistory,
     navigateStudySession,
     navigateToChapter,
     navigationBlocker,
     topic,
     topicId,
+    isQuestionHistory,
   } = useWorkspaceRoute({
     chapters,
     isTopicDirty,
@@ -176,6 +185,7 @@ export function NoteWorkspace({
     addChapter,
     addTopics,
     deleteItem: deleteManagedItem,
+    deleteItems: deleteManagedItems,
     renameItem: renameManagedItem,
     saveContent,
     toggleChapter,
@@ -304,7 +314,7 @@ export function NoteWorkspace({
   }
 
   function openQuestions() {
-    if (activeView === "questions" && !sessionId) return;
+    if (activeView === "questions" && !sessionId && !isQuestionHistory) return;
     navigateQuestions();
   }
 
@@ -319,6 +329,7 @@ export function NoteWorkspace({
       setPreviewPending(true);
       return;
     }
+    if (!nextIsEditing) setBulkDeleteOpen(false);
     setIsEditing(nextIsEditing);
     closeEditingUi();
   }
@@ -364,6 +375,7 @@ export function NoteWorkspace({
           onOpenChapters={openChapters}
           onOpenQuestions={openQuestions}
           onOpenAddDialog={() => setAddDialogOpen(true)}
+          onOpenBulkDelete={() => setBulkDeleteOpen(true)}
           onSelectChapter={selectChapter}
           onSelectTopic={requestTopicSelection}
           onToggleExpanded={(nextChapterId, open) => {
@@ -393,6 +405,7 @@ export function NoteWorkspace({
             isHome={activeView === "home"}
             isChapters={activeView === "chapters"}
             isQuestions={activeView === "questions"}
+            isQuestionHistory={isQuestionHistory}
             chapterTitle={chapter?.title}
             topicTitle={topic?.title}
             isEditing={isEditing}
@@ -417,12 +430,19 @@ export function NoteWorkspace({
                 repository={questionsRepository}
                 onClose={navigateQuestions}
               />
+            ) : isQuestionHistory ? (
+              <StudyHistoryPage
+                repository={questionsRepository}
+                onBack={navigateQuestions}
+                onOpenSession={navigateStudySession}
+              />
             ) : (
               <QuestionsPage
                 chapters={chapters}
                 repository={questionsRepository}
                 loadTopics={loadChapterTopics}
                 onOpenSession={navigateStudySession}
+                onOpenHistory={navigateQuestionHistory}
               />
             )
           ) : (
@@ -485,6 +505,14 @@ export function NoteWorkspace({
               item={deleteItem}
               onClose={() => setDeleteItem(null)}
               onDelete={() => deleteManagedItem(deleteItem)}
+            />
+          )}
+          {isEditing && bulkDeleteOpen && (
+            <BulkDeleteDialog
+              chapters={chapters}
+              onClose={() => setBulkDeleteOpen(false)}
+              onLoadTopics={loadChapterTopics}
+              onDelete={deleteManagedItems}
             />
           )}
           {navigationBlocker.state === "blocked" && (

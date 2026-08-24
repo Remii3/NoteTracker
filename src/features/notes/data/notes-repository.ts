@@ -36,6 +36,7 @@ export interface NotesRepository {
     content: NoteContent,
   ): Promise<void>;
   deleteTopic(chapterId: string, topicId: string): Promise<void>;
+  deleteItems(chapterIds: string[], topicIds: string[]): Promise<void>;
   setChapterCompleted(chapterId: string, completed: boolean): Promise<void>;
   reorderChapters(chapterIds: string[]): Promise<void>;
   reorderTopics(chapterId: string, topicIds: string[]): Promise<void>;

@@ -30,5 +30,20 @@ export type StudySession = {
   id: string;
   mode: StudyMode;
   status: "in_progress" | "completed" | "abandoned";
+  configuration: Record<string, unknown>;
+  startedAt: string;
+  completedAt: string | null;
   items: StudyItem[];
+};
+
+export type StudySessionSummary = {
+  id: string;
+  mode: StudyMode;
+  status: StudySession["status"];
+  configuration: Record<string, unknown>;
+  startedAt: string;
+  completedAt: string | null;
+  totalCount: number;
+  answeredCount: number;
+  successfulCount: number;
 };

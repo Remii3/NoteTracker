@@ -235,6 +235,14 @@ export class SupabaseNotesRepository implements NotesRepository {
     throwIfPostgrestError(error);
   }
 
+  async deleteItems(chapterIds: string[], topicIds: string[]) {
+    const { error } = await this.client.rpc("delete_notes_bulk", {
+      chapter_ids: chapterIds,
+      topic_ids: topicIds,
+    });
+    throwIfPostgrestError(error);
+  }
+
   async setChapterCompleted(chapterId: string, completed: boolean) {
     const { error } = await this.client
       .from("topics")

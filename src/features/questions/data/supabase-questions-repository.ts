@@ -2,7 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { throwIfPostgrestError } from "@/features/notes/data/supabase-error";
 import type { QuestionsRepository } from "./questions-repository";
-import type { Question, QuestionOption, StudyResult } from "../model/types";
+import type {
+  Question,
+  QuestionOption,
+  StudyResult,
+  StudySessionSummary,
+} from "../model/types";
 
 export class SupabaseQuestionsRepository implements QuestionsRepository {
   private readonly client: SupabaseClient<Database>;
@@ -106,11 +111,79 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
     return data;
   }
 
+  async listSessions(
+    options: Parameters<QuestionsRepository["listSessions"]>[0] = {},
+  ) {
+    const offset = options.offset ?? 0;
+    const limit = options.limit ?? 20;
+    const sessionsResult = await this.client
+      .from("study_sessions")
+      .select("id,mode,status,configuration,started_at,completed_at", {
+        count: "exact",
+      })
+      .eq("user_id", this.userId)
+      .order("started_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+    throwIfPostgrestError(sessionsResult.error);
+
+    const rows = sessionsResult.data ?? [];
+    if (!rows.length) return { sessions: [], total: sessionsResult.count ?? 0 };
+
+    const itemsResult = await this.client
+      .from("study_session_items")
+      .select("session_id,result")
+      .eq("user_id", this.userId)
+      .in(
+        "session_id",
+        rows.map((session) => session.id),
+      );
+    throwIfPostgrestError(itemsResult.error);
+
+    const resultsBySession = new Map<
+      string,
+      { total: number; answered: number; successful: number }
+    >();
+    for (const item of itemsResult.data ?? []) {
+      const counts = resultsBySession.get(item.session_id) ?? {
+        total: 0,
+        answered: 0,
+        successful: 0,
+      };
+      counts.total += 1;
+      if (item.result) counts.answered += 1;
+      if (item.result === "correct" || item.result === "remembered")
+        counts.successful += 1;
+      resultsBySession.set(item.session_id, counts);
+    }
+
+    return {
+      sessions: rows.map((session) => {
+        const counts = resultsBySession.get(session.id) ?? {
+          total: 0,
+          answered: 0,
+          successful: 0,
+        };
+        return {
+          id: session.id,
+          mode: session.mode,
+          status: session.status,
+          configuration: this.asConfiguration(session.configuration),
+          startedAt: session.started_at,
+          completedAt: session.completed_at,
+          totalCount: counts.total,
+          answeredCount: counts.answered,
+          successfulCount: counts.successful,
+        } satisfies StudySessionSummary;
+      }),
+      total: sessionsResult.count ?? 0,
+    };
+  }
+
   async getSession(id: string) {
     const [session, items] = await Promise.all([
       this.client
         .from("study_sessions")
-        .select("id,mode,status")
+        .select("id,mode,status,configuration,started_at,completed_at")
         .eq("id", id)
         .eq("user_id", this.userId)
         .single(),
@@ -130,6 +203,9 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
       id: session.data.id,
       mode: session.data.mode,
       status: session.data.status,
+      configuration: this.asConfiguration(session.data.configuration),
+      startedAt: session.data.started_at,
+      completedAt: session.data.completed_at,
       items: (items.data ?? []).map((item) => ({
         id: item.id,
         position: item.position,
@@ -165,6 +241,24 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
       .select("id")
       .single();
     throwIfPostgrestError(error);
+  }
+
+  async abandonSession(id: string) {
+    const { error } = await this.client
+      .from("study_sessions")
+      .update({ status: "abandoned", completed_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("user_id", this.userId)
+      .eq("status", "in_progress")
+      .select("id")
+      .single();
+    throwIfPostgrestError(error);
+  }
+
+  private asConfiguration(value: Json): Record<string, unknown> {
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : {};
   }
 
   private mapQuestion(row: {

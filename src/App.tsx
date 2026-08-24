@@ -25,6 +25,11 @@ const router = createBrowserRouter([
   { path: "/chapters", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
   { path: "/questions", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
   {
+    path: "/questions/history",
+    lazy: loadNoteWorkspace,
+    HydrateFallback: AppLoading,
+  },
+  {
     path: "/study/:studyMode/:sessionId",
     lazy: loadNoteWorkspace,
     HydrateFallback: AppLoading,

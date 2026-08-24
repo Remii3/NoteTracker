@@ -29,7 +29,7 @@ export function useWorkspaceRoute({
   const topicSlug = topicRoute?.params.topicSlug ?? "";
   const activeView: ActiveView = chapterSlug
     ? "notes"
-    : location.pathname === "/questions" ||
+    : location.pathname.startsWith("/questions") ||
         location.pathname.startsWith("/study/")
       ? "questions"
       : location.pathname === "/chapters"
@@ -63,6 +63,10 @@ export function useWorkspaceRoute({
   const navigateChapters = useCallback(() => navigate("/chapters"), [navigate]);
   const navigateQuestions = useCallback(
     () => navigate("/questions"),
+    [navigate],
+  );
+  const navigateQuestionHistory = useCallback(
+    () => navigate("/questions/history"),
     [navigate],
   );
   const navigateStudySession = useCallback(
@@ -122,10 +126,12 @@ export function useWorkspaceRoute({
     navigateHome,
     navigateChapters,
     navigateQuestions,
+    navigateQuestionHistory,
     navigateStudySession,
     navigateToChapter,
     navigationBlocker,
     topic,
     topicId,
+    isQuestionHistory: location.pathname === "/questions/history",
   };
 }

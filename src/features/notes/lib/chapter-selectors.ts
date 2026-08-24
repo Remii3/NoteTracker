@@ -1,6 +1,11 @@
 import type { Chapter } from "../model/types";
 import type { SortMode } from "../model/workspace-types";
 
+const naturalPolishCollator = new Intl.Collator("pl", {
+  numeric: true,
+  sensitivity: "base",
+});
+
 export function isChapterCompleted(chapter: Chapter) {
   return (
     chapter.topicsCount > 0 &&
@@ -58,8 +63,10 @@ export function selectVisibleChapters(
 
   return [...filtered].sort((first, second) => {
     if (sortMode === "manual") return first.position - second.position;
-    if (sortMode === "az") return first.title.localeCompare(second.title, "pl");
-    if (sortMode === "za") return second.title.localeCompare(first.title, "pl");
+    if (sortMode === "az")
+      return naturalPolishCollator.compare(first.title, second.title);
+    if (sortMode === "za")
+      return naturalPolishCollator.compare(second.title, first.title);
 
     const firstCompleted = Number(isChapterCompleted(first));
     const secondCompleted = Number(isChapterCompleted(second));

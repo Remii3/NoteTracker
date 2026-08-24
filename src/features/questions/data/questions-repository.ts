@@ -5,6 +5,7 @@ import type {
   StudyResult,
   StudyScope,
   StudySession,
+  StudySessionSummary,
 } from "../model/types";
 
 export interface QuestionsRepository {
@@ -40,6 +41,10 @@ export interface QuestionsRepository {
     randomChapterCount: number;
     questionCount: number | null;
   }): Promise<string>;
+  listSessions(options?: {
+    offset?: number;
+    limit?: number;
+  }): Promise<{ sessions: StudySessionSummary[]; total: number }>;
   getSession(id: string): Promise<StudySession>;
   answerItem(
     id: string,
@@ -47,4 +52,5 @@ export interface QuestionsRepository {
     selectedOptionId?: string,
   ): Promise<void>;
   completeSession(id: string): Promise<void>;
+  abandonSession(id: string): Promise<void>;
 }

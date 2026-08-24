@@ -6,6 +6,7 @@ import {
   addChapterToCollection,
   addTopicsToChapter,
   deleteManagedItem,
+  deleteManagedItems,
   renameManagedItem,
   saveTopicContent,
   toggleChapterTopics,
@@ -412,6 +413,16 @@ export function useNotesStore({
       ),
     [repository, runOptimistic],
   );
+  const removeItems = useCallback(
+    (chapterIds: string[], topicIds: string[]) =>
+      runOptimistic(
+        (current) => deleteManagedItems(current, chapterIds, topicIds),
+        () => repository.deleteItems(chapterIds, topicIds),
+        "Nie udało się usunąć wybranych elementów.",
+        true,
+      ),
+    [repository, runOptimistic],
+  );
   const renameItem = useCallback(
     (item: ManagedItem, title: string) =>
       runOptimistic(
@@ -478,6 +489,7 @@ export function useNotesStore({
     topicNavigation,
     previewChapters,
     removeItem,
+    removeItems,
     renameItem,
     restoreChapters,
     saveContent,

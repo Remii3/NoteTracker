@@ -117,6 +117,33 @@ export function deleteManagedItem(chapters: Chapter[], item: ManagedItem) {
   );
 }
 
+export function deleteManagedItems(
+  chapters: Chapter[],
+  chapterIds: string[],
+  topicIds: string[],
+) {
+  const selectedChapters = new Set(chapterIds);
+  const selectedTopics = new Set(topicIds);
+  return chapters
+    .filter((chapter) => !selectedChapters.has(chapter.id))
+    .map((chapter) =>
+      syncChapterSummary({
+        ...chapter,
+        topics: chapter.topics.filter((topic) => !selectedTopics.has(topic.id)),
+        topicsCount:
+          chapter.topicsStatus === "loaded"
+            ? chapter.topics.filter((topic) => !selectedTopics.has(topic.id))
+                .length
+            : Math.max(
+                0,
+                chapter.topicsCount -
+                  chapter.topics.filter((topic) => selectedTopics.has(topic.id))
+                    .length,
+              ),
+      }),
+    );
+}
+
 export function saveTopicContent(
   chapters: Chapter[],
   chapterId: string,
