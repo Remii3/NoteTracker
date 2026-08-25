@@ -7,9 +7,18 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Combobox,
+  ComboboxCollection,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -25,6 +34,8 @@ import type { Question, StudyMode, StudyScope } from "../model/types";
 import { QuestionDialog } from "./question-dialog";
 
 const PAGE_SIZE = 20;
+type FilterOption = { value: string; label: string };
+
 type Props = {
   chapters: Chapter[];
   repository: QuestionsRepository;
@@ -47,6 +58,9 @@ export function QuestionsPage({
   const [chapterFilter, setChapterFilter] = useState("");
   const [topicFilter, setTopicFilter] = useState("");
   const [filterTopics, setFilterTopics] = useState<Topic[]>([]);
+  const [filterTopicsLoading, setFilterTopicsLoading] = useState(false);
+  const [filterTopicsError, setFilterTopicsError] = useState(false);
+  const filterTopicsRequest = useRef(0);
   const [editing, setEditing] = useState<Question | null | undefined>();
   const [studyMode, setStudyMode] = useState<StudyMode | null>(null);
   const [availability, setAvailability] = useState<{
@@ -77,6 +91,40 @@ export function QuestionsPage({
     return () => window.clearTimeout(timeout);
   }, [load]);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const chapterOptions: FilterOption[] = chapters.map((chapter) => ({
+    value: chapter.id,
+    label: chapter.title,
+  }));
+  const topicOptions: FilterOption[] = filterTopics.map((topic) => ({
+    value: topic.id,
+    label: topic.title,
+  }));
+  const selectedChapterOption =
+    chapterOptions.find((option) => option.value === chapterFilter) ?? null;
+  const selectedTopicOption =
+    topicOptions.find((option) => option.value === topicFilter) ?? null;
+
+  function selectChapter(option: FilterOption | null) {
+    const requestId = ++filterTopicsRequest.current;
+    const id = option?.value ?? "";
+    setChapterFilter(id);
+    setTopicFilter("");
+    setFilterTopics([]);
+    setFilterTopicsError(false);
+    setPage(1);
+    if (!id) {
+      setFilterTopicsLoading(false);
+      return;
+    }
+    setFilterTopicsLoading(true);
+    void loadTopics(id).then((items) => {
+      if (filterTopicsRequest.current !== requestId) return;
+      setFilterTopics(items ?? []);
+      setFilterTopicsError(items === null);
+      setFilterTopicsLoading(false);
+    });
+  }
+
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
       <div className="mx-auto max-w-6xl">
@@ -146,44 +194,78 @@ export function QuestionsPage({
               className="pl-9"
             />
           </div>
-          <select
-            className="h-9 rounded-md border bg-background px-3 text-sm"
-            value={chapterFilter}
-            onChange={(event) => {
-              const id = event.target.value;
-              setChapterFilter(id);
-              setTopicFilter("");
-              setFilterTopics([]);
-              setPage(1);
-              if (id)
-                void loadTopics(id).then((items) =>
-                  setFilterTopics(items ?? []),
-                );
-            }}
+          <Combobox
+            items={chapterOptions}
+            value={selectedChapterOption}
+            onValueChange={selectChapter}
+            itemToStringLabel={(option) => option.label}
+            itemToStringValue={(option) => option.value}
+            isItemEqualToValue={(option, value) => option.value === value.value}
           >
-            <option value="">Wszystkie rozdziały</option>
-            {chapters.map((chapter) => (
-              <option key={chapter.id} value={chapter.id}>
-                {chapter.title}
-              </option>
-            ))}
-          </select>
-          <select
-            className="h-9 rounded-md border bg-background px-3 text-sm"
-            value={topicFilter}
-            disabled={!chapterFilter}
-            onChange={(event) => {
-              setTopicFilter(event.target.value);
+            <ComboboxInput
+              className="w-full"
+              placeholder="Wszystkie rozdziały"
+              showClear={Boolean(selectedChapterOption)}
+              aria-label="Filtruj według rozdziału"
+            />
+            <ComboboxContent>
+              <ComboboxEmpty>Nie znaleziono rozdziału.</ComboboxEmpty>
+              <ComboboxList>
+                <ComboboxCollection>
+                  {(option: FilterOption) => (
+                    <ComboboxItem key={option.value} value={option}>
+                      {option.label}
+                    </ComboboxItem>
+                  )}
+                </ComboboxCollection>
+              </ComboboxList>
+            </ComboboxContent>
+          </Combobox>
+          <Combobox
+            items={topicOptions}
+            value={selectedTopicOption}
+            onValueChange={(option) => {
+              setTopicFilter(option?.value ?? "");
               setPage(1);
             }}
+            itemToStringLabel={(option) => option.label}
+            itemToStringValue={(option) => option.value}
+            isItemEqualToValue={(option, value) => option.value === value.value}
           >
-            <option value="">Wszystkie tematy</option>
-            {filterTopics.map((topic) => (
-              <option key={topic.id} value={topic.id}>
-                {topic.title}
-              </option>
-            ))}
-          </select>
+            <ComboboxInput
+              className={`w-full ${
+                !chapterFilter || filterTopicsLoading || filterTopicsError
+                  ? "cursor-not-allowed opacity-60"
+                  : ""
+              }`}
+              disabled={
+                !chapterFilter || filterTopicsLoading || filterTopicsError
+              }
+              showClear={Boolean(selectedTopicOption)}
+              placeholder={
+                !chapterFilter
+                  ? "Najpierw wybierz rozdział"
+                  : filterTopicsLoading
+                    ? "Ładowanie tematów…"
+                    : filterTopicsError
+                      ? "Nie udało się pobrać tematów"
+                      : "Wszystkie tematy"
+              }
+              aria-label="Filtruj według tematu"
+            />
+            <ComboboxContent>
+              <ComboboxEmpty>Nie znaleziono tematu.</ComboboxEmpty>
+              <ComboboxList>
+                <ComboboxCollection>
+                  {(option: FilterOption) => (
+                    <ComboboxItem key={option.value} value={option}>
+                      {option.label}
+                    </ComboboxItem>
+                  )}
+                </ComboboxCollection>
+              </ComboboxList>
+            </ComboboxContent>
+          </Combobox>
         </div>
         <div className="mt-6 space-y-3">
           {questions.map((question) => {
