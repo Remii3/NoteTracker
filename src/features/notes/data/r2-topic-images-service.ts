@@ -95,6 +95,18 @@ export class R2TopicImagesService implements TopicImagesService {
     await this.request(`/images/${imageId}`, { method: "DELETE" });
   }
 
+  async reorder(topicId: string, imageIds: string[]) {
+    const { error } = await this.client.rpc("reorder_topic_images", {
+      target_topic_id: topicId,
+      image_ids: imageIds,
+    });
+    if (error) {
+      throw new Error("Nie udało się zapisać kolejności zdjęć.", {
+        cause: error,
+      });
+    }
+  }
+
   async removeAll(topicId: string) {
     await this.request(`/topics/${topicId}/images`, { method: "DELETE" });
   }

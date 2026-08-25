@@ -35,7 +35,7 @@ select
   string_agg(privilege_type, ', ' order by privilege_type) as privileges
 from information_schema.role_table_grants
 where table_schema = 'public'
-  and table_name in ('chapters', 'topics')
+  and table_name in ('chapters', 'topics', 'topic_images')
   and grantee in ('anon', 'authenticated')
 group by table_schema, table_name, grantee
 order by table_name, grantee;
@@ -54,6 +54,7 @@ where namespace.nspname = 'public'
     'get_learning_summary',
     'move_topic',
     'reorder_chapters',
+    'reorder_topic_images',
     'reorder_topics'
   )
 order by procedure.proname;
@@ -65,6 +66,5 @@ select
   indexdef
 from pg_indexes
 where schemaname = 'public'
-  and tablename in ('chapters', 'topics')
+  and tablename in ('chapters', 'topics', 'topic_images')
 order by tablename, indexname;
-

@@ -26,7 +26,7 @@ export function StudyNavigation({
       <Button
         type="button"
         variant="ghost"
-        className="h-auto w-[38%] min-w-0 justify-start p-2 sm:w-auto sm:min-w-48"
+        className="h-auto w-[38%] min-w-0 justify-start p-2 sm:w-full sm:max-w-80"
         disabled={!previousTopic}
         onClick={() => previousTopic && onOpenTopic(previousTopic)}
       >
@@ -46,7 +46,7 @@ export function StudyNavigation({
       <Button
         type="button"
         variant="ghost"
-        className="h-auto w-[38%] min-w-0 justify-end p-2 sm:w-auto sm:min-w-48"
+        className="h-auto w-[38%] min-w-0 justify-end p-2 sm:w-full sm:max-w-80"
         disabled={!nextTopic}
         onClick={() => nextTopic && onOpenTopic(nextTopic)}
       >

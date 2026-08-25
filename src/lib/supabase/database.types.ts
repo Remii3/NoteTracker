@@ -266,6 +266,10 @@ export type Database = {
         Args: { chapter_ids: string[] };
         Returns: undefined;
       };
+      reorder_topic_images: {
+        Args: { target_topic_id: string; image_ids: string[] };
+        Returns: undefined;
+      };
       reorder_topics: {
         Args: { target_chapter_id: string; topic_ids: string[] };
         Returns: undefined;

@@ -1,5 +1,22 @@
-import { useRef, useState, type DragEvent } from "react";
-import { ImagePlus, LoaderCircle, Trash2 } from "lucide-react";
+import { useRef, useState, type DragEvent as ReactDragEvent } from "react";
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  rectSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical, ImagePlus, LoaderCircle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -14,6 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import type { TopicImagesService } from "../data/topic-images-service";
 import { useTopicImages } from "../hooks/use-topic-images";
 import type { TopicImage } from "../model/topic-image";
@@ -25,13 +43,108 @@ type Props = {
   service?: TopicImagesService;
 };
 
+type SortableImageProps = {
+  image: TopicImage;
+  isEditing: boolean;
+  disabled: boolean;
+  isRemoving: boolean;
+  onOpen: () => void;
+  onRemove: () => void;
+};
+
+function SortableImage({
+  image,
+  isEditing,
+  disabled,
+  isRemoving,
+  onOpen,
+  onRemove,
+}: SortableImageProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: image.id, disabled: !isEditing || disabled });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        "group relative overflow-hidden rounded-lg border bg-muted/20",
+        isDragging && "z-10 opacity-60 shadow-lg",
+      )}
+    >
+      <button
+        type="button"
+        className="block aspect-4/3 w-full cursor-zoom-in"
+        onClick={onOpen}
+      >
+        <img
+          src={image.url}
+          alt={image.originalFilename}
+          loading="lazy"
+          className="size-full object-contain"
+        />
+      </button>
+      {isEditing && (
+        <>
+          <button
+            type="button"
+            className="absolute top-2 left-2 grid size-8 touch-none cursor-grab place-items-center rounded-md border bg-background/90 text-muted-foreground opacity-100 shadow-sm backdrop-blur sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 active:cursor-grabbing"
+            disabled={disabled}
+            aria-label={`Przeciągnij ${image.originalFilename}, aby zmienić kolejność`}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="size-4" />
+          </button>
+          <Button
+            type="button"
+            variant="destructive"
+            size="icon-sm"
+            className="absolute top-2 right-2 opacity-100 shadow-sm sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+            disabled={disabled}
+            aria-label={`Usuń ${image.originalFilename}`}
+            onClick={onRemove}
+          >
+            {isRemoving ? (
+              <LoaderCircle className="animate-spin" />
+            ) : (
+              <Trash2 />
+            )}
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function TopicImagesSection({ topicId, isEditing, service }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<TopicImage | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const { error, images, isLoading, isUploading, remove, removingId, upload } =
-    useTopicImages(service, topicId);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+  const {
+    error,
+    images,
+    isLoading,
+    isReordering,
+    isUploading,
+    remove,
+    removingId,
+    reorder,
+    upload,
+  } = useTopicImages(service, topicId);
 
   async function uploadFiles(files: File[]) {
     const result = await upload(files);
@@ -51,11 +164,23 @@ export function TopicImagesSection({ topicId, isEditing, service }: Props) {
     }
   }
 
-  function handleDrop(event: DragEvent<HTMLButtonElement>) {
+  function handleDrop(event: ReactDragEvent<HTMLButtonElement>) {
     event.preventDefault();
     setIsDragging(false);
     if (!isEditing || isUploading) return;
     void uploadFiles([...event.dataTransfer.files]);
+  }
+
+  function handleReorder(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id || isReordering) return;
+    const from = images.findIndex((image) => image.id === active.id);
+    const to = images.findIndex((image) => image.id === over.id);
+    if (from < 0 || to < 0) return;
+    const next = arrayMove(images, from, to);
+    void reorder(next.map((image) => image.id)).then((saved) => {
+      if (!saved) toast.error("Nie udało się zapisać kolejności zdjęć.");
+    });
   }
 
   return (
@@ -116,44 +241,32 @@ export function TopicImagesSection({ topicId, isEditing, service }: Props) {
       ) : (
         <>
           {images.length > 0 && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {images.map((image) => (
-                <div
-                  key={image.id}
-                  className="group relative overflow-hidden rounded-lg border bg-muted/20"
-                >
-                  <button
-                    type="button"
-                    className="block aspect-4/3 w-full cursor-zoom-in"
-                    onClick={() => setPreviewId(image.id)}
-                  >
-                    <img
-                      src={image.url}
-                      alt={image.originalFilename}
-                      loading="lazy"
-                      className="size-full object-contain"
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleReorder}
+            >
+              <SortableContext
+                items={images.map((image) => image.id)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {images.map((image) => (
+                    <SortableImage
+                      key={image.id}
+                      image={image}
+                      isEditing={isEditing}
+                      disabled={
+                        isUploading || isReordering || Boolean(removingId)
+                      }
+                      isRemoving={removingId === image.id}
+                      onOpen={() => setPreviewId(image.id)}
+                      onRemove={() => setPendingDelete(image)}
                     />
-                  </button>
-                  {isEditing && (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon-sm"
-                      className="absolute top-2 right-2 opacity-100 shadow-sm sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
-                      disabled={removingId === image.id}
-                      aria-label={`Usuń ${image.originalFilename}`}
-                      onClick={() => setPendingDelete(image)}
-                    >
-                      {removingId === image.id ? (
-                        <LoaderCircle className="animate-spin" />
-                      ) : (
-                        <Trash2 />
-                      )}
-                    </Button>
-                  )}
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
           )}
 
           {isEditing && (

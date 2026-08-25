@@ -10,6 +10,7 @@ export function useTopicImages(
   const [images, setImages] = useState<TopicImage[]>([]);
   const [isLoading, setIsLoading] = useState(Boolean(service && topicId));
   const [isUploading, setIsUploading] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const imagesRef = useRef(images);
@@ -112,5 +113,53 @@ export function useTopicImages(
     [removingId, service],
   );
 
-  return { error, images, isLoading, isUploading, remove, removingId, upload };
+  const reorder = useCallback(
+    async (imageIds: string[]) => {
+      if (
+        !service ||
+        isReordering ||
+        imageIds.length !== imagesRef.current.length
+      )
+        return false;
+
+      const previous = imagesRef.current;
+      const imagesById = new Map(previous.map((image) => [image.id, image]));
+      const next = imageIds.map((id, index) => ({
+        ...imagesById.get(id)!,
+        position: index + 1,
+      }));
+      if (next.some((image) => !image.id)) return false;
+
+      applyImages(next);
+      setIsReordering(true);
+      setError(null);
+      try {
+        await service.reorder(topicId, imageIds);
+        return true;
+      } catch (caughtError) {
+        applyImages(previous);
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Nie udało się zapisać kolejności zdjęć.",
+        );
+        return false;
+      } finally {
+        setIsReordering(false);
+      }
+    },
+    [isReordering, service, topicId],
+  );
+
+  return {
+    error,
+    images,
+    isLoading,
+    isReordering,
+    isUploading,
+    remove,
+    removingId,
+    reorder,
+    upload,
+  };
 }
