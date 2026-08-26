@@ -7,9 +7,11 @@ import { R2TopicImagesService } from "./data/r2-topic-images-service";
 import { SupabaseNotesRepository } from "./data/supabase-notes-repository";
 import { NoteWorkspace } from "./note-workspace";
 import { SupabaseQuestionsRepository } from "@/features/questions/data/supabase-questions-repository";
+import { useNavigate } from "react-router";
 
 export function SupabaseNoteWorkspace() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [accountOpen, setAccountOpen] = useState(false);
   const repository = useMemo(
     () => new SupabaseNotesRepository(supabase, user?.id ?? ""),
@@ -44,13 +46,15 @@ export function SupabaseNoteWorkspace() {
         userEmail={user.email}
         onOpenAccount={() => setAccountOpen(true)}
         onSignOut={() => {
-          void signOut().catch((error: unknown) => {
-            toast.error(
-              error instanceof Error
-                ? error.message
-                : "Nie udało się wylogować.",
-            );
-          });
+          void signOut()
+            .then(() => navigate("/"))
+            .catch((error: unknown) => {
+              toast.error(
+                error instanceof Error
+                  ? error.message
+                  : "Nie udało się wylogować.",
+              );
+            });
         }}
       />
       {accountOpen && <AccountDialog onClose={() => setAccountOpen(false)} />}

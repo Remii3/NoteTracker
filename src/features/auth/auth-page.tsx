@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import { BookOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ export function AuthPage() {
     setMessage(null);
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canSubmit || isSubmitting) return;
     setError(null);
@@ -115,7 +115,7 @@ export function AuthPage() {
                 />
               </div>
             )}
-            {mode !== "reset" && (
+            {
               <div className="space-y-2">
                 <label htmlFor="auth-email" className="text-sm font-medium">
                   E-mail
@@ -134,31 +134,33 @@ export function AuthPage() {
                   placeholder="ty@example.com"
                 />
               </div>
+            }
+            {mode !== "reset" && (
+              <div className="space-y-2">
+                <label htmlFor="auth-password" className="text-sm font-medium">
+                  Hasło
+                </label>
+                <Input
+                  id="auth-password"
+                  type="password"
+                  autoComplete={
+                    mode === "sign-in" ? "current-password" : "new-password"
+                  }
+                  value={password}
+                  disabled={isSubmitting}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setError(null);
+                  }}
+                  minLength={6}
+                />
+                {mode === "sign-up" && (
+                  <p className="text-xs text-muted-foreground">
+                    Minimum 6 znaków.
+                  </p>
+                )}
+              </div>
             )}
-            <div className="space-y-2">
-              <label htmlFor="auth-password" className="text-sm font-medium">
-                Hasło
-              </label>
-              <Input
-                id="auth-password"
-                type="password"
-                autoComplete={
-                  mode === "sign-in" ? "current-password" : "new-password"
-                }
-                value={password}
-                disabled={isSubmitting}
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                  setError(null);
-                }}
-                minLength={6}
-              />
-              {mode === "sign-up" && (
-                <p className="text-xs text-muted-foreground">
-                  Minimum 6 znaków.
-                </p>
-              )}
-            </div>
             {error && (
               <p role="alert" className="text-sm text-destructive">
                 {error}

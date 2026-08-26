@@ -192,7 +192,3 @@
   pointer-events: none;
   background: var(--primary);
 }
-
-.resize-cursor {
-  cursor: col-resize;
-}
