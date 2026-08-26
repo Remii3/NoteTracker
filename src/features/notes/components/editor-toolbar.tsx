@@ -187,10 +187,26 @@ export function EditorToolbar({ editor }: { editor: Editor }) {
 
 function TableControl({ editor, active }: { editor: Editor; active: boolean }) {
   const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState(3);
+  const [cols, setCols] = useState(3);
 
   function run(command: () => void) {
     command();
     setOpen(false);
+  }
+
+  function insertCustomTable() {
+    run(() =>
+      editor
+        .chain()
+        .focus()
+        .insertTable({
+          rows,
+          cols,
+          withHeaderRow: true,
+        })
+        .run(),
+    );
   }
 
   return (
@@ -209,21 +225,71 @@ function TableControl({ editor, active }: { editor: Editor; active: boolean }) {
       >
         <Table2 />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-64 gap-1 p-1.5">
+      <PopoverContent align="start" className="w-72 gap-2 p-3">
         {!active ? (
-          <TableMenuButton
-            icon={<Table2 />}
-            label="Wstaw tabelę 3 × 3"
-            onClick={() =>
-              run(() =>
-                editor
-                  .chain()
-                  .focus()
-                  .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-                  .run(),
-              )
-            }
-          />
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-medium">Wstaw tabelę</p>
+              <p className="text-xs text-muted-foreground">
+                Wybierz liczbę kolumn i wierszy.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label
+                  htmlFor="table-rows"
+                  className="text-xs text-muted-foreground"
+                >
+                  Wiersze
+                </label>
+
+                <Input
+                  id="table-rows"
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={rows}
+                  onChange={(event) =>
+                    setRows(
+                      Math.max(1, Math.min(50, Number(event.target.value))),
+                    )
+                  }
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label
+                  htmlFor="table-columns"
+                  className="text-xs text-muted-foreground"
+                >
+                  Kolumny
+                </label>
+
+                <Input
+                  id="table-columns"
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={cols}
+                  onChange={(event) =>
+                    setCols(
+                      Math.max(1, Math.min(20, Number(event.target.value))),
+                    )
+                  }
+                />
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              className="w-full"
+              onClick={insertCustomTable}
+            >
+              <Table2 />
+              Wstaw {rows} × {cols}
+            </Button>
+          </div>
         ) : (
           <>
             <TableMenuButton

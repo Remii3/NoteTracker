@@ -51,7 +51,7 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
       },
       attributes: {
         class:
-          "tiptap-content prose prose-neutral min-h-72 max-w-none px-4 py-3 outline-none prose-p:leading-6 prose-li:leading-6 dark:prose-invert",
+          "tiptap-content max-h-[60vh] overflow-y-auto prose prose-neutral min-h-72 max-w-none px-4 py-3 outline-none prose-p:leading-6 prose-li:leading-6 dark:prose-invert",
       },
     },
     onUpdate: ({ editor: currentEditor }) => onChange(currentEditor.getJSON()),
