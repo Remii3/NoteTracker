@@ -1,6 +1,10 @@
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
   Bold,
   Code2,
   Heading2,
@@ -50,6 +54,13 @@ export function EditorToolbar({ editor }: { editor: Editor }) {
       code: currentEditor.isActive("code"),
       link: currentEditor.isActive("link"),
       highlight: currentEditor.isActive("highlight"),
+      alignLeft:
+        currentEditor.isActive({ textAlign: "left" }) ||
+        (!currentEditor.getAttributes("paragraph").textAlign &&
+          !currentEditor.getAttributes("heading").textAlign),
+      alignCenter: currentEditor.isActive({ textAlign: "center" }),
+      alignRight: currentEditor.isActive({ textAlign: "right" }),
+      alignJustify: currentEditor.isActive({ textAlign: "justify" }),
       table: currentEditor.isActive("table"),
       canUndo: currentEditor.can().chain().focus().undo().run(),
       canRedo: currentEditor.can().chain().focus().redo().run(),
@@ -148,6 +159,36 @@ export function EditorToolbar({ editor }: { editor: Editor }) {
             onClick={() => editor.chain().focus().toggleBlockquote().run()}
           >
             <Quote />
+          </ToolbarButton>
+        </ToolbarGroup>
+        <ToolbarGroup>
+          <ToolbarButton
+            label="Wyrównaj do lewej"
+            active={state.alignLeft}
+            onClick={() => editor.chain().focus().setTextAlign("left").run()}
+          >
+            <AlignLeft />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Wyśrodkuj"
+            active={state.alignCenter}
+            onClick={() => editor.chain().focus().setTextAlign("center").run()}
+          >
+            <AlignCenter />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Wyrównaj do prawej"
+            active={state.alignRight}
+            onClick={() => editor.chain().focus().setTextAlign("right").run()}
+          >
+            <AlignRight />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Wyjustuj"
+            active={state.alignJustify}
+            onClick={() => editor.chain().focus().setTextAlign("justify").run()}
+          >
+            <AlignJustify />
           </ToolbarButton>
         </ToolbarGroup>
         <ToolbarGroup>
