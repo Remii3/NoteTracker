@@ -11,6 +11,7 @@ import { useParams } from "react-router";
 
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AppLoading } from "@/components/app-loading";
 import { LearningDashboard } from "./components/learning-dashboard";
 import { ChaptersOverview } from "./components/chapters-overview";
 import { StudyNavigation } from "./components/study-navigation";
@@ -341,19 +342,7 @@ export function NoteWorkspace({
   }
 
   if (notesStore.isLoading) {
-    return (
-      <main
-        aria-busy="true"
-        className="grid min-h-svh place-items-center bg-background"
-      >
-        <div className="text-center">
-          <div className="mx-auto size-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
-          <p className="mt-3 text-sm text-muted-foreground">
-            Ładowanie Twoich notatek…
-          </p>
-        </div>
-      </main>
-    );
+    return <AppLoading />;
   }
 
   return (

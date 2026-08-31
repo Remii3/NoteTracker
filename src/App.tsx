@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/sonner";
+import { AppLoading } from "@/components/app-loading";
 import {
   AuthPage,
   AuthProvider,
@@ -10,14 +11,6 @@ import { Navigate, RouterProvider, createBrowserRouter } from "react-router";
 async function loadNoteWorkspace() {
   const module = await import("@/features/notes");
   return { Component: module.SupabaseNoteWorkspace };
-}
-
-function AppLoading() {
-  return (
-    <div className="grid min-h-svh place-items-center text-sm text-muted-foreground">
-      Ładowanie aplikacji…
-    </div>
-  );
 }
 
 let router: ReturnType<typeof createBrowserRouter> | undefined;
