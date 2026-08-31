@@ -2,13 +2,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/supabase/database.types";
 import { prepareImage } from "../lib/prepare-image";
-import type { TopicImage } from "../model/topic-image";
+import type { GalleryImage, TopicImage } from "../model/topic-image";
 import type {
   TopicImagesService,
   TopicImagesUploadResult,
 } from "./topic-images-service";
 
 type ImageMetadata = Omit<TopicImage, "url">;
+type GalleryImageMetadata = Omit<GalleryImage, "url">;
 
 export class R2TopicImagesService implements TopicImagesService {
   private readonly client: SupabaseClient<Database>;
@@ -50,7 +51,7 @@ export class R2TopicImagesService implements TopicImagesService {
     return response;
   }
 
-  private async attachUrls(images: ImageMetadata[]) {
+  private async attachUrls<T extends ImageMetadata>(images: T[]) {
     return Promise.all(
       images.map(async (image) => {
         const response = await this.request(`/images/${image.id}`);
@@ -64,6 +65,22 @@ export class R2TopicImagesService implements TopicImagesService {
     const response = await this.request(`/topics/${topicId}/images`);
     const { images } = (await response.json()) as { images: ImageMetadata[] };
     return this.attachUrls(images);
+  }
+
+  async listGallery(offset: number, limit: number) {
+    const params = new URLSearchParams({
+      offset: String(offset),
+      limit: String(limit),
+    });
+    const response = await this.request(`/images?${params}`);
+    const result = (await response.json()) as {
+      images: GalleryImageMetadata[];
+      hasMore: boolean;
+    };
+    return {
+      images: await this.attachUrls(result.images),
+      hasMore: result.hasMore,
+    };
   }
 
   async upload(topicId: string, files: File[]) {

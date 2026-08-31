@@ -21,6 +21,19 @@ type ImageRow = {
   position: number;
 };
 
+type TopicRow = {
+  id: string;
+  chapter_id: string;
+  slug: string;
+  title: string;
+};
+
+type ChapterRow = {
+  id: string;
+  slug: string;
+  title: string;
+};
+
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_UPLOAD_BODY_BYTES = MAX_FILE_BYTES + 64 * 1024;
 const MAX_FILENAME_LENGTH = 255;
@@ -117,6 +130,83 @@ function imageResponse(row: ImageRow) {
     bytes: row.bytes,
     position: row.position,
   };
+}
+
+function galleryImageResponse(
+  row: ImageRow,
+  topic: TopicRow,
+  chapter: ChapterRow,
+) {
+  return {
+    ...imageResponse(row),
+    topicTitle: topic.title,
+    topicSlug: topic.slug,
+    chapterId: chapter.id,
+    chapterTitle: chapter.title,
+    chapterSlug: chapter.slug,
+  };
+}
+
+async function listGalleryImages(
+  request: Request,
+  env: Env,
+  user: User,
+  url: URL,
+) {
+  const requestedOffset = Number(url.searchParams.get("offset") ?? 0);
+  const requestedLimit = Number(url.searchParams.get("limit") ?? 12);
+  if (
+    !Number.isInteger(requestedOffset) ||
+    requestedOffset < 0 ||
+    !Number.isInteger(requestedLimit) ||
+    requestedLimit < 1 ||
+    requestedLimit > 24
+  ) {
+    return json(request, env, { error: "Invalid pagination" }, 400);
+  }
+
+  const queryLimit = requestedLimit + 1;
+  const imagesResponse = await databaseRequest(
+    request,
+    env,
+    `topic_images?select=id,topic_id,storage_key,original_filename,format,width,height,bytes,position&user_id=eq.${encodeURIComponent(user.id)}&order=created_at.desc,id.desc&offset=${requestedOffset}&limit=${queryLimit}`,
+  );
+  if (!imagesResponse.ok) throw new Error("Gallery image list failed");
+  const rows = (await imagesResponse.json()) as ImageRow[];
+  const visibleRows = rows.slice(0, requestedLimit);
+  if (!visibleRows.length) {
+    return json(request, env, { images: [], hasMore: false });
+  }
+
+  const topicIds = [...new Set(visibleRows.map((row) => row.topic_id))];
+  const topicsResponse = await databaseRequest(
+    request,
+    env,
+    `topics?select=id,chapter_id,slug,title&user_id=eq.${encodeURIComponent(user.id)}&id=in.(${topicIds.join(",")})`,
+  );
+  if (!topicsResponse.ok) throw new Error("Gallery topic list failed");
+  const topics = (await topicsResponse.json()) as TopicRow[];
+  const chapterIds = [...new Set(topics.map((topic) => topic.chapter_id))];
+  const chaptersResponse = await databaseRequest(
+    request,
+    env,
+    `chapters?select=id,slug,title&user_id=eq.${encodeURIComponent(user.id)}&id=in.(${chapterIds.join(",")})`,
+  );
+  if (!chaptersResponse.ok) throw new Error("Gallery chapter list failed");
+  const chapters = (await chaptersResponse.json()) as ChapterRow[];
+  const topicsById = new Map(topics.map((topic) => [topic.id, topic]));
+  const chaptersById = new Map(
+    chapters.map((chapter) => [chapter.id, chapter]),
+  );
+  const images = visibleRows.flatMap((row) => {
+    const topic = topicsById.get(row.topic_id);
+    const chapter = topic ? chaptersById.get(topic.chapter_id) : undefined;
+    return topic && chapter ? [galleryImageResponse(row, topic, chapter)] : [];
+  });
+  return json(request, env, {
+    images,
+    hasMore: rows.length > requestedLimit,
+  });
 }
 
 async function getImageRow(request: Request, env: Env, imageId: string) {
@@ -287,21 +377,25 @@ export default {
     }
 
     const url = new URL(request.url);
+    const galleryMatch = url.pathname === "/images";
     const topicMatch = url.pathname.match(/^\/topics\/([^/]+)\/images$/);
     const imageMatch = url.pathname.match(/^\/images\/([^/]+)$/);
     const allowedMethod =
+      (galleryMatch && request.method === "GET") ||
       (topicMatch && ["GET", "POST", "DELETE"].includes(request.method)) ||
       (imageMatch && ["GET", "DELETE"].includes(request.method));
     if (!allowedMethod) return json(request, env, { error: "Not found" }, 404);
 
-    let resourceId: string;
-    try {
-      resourceId = decodeURIComponent((topicMatch ?? imageMatch)?.[1] ?? "");
-    } catch {
-      return json(request, env, { error: "Invalid identifier" }, 400);
-    }
-    if (!UUID_PATTERN.test(resourceId)) {
-      return json(request, env, { error: "Invalid identifier" }, 400);
+    let resourceId = "";
+    if (!galleryMatch) {
+      try {
+        resourceId = decodeURIComponent((topicMatch ?? imageMatch)?.[1] ?? "");
+      } catch {
+        return json(request, env, { error: "Invalid identifier" }, 400);
+      }
+      if (!UUID_PATTERN.test(resourceId)) {
+        return json(request, env, { error: "Invalid identifier" }, 400);
+      }
     }
 
     if (topicMatch && request.method === "POST" && isUploadTooLarge(request)) {
@@ -322,6 +416,9 @@ export default {
         if (!writeLimit.success) {
           return json(request, env, { error: "Too many requests" }, 429);
         }
+      }
+      if (galleryMatch) {
+        return listGalleryImages(request, env, user, url);
       }
       if (topicMatch && request.method === "GET") {
         return listImages(request, env, resourceId);

@@ -19,6 +19,7 @@ function getRouter() {
   router ??= createBrowserRouter([
     { path: "/", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
     { path: "/chapters", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
+    { path: "/gallery", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
     {
       path: "/questions",
       lazy: loadNoteWorkspace,

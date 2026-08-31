@@ -49,6 +49,10 @@ type Props = {
   images: TopicImage[];
   previewId: string | null;
   onPreviewChange: (id: string | null) => void;
+  getDescription?: (image: TopicImage) => string;
+  onOpenDescription?: (image: TopicImage) => void;
+  hasMore?: boolean;
+  onRequestMore?: () => Promise<string | null>;
 };
 
 function clamp(value: number, minimum: number, maximum: number) {
@@ -93,6 +97,10 @@ export function ImagePreviewDialog({
   images,
   previewId,
   onPreviewChange,
+  getDescription,
+  onOpenDescription,
+  hasMore = false,
+  onRequestMore,
 }: Props) {
   const image = images.find((item) => item.id === previewId);
   const imageIndex = image
@@ -120,8 +128,23 @@ export function ImagePreviewDialog({
     setOffset({ x: 0, y: 0 });
   }
 
-  function changeImage(direction: -1 | 1) {
-    if (imageIndex < 0 || images.length < 2) return;
+  async function changeImage(direction: -1 | 1) {
+    if (imageIndex < 0) return;
+    if (
+      direction === 1 &&
+      imageIndex === images.length - 1 &&
+      hasMore &&
+      onRequestMore
+    ) {
+      const nextId = await onRequestMore();
+      if (nextId) {
+        resetView();
+        readerScrollRef.current?.scrollTo({ top: 0 });
+        onPreviewChange(nextId);
+      }
+      return;
+    }
+    if (images.length < 2) return;
     const nextIndex = (imageIndex + direction + images.length) % images.length;
     resetView();
     readerScrollRef.current?.scrollTo({ top: 0 });
@@ -217,7 +240,7 @@ export function ImagePreviewDialog({
       if (event.shiftKey && isHorizontalArrow) {
         event.preventDefault();
         event.stopPropagation();
-        changeImage(event.key === "ArrowLeft" ? -1 : 1);
+        void changeImage(event.key === "ArrowLeft" ? -1 : 1);
       } else if (viewMode === "width" && isVerticalArrow) {
         event.preventDefault();
         event.stopPropagation();
@@ -256,7 +279,7 @@ export function ImagePreviewDialog({
       } else if (isHorizontalArrow) {
         event.preventDefault();
         event.stopPropagation();
-        changeImage(event.key === "ArrowLeft" ? -1 : 1);
+        void changeImage(event.key === "ArrowLeft" ? -1 : 1);
       } else if (viewMode === "contain" && isZoomInKey) {
         event.preventDefault();
         changeScale(scale + (event.altKey ? PRECISE_SCALE_STEP : SCALE_STEP));
@@ -340,7 +363,7 @@ export function ImagePreviewDialog({
             </div>
           )}
 
-          {images.length > 1 && (
+          {(images.length > 1 || hasMore) && (
             <>
               <div className="absolute top-1/2 left-3 -translate-y-1/2">
                 <Button
@@ -349,7 +372,8 @@ export function ImagePreviewDialog({
                   size="icon"
                   className={`rounded-full opacity-90 hover:opacity-100 active:bg-white/70 ${VIEWER_BUTTON_CLASS}`}
                   aria-label="Poprzednie zdjęcie"
-                  onClick={() => changeImage(-1)}
+                  disabled={images.length < 2}
+                  onClick={() => void changeImage(-1)}
                 >
                   <ChevronLeft />
                 </Button>
@@ -361,7 +385,7 @@ export function ImagePreviewDialog({
                   size="icon"
                   className={`rounded-full opacity-90 hover:opacity-100 active:bg-white/70 ${VIEWER_BUTTON_CLASS}`}
                   aria-label="Następne zdjęcie"
-                  onClick={() => changeImage(1)}
+                  onClick={() => void changeImage(1)}
                 >
                   <ChevronRight />
                 </Button>
@@ -371,10 +395,32 @@ export function ImagePreviewDialog({
         </div>
 
         <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-t border-white/15 bg-black/80 px-3">
-          <p className="min-w-0 truncate text-xs text-white/70">
-            {image?.originalFilename}
-            {images.length > 1 && ` · ${imageIndex + 1} z ${images.length}`}
-          </p>
+          <div className="min-w-0">
+            {image && getDescription && onOpenDescription ? (
+              <button
+                type="button"
+                className="block max-w-full truncate text-left text-xs font-medium text-white/90 hover:underline"
+                onClick={() => onOpenDescription(image)}
+              >
+                {getDescription(image)}
+              </button>
+            ) : (
+              <p className="truncate text-xs text-white/70">
+                {image?.originalFilename}
+              </p>
+            )}
+            {image && getDescription && (
+              <p className="truncate text-[11px] text-white/55">
+                {image.originalFilename}
+                {images.length > 1 && ` · ${imageIndex + 1} z ${images.length}`}
+              </p>
+            )}
+            {!getDescription && images.length > 1 && (
+              <p className="text-[11px] text-white/55">
+                {imageIndex + 1} z {images.length}
+              </p>
+            )}
+          </div>
           <div className="flex shrink-0 items-center gap-1">
             <Tooltip>
               <TooltipTrigger

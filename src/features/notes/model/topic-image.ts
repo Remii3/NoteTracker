@@ -10,3 +10,11 @@ export type TopicImage = {
   position: number;
   url: string;
 };
+
+export type GalleryImage = TopicImage & {
+  chapterId: string;
+  chapterSlug: string;
+  chapterTitle: string;
+  topicSlug: string;
+  topicTitle: string;
+};

@@ -15,6 +15,7 @@ import {
   LibraryBig,
   Layers3,
   Home,
+  Images,
   LogOut,
   Search,
   X,
@@ -57,6 +58,7 @@ type Props = {
   topicId: string;
   isHome: boolean;
   isChapters: boolean;
+  isGallery: boolean;
   isQuestions: boolean;
   isEditing: boolean;
   search: string;
@@ -67,6 +69,7 @@ type Props = {
   onSortModeChange: (value: SortMode) => void;
   onOpenHome: () => void;
   onOpenChapters: () => void;
+  onOpenGallery: () => void;
   onOpenQuestions: () => void;
   onOpenAddDialog: () => void;
   onSelectChapter: (chapter: Chapter) => void;
@@ -100,6 +103,7 @@ export function WorkspaceSidebar({
   topicId,
   isHome,
   isChapters,
+  isGallery,
   isQuestions,
   isEditing,
   search,
@@ -110,6 +114,7 @@ export function WorkspaceSidebar({
   onSortModeChange,
   onOpenHome,
   onOpenChapters,
+  onOpenGallery,
   onOpenQuestions,
   onOpenAddDialog,
   onSelectChapter,
@@ -243,6 +248,12 @@ export function WorkspaceSidebar({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
+              <SidebarMenuButton isActive={isGallery} onClick={onOpenGallery}>
+                <Images />
+                <span>Galeria</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
               <SidebarMenuButton
                 isActive={isQuestions}
                 onClick={onOpenQuestions}
@@ -262,6 +273,16 @@ export function WorkspaceSidebar({
               </span>
               {!primaryNavigationVisible && (
                 <>
+                  <Button
+                    type="button"
+                    variant={isGallery ? "secondary" : "ghost"}
+                    size="icon-xs"
+                    title="Galeria"
+                    aria-label="Przejdź do galerii"
+                    onClick={onOpenGallery}
+                  >
+                    <Images />
+                  </Button>
                   <Button
                     type="button"
                     variant={isHome ? "secondary" : "ghost"}

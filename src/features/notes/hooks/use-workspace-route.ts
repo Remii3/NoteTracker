@@ -32,9 +32,11 @@ export function useWorkspaceRoute({
     : location.pathname.startsWith("/questions") ||
         location.pathname.startsWith("/study/")
       ? "questions"
-      : location.pathname === "/chapters"
-        ? "chapters"
-        : "home";
+      : location.pathname === "/gallery"
+        ? "gallery"
+        : location.pathname === "/chapters"
+          ? "chapters"
+          : "home";
   const chapter = chapters.find(
     (item) => item.slug === chapterSlug || item.id === chapterSlug,
   );
@@ -61,6 +63,7 @@ export function useWorkspaceRoute({
   );
   const navigateHome = useCallback(() => navigate("/"), [navigate]);
   const navigateChapters = useCallback(() => navigate("/chapters"), [navigate]);
+  const navigateGallery = useCallback(() => navigate("/gallery"), [navigate]);
   const navigateQuestions = useCallback(
     () => navigate("/questions"),
     [navigate],
@@ -125,6 +128,7 @@ export function useWorkspaceRoute({
     editorDirty,
     navigateHome,
     navigateChapters,
+    navigateGallery,
     navigateQuestions,
     navigateQuestionHistory,
     navigateStudySession,

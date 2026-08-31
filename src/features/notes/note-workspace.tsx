@@ -14,6 +14,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLoading } from "@/components/app-loading";
 import { LearningDashboard } from "./components/learning-dashboard";
 import { ChaptersOverview } from "./components/chapters-overview";
+import { GalleryPage } from "./components/gallery-page";
 import { StudyNavigation } from "./components/study-navigation";
 import { TopicPage } from "./components/topic-page";
 import { WorkspaceHeader } from "./components/workspace-header";
@@ -118,6 +119,7 @@ export function NoteWorkspace({
     editorDirty,
     navigateHome,
     navigateChapters,
+    navigateGallery,
     navigateQuestions,
     navigateQuestionHistory,
     navigateStudySession,
@@ -325,6 +327,11 @@ export function NoteWorkspace({
     navigateQuestions();
   }
 
+  function openGallery() {
+    if (activeView === "gallery") return;
+    navigateGallery();
+  }
+
   async function openChapter(nextChapterId: string, nextTopicId: string) {
     await loadChapterTopics(nextChapterId);
     navigateToChapter(nextChapterId, nextTopicId);
@@ -358,6 +365,7 @@ export function NoteWorkspace({
           topicId={topicId}
           isHome={activeView === "home"}
           isChapters={activeView === "chapters"}
+          isGallery={activeView === "gallery"}
           isQuestions={activeView === "questions"}
           isEditing={isEditing}
           search={search}
@@ -368,6 +376,7 @@ export function NoteWorkspace({
           onSortModeChange={setSortMode}
           onOpenHome={openHome}
           onOpenChapters={openChapters}
+          onOpenGallery={openGallery}
           onOpenQuestions={openQuestions}
           onOpenAddDialog={() => setAddDialogOpen(true)}
           onSelectChapter={selectChapter}
@@ -398,6 +407,7 @@ export function NoteWorkspace({
           <WorkspaceHeader
             isHome={activeView === "home"}
             isChapters={activeView === "chapters"}
+            isGallery={activeView === "gallery"}
             isQuestions={activeView === "questions"}
             isQuestionHistory={isQuestionHistory}
             chapterTitle={chapter?.title}
@@ -419,6 +429,8 @@ export function NoteWorkspace({
             />
           ) : activeView === "chapters" ? (
             <ChaptersOverview chapters={chapters} onOpenChapter={openChapter} />
+          ) : activeView === "gallery" ? (
+            <GalleryPage service={imagesService} onOpenTopic={openChapter} />
           ) : activeView === "questions" && questionsRepository ? (
             sessionId ? (
               <StudySession
