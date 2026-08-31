@@ -5,8 +5,6 @@ import App from "./App.tsx";
 import { AppErrorBoundary } from "./components/app-error-boundary.tsx";
 import { initializeMonitoring } from "./lib/monitoring/sentry.ts";
 
-await initializeMonitoring();
-
 const root = document.getElementById("root");
 if (!root) throw new Error("Application root element is missing");
 
@@ -16,4 +14,14 @@ createRoot(root).render(
       <App />
     </StrictMode>
   </AppErrorBoundary>,
+);
+
+window.addEventListener(
+  "load",
+  () => {
+    window.setTimeout(() => {
+      void initializeMonitoring();
+    }, 5000);
+  },
+  { once: true },
 );

@@ -86,7 +86,6 @@ export function NoteWorkspace({
   const { sessionId } = useParams<{ sessionId: string }>();
   const [isSearchPending, setIsSearchPending] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const { richTextModule, preloadRichTextEditor } = useRichTextModule();
   const notesStore = useNotesStore({
     repository,
     initialChapters,
@@ -132,6 +131,9 @@ export function NoteWorkspace({
     isLoading: notesStore.isLoading,
     resolveChapterTopics: loadChapterTopics,
   });
+  const { richTextModule, preloadRichTextEditor } = useRichTextModule(
+    activeView === "notes",
+  );
   const {
     addDialogOpen,
     closeEditingUi,

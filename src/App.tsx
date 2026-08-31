@@ -20,32 +20,41 @@ function AppLoading() {
   );
 }
 
-const router = createBrowserRouter([
-  { path: "/", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
-  { path: "/chapters", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
-  { path: "/questions", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
-  {
-    path: "/questions/history",
-    lazy: loadNoteWorkspace,
-    HydrateFallback: AppLoading,
-  },
-  {
-    path: "/study/:studyMode/:sessionId",
-    lazy: loadNoteWorkspace,
-    HydrateFallback: AppLoading,
-  },
-  {
-    path: "/chapters/:chapterSlug",
-    lazy: loadNoteWorkspace,
-    HydrateFallback: AppLoading,
-  },
-  {
-    path: "/chapters/:chapterSlug/:topicSlug",
-    lazy: loadNoteWorkspace,
-    HydrateFallback: AppLoading,
-  },
-  { path: "*", element: <Navigate to="/" replace /> },
-]);
+let router: ReturnType<typeof createBrowserRouter> | undefined;
+
+function getRouter() {
+  router ??= createBrowserRouter([
+    { path: "/", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
+    { path: "/chapters", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
+    {
+      path: "/questions",
+      lazy: loadNoteWorkspace,
+      HydrateFallback: AppLoading,
+    },
+    {
+      path: "/questions/history",
+      lazy: loadNoteWorkspace,
+      HydrateFallback: AppLoading,
+    },
+    {
+      path: "/study/:studyMode/:sessionId",
+      lazy: loadNoteWorkspace,
+      HydrateFallback: AppLoading,
+    },
+    {
+      path: "/chapters/:chapterSlug",
+      lazy: loadNoteWorkspace,
+      HydrateFallback: AppLoading,
+    },
+    {
+      path: "/chapters/:chapterSlug/:topicSlug",
+      lazy: loadNoteWorkspace,
+      HydrateFallback: AppLoading,
+    },
+    { path: "*", element: <Navigate to="/" replace /> },
+  ]);
+  return router;
+}
 
 function AuthenticatedApp() {
   const { isLoading, isPasswordRecovery, user } = useAuth();
@@ -54,7 +63,7 @@ function AuthenticatedApp() {
   if (isPasswordRecovery) return <PasswordRecoveryPage />;
   if (!user) return <AuthPage />;
 
-  return <RouterProvider router={router} />;
+  return <RouterProvider router={getRouter()} />;
 }
 
 function App() {

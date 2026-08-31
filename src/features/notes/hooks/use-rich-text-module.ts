@@ -14,7 +14,7 @@ function loadRichTextModule() {
   return modulePromise;
 }
 
-export function useRichTextModule() {
+export function useRichTextModule(enabled: boolean) {
   const [module, setModule] = useState<RichTextModule | null>(loadedModule);
 
   const preload = useCallback(() => {
@@ -22,6 +22,7 @@ export function useRichTextModule() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     let active = true;
     void loadRichTextModule().then((loaded) => {
       if (active) setModule(loaded);
@@ -29,7 +30,7 @@ export function useRichTextModule() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [enabled]);
 
   return { richTextModule: module, preloadRichTextEditor: preload };
 }

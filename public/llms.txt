@@ -1,0 +1,7 @@
+# NoteTracker
+
+NoteTracker jest prywatną aplikacją do organizowania rozdziałów, tematów,
+notatek i postępów w nauce. Zawartość użytkowników wymaga uwierzytelnienia i nie
+jest publicznie dostępna.
+
+- [Aplikacja NoteTracker](https://note-tracker-orcin.vercel.app/)

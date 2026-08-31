@@ -74,9 +74,7 @@ export function AuthPage() {
           </span>
           <div>
             <p className="font-semibold leading-tight">NoteTracker</p>
-            <p className="text-xs text-muted-foreground">
-              Twoja przestrzeń nauki
-            </p>
+            <p className="text-xs text-foreground/70">Twoja przestrzeń nauki</p>
           </div>
         </div>
         <section className="rounded-2xl border bg-background p-6 shadow-sm">

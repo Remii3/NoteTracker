@@ -1,5 +1,10 @@
 let sentry: Promise<typeof import("@sentry/react")> | null = null;
 let monitoringEnabled = false;
+const pendingErrors: Array<{
+  error: unknown;
+  context?: string;
+  details?: Record<string, unknown>;
+}> = [];
 
 function loadSentry() {
   sentry ??= import("@sentry/react");
@@ -30,6 +35,23 @@ export async function initializeMonitoring() {
     tracesSampleRate: import.meta.env.PROD ? 0.05 : 0,
   });
   monitoringEnabled = true;
+
+  for (const pending of pendingErrors.splice(0)) {
+    sendException(Sentry, pending.error, pending.context, pending.details);
+  }
+}
+
+function sendException(
+  Sentry: typeof import("@sentry/react"),
+  error: unknown,
+  context?: string,
+  details?: Record<string, unknown>,
+) {
+  Sentry.withScope((scope) => {
+    if (context) scope.setTag("error.context", context);
+    if (details) scope.setContext("error.details", details);
+    Sentry.captureException(error);
+  });
 }
 
 export function captureException(
@@ -37,13 +59,13 @@ export function captureException(
   context?: string,
   details?: Record<string, unknown>,
 ) {
-  if (!monitoringEnabled) return;
+  if (!monitoringEnabled) {
+    if (pendingErrors.length < 10)
+      pendingErrors.push({ error, context, details });
+    return;
+  }
 
   void loadSentry().then((Sentry) => {
-    Sentry.withScope((scope) => {
-      if (context) scope.setTag("error.context", context);
-      if (details) scope.setContext("error.details", details);
-      Sentry.captureException(error);
-    });
+    sendException(Sentry, error, context, details);
   });
 }
