@@ -1,5 +1,7 @@
 interface Env {
   IMAGES: R2Bucket;
+  AUTH_RATE_LIMITER: RateLimit;
+  WRITE_RATE_LIMITER: RateLimit;
   SUPABASE_URL: string;
   SUPABASE_PUBLISHABLE_KEY: string;
   ALLOWED_ORIGINS: string;
@@ -20,18 +22,29 @@ type ImageRow = {
 };
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_UPLOAD_BODY_BYTES = MAX_FILE_BYTES + 64 * 1024;
+const MAX_FILENAME_LENGTH = 255;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function allowedOrigin(request: Request, env: Env) {
+  const origin = request.headers.get("Origin");
+  if (!origin) return null;
+  const allowed = env.ALLOWED_ORIGINS.split(",").map((item) => item.trim());
+  return allowed.includes(origin) ? origin : null;
+}
 
 function corsHeaders(request: Request, env: Env) {
-  const origin = request.headers.get("Origin") ?? "";
-  const allowed = env.ALLOWED_ORIGINS.split(",").map((item) => item.trim());
-  return {
-    "Access-Control-Allow-Origin": allowed.includes(origin)
-      ? origin
-      : allowed[0],
+  const headers = new Headers({
     "Access-Control-Allow-Headers": "authorization, content-type",
     "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
     Vary: "Origin",
-  };
+  });
+  const origin = allowedOrigin(request, env);
+  if (origin) headers.set("Access-Control-Allow-Origin", origin);
+  return headers;
 }
 
 function json(request: Request, env: Env, body: unknown, status = 200) {
@@ -55,7 +68,24 @@ async function authenticate(request: Request, env: Env) {
     },
   });
   if (!response.ok) return null;
-  return (await response.json()) as User;
+  const value: unknown = await response.json();
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !("id" in value) ||
+    typeof value.id !== "string" ||
+    !UUID_PATTERN.test(value.id)
+  ) {
+    return null;
+  }
+  return { id: value.id };
+}
+
+function isUploadTooLarge(request: Request) {
+  const contentLength = request.headers.get("Content-Length");
+  if (!contentLength) return false;
+  const bytes = Number(contentLength);
+  return !Number.isFinite(bytes) || bytes > MAX_UPLOAD_BODY_BYTES;
 }
 
 async function databaseRequest(
@@ -138,6 +168,7 @@ async function uploadImage(
     file.size > MAX_FILE_BYTES ||
     typeof originalFilename !== "string" ||
     !originalFilename.trim() ||
+    originalFilename.length > MAX_FILENAME_LENGTH ||
     !Number.isInteger(width) ||
     !Number.isInteger(height) ||
     width <= 0 ||
@@ -148,45 +179,56 @@ async function uploadImage(
 
   const imageId = crypto.randomUUID();
   const storageKey = `${user.id}/${topicId}/${imageId}.webp`;
-  await env.IMAGES.put(storageKey, file.stream(), {
-    httpMetadata: {
-      contentType: "image/webp",
-      contentDisposition: "inline",
-    },
-    customMetadata: { userId: user.id, topicId, imageId },
-  });
+  try {
+    await env.IMAGES.put(storageKey, file.stream(), {
+      httpMetadata: {
+        contentType: "image/webp",
+        contentDisposition: "inline",
+      },
+      customMetadata: { userId: user.id, topicId, imageId },
+    });
 
-  const positionResponse = await databaseRequest(
-    request,
-    env,
-    `topic_images?select=position&topic_id=eq.${encodeURIComponent(topicId)}&order=position.desc&limit=1`,
-  );
-  const latest = positionResponse.ok
-    ? ((await positionResponse.json()) as Array<{ position: number }>)[0]
-    : null;
-  const row = {
-    id: imageId,
-    topic_id: topicId,
-    user_id: user.id,
-    storage_key: storageKey,
-    original_filename: originalFilename.trim(),
-    format: "webp",
-    width,
-    height,
-    bytes: file.size,
-    position: (latest?.position ?? 0) + 1000,
-  };
-  const insertResponse = await databaseRequest(request, env, "topic_images", {
-    method: "POST",
-    headers: { Prefer: "return=representation" },
-    body: JSON.stringify(row),
-  });
-  if (!insertResponse.ok) {
-    await env.IMAGES.delete(storageKey);
-    throw new Error("Image metadata insert failed");
+    const positionResponse = await databaseRequest(
+      request,
+      env,
+      `topic_images?select=position&topic_id=eq.${encodeURIComponent(topicId)}&order=position.desc&limit=1`,
+    );
+    const latest = positionResponse.ok
+      ? ((await positionResponse.json()) as Array<{ position: number }>)[0]
+      : null;
+    const row = {
+      id: imageId,
+      topic_id: topicId,
+      user_id: user.id,
+      storage_key: storageKey,
+      original_filename: originalFilename.trim(),
+      format: "webp",
+      width,
+      height,
+      bytes: file.size,
+      position: (latest?.position ?? 0) + 1000,
+    };
+    const insertResponse = await databaseRequest(request, env, "topic_images", {
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(row),
+    });
+    if (!insertResponse.ok) throw new Error("Image metadata insert failed");
+    const inserted = ((await insertResponse.json()) as ImageRow[])[0];
+    if (!inserted) throw new Error("Image metadata response was empty");
+    return json(request, env, imageResponse(inserted), 201);
+  } catch (error) {
+    await Promise.allSettled([
+      env.IMAGES.delete(storageKey),
+      databaseRequest(
+        request,
+        env,
+        `topic_images?id=eq.${encodeURIComponent(imageId)}`,
+        { method: "DELETE" },
+      ),
+    ]);
+    throw error;
   }
-  const inserted = ((await insertResponse.json()) as ImageRow[])[0];
-  return json(request, env, imageResponse(inserted), 201);
 }
 
 async function serveImage(request: Request, env: Env, imageId: string) {
@@ -198,12 +240,14 @@ async function serveImage(request: Request, env: Env, imageId: string) {
   object.writeHttpMetadata(headers);
   headers.set("ETag", object.httpEtag);
   headers.set("Cache-Control", "private, max-age=3600");
+  headers.set("X-Content-Type-Options", "nosniff");
   return new Response(object.body, { headers });
 }
 
 async function deleteImage(request: Request, env: Env, imageId: string) {
   const row = await getImageRow(request, env, imageId);
   if (!row) return json(request, env, { error: "Image not found" }, 404);
+  await env.IMAGES.delete(row.storage_key);
   const response = await databaseRequest(
     request,
     env,
@@ -211,7 +255,6 @@ async function deleteImage(request: Request, env: Env, imageId: string) {
     { method: "DELETE" },
   );
   if (!response.ok) throw new Error("Image metadata delete failed");
-  await env.IMAGES.delete(row.storage_key);
   return json(request, env, { success: true });
 }
 
@@ -237,43 +280,74 @@ async function deleteTopicImages(
 export default {
   async fetch(request, env): Promise<Response> {
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders(request, env) });
+      return new Response(null, {
+        status: allowedOrigin(request, env) ? 204 : 403,
+        headers: corsHeaders(request, env),
+      });
+    }
+
+    const url = new URL(request.url);
+    const topicMatch = url.pathname.match(/^\/topics\/([^/]+)\/images$/);
+    const imageMatch = url.pathname.match(/^\/images\/([^/]+)$/);
+    const allowedMethod =
+      (topicMatch && ["GET", "POST", "DELETE"].includes(request.method)) ||
+      (imageMatch && ["GET", "DELETE"].includes(request.method));
+    if (!allowedMethod) return json(request, env, { error: "Not found" }, 404);
+
+    let resourceId: string;
+    try {
+      resourceId = decodeURIComponent((topicMatch ?? imageMatch)?.[1] ?? "");
+    } catch {
+      return json(request, env, { error: "Invalid identifier" }, 400);
+    }
+    if (!UUID_PATTERN.test(resourceId)) {
+      return json(request, env, { error: "Invalid identifier" }, 400);
+    }
+
+    if (topicMatch && request.method === "POST" && isUploadTooLarge(request)) {
+      return json(request, env, { error: "Image is too large" }, 413);
+    }
+
+    const authKey = request.headers.get("CF-Connecting-IP") ?? "unknown";
+    const authLimit = await env.AUTH_RATE_LIMITER.limit({ key: authKey });
+    if (!authLimit.success) {
+      return json(request, env, { error: "Too many requests" }, 429);
     }
     const user = await authenticate(request, env);
     if (!user) return json(request, env, { error: "Unauthorized" }, 401);
 
     try {
-      const url = new URL(request.url);
-      const topicMatch = url.pathname.match(/^\/topics\/([^/]+)\/images$/);
-      const imageMatch = url.pathname.match(/^\/images\/([^/]+)$/);
+      if (request.method !== "GET") {
+        const writeLimit = await env.WRITE_RATE_LIMITER.limit({ key: user.id });
+        if (!writeLimit.success) {
+          return json(request, env, { error: "Too many requests" }, 429);
+        }
+      }
       if (topicMatch && request.method === "GET") {
-        return listImages(request, env, decodeURIComponent(topicMatch[1]));
+        return listImages(request, env, resourceId);
       }
       if (topicMatch && request.method === "POST") {
-        return uploadImage(
-          request,
-          env,
-          user,
-          decodeURIComponent(topicMatch[1]),
-        );
+        return uploadImage(request, env, user, resourceId);
       }
       if (topicMatch && request.method === "DELETE") {
-        return deleteTopicImages(
-          request,
-          env,
-          user,
-          decodeURIComponent(topicMatch[1]),
-        );
+        return deleteTopicImages(request, env, user, resourceId);
       }
       if (imageMatch && request.method === "GET") {
-        return serveImage(request, env, decodeURIComponent(imageMatch[1]));
+        return serveImage(request, env, resourceId);
       }
       if (imageMatch && request.method === "DELETE") {
-        return deleteImage(request, env, decodeURIComponent(imageMatch[1]));
+        return deleteImage(request, env, resourceId);
       }
       return json(request, env, { error: "Not found" }, 404);
     } catch (error) {
-      console.error(error);
+      console.error(
+        JSON.stringify({
+          message: "Topic image operation failed",
+          method: request.method,
+          path: url.pathname,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
       return json(request, env, { error: "Operation failed" }, 500);
     }
   },

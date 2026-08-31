@@ -3,6 +3,10 @@
 Worker udostępnia prywatne zdjęcia z Cloudflare R2 wyłącznie użytkownikom
 zweryfikowanym przez Supabase Auth.
 
+Liczba zdjęć użytkownika nie jest limitowana. Worker ogranicza jedynie tempo
+żądań (300 żądań uwierzytelnianych i 120 operacji zapisu na minutę), aby
+utrudnić nadużycia i niekontrolowany wzrost kosztów.
+
 ## Konfiguracja
 
 1. Uruchom w Supabase SQL Editor:

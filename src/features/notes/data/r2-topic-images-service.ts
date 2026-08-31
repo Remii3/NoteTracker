@@ -37,10 +37,14 @@ export class R2TopicImagesService implements TopicImagesService {
       },
     });
     if (!response.ok) {
+      const messageByStatus: Partial<Record<number, string>> = {
+        401: "Sesja wygasła. Zaloguj się ponownie.",
+        413: "Zdjęcie jest zbyt duże.",
+        429: "Wysyłasz zdjęcia zbyt szybko. Odczekaj chwilę i spróbuj ponownie.",
+      };
       throw new Error(
-        response.status === 401
-          ? "Sesja wygasła. Zaloguj się ponownie."
-          : "Nie udało się wykonać operacji na zdjęciu. Spróbuj ponownie.",
+        messageByStatus[response.status] ??
+          "Nie udało się wykonać operacji na zdjęciu. Spróbuj ponownie.",
       );
     }
     return response;

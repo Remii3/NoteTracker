@@ -3,12 +3,31 @@
   "name": "notetracker-topic-images",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-24",
+  "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "preview_urls": false,
   "r2_buckets": [
     {
       "binding": "IMAGES",
       "bucket_name": "notetracker-images",
+    },
+  ],
+  "ratelimits": [
+    {
+      "name": "AUTH_RATE_LIMITER",
+      "namespace_id": "1938472601",
+      "simple": {
+        "limit": 300,
+        "period": 60,
+      },
+    },
+    {
+      "name": "WRITE_RATE_LIMITER",
+      "namespace_id": "1938472602",
+      "simple": {
+        "limit": 120,
+        "period": 60,
+      },
     },
   ],
 }
