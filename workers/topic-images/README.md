@@ -9,6 +9,8 @@ utrudnić nadużycia i niekontrolowany wzrost kosztów.
 
 ## Konfiguracja
 
+Wymagane są Node.js 22+ i npm. Zainstaluj zależności Workera przez `npm ci`.
+
 1. Uruchom w Supabase SQL Editor:
 
    `supabase/manual/topic-images-r2.sql`
@@ -54,3 +56,14 @@ utrudnić nadużycia i niekontrolowany wzrost kosztów.
 
 Do lokalnego uruchomienia Workera skopiuj `.dev.vars.example` jako `.dev.vars`
 i uzupełnij wartości. Nie dodawaj `.dev.vars` do repozytorium.
+
+```bash
+cp .dev.vars.example .dev.vars
+npm run dev
+```
+
+Worker korzysta z `@cloudflare/workers-types`. Nie uruchamiaj `wrangler types`
+i nie commituj generowanego `worker-configuration.d.ts`.
+
+Pełna checklista wdrożenia i rollback znajdują się w
+[`docs/deployment.md`](../../docs/deployment.md).
