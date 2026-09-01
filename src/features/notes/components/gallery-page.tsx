@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -141,7 +142,9 @@ export function GalleryPage({
               <ArrowUpDown /> {SORT_LABELS[gallerySort]}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Sortowanie galerii</DropdownMenuLabel>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Sortowanie galerii</DropdownMenuLabel>
+              </DropdownMenuGroup>
               <DropdownMenuRadioGroup
                 value={gallerySort}
                 onValueChange={(value) => changeSort(value as SortMode)}

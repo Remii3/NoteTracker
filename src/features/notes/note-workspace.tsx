@@ -454,6 +454,7 @@ export function NoteWorkspace({
             <ChaptersOverview chapters={chapters} onOpenChapter={openChapter} />
           ) : activeView === "gallery" ? (
             <GalleryPage
+              key={`${moduleId}:${sortMode}`}
               moduleId={moduleId}
               sortMode={sortMode}
               service={imagesService}
