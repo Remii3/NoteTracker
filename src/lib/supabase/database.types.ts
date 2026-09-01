@@ -255,6 +255,30 @@ export type Database = {
         Args: { target_module_id: string };
         Returns: { storage_key: string }[];
       };
+      get_module_gallery_images: {
+        Args: {
+          target_module_id: string;
+          sort_mode: string;
+          page_offset?: number;
+          page_limit?: number;
+        };
+        Returns: Array<{
+          id: string;
+          topic_id: string;
+          storage_key: string;
+          original_filename: string;
+          format: string;
+          width: number;
+          height: number;
+          bytes: number;
+          image_position: number;
+          topic_title: string;
+          topic_slug: string;
+          chapter_id: string;
+          chapter_title: string;
+          chapter_slug: string;
+        }>;
+      };
       get_question_bank_availability: {
         Args: {
           target_module_id: string;

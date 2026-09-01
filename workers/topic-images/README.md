@@ -69,5 +69,8 @@ Endpoint `DELETE /modules/:moduleId/images` usuwa z R2 wszystkie obiekty
 zdjęć należące do wskazanego modułu. Wymaga funkcji z migracji
 `supabase/manual/delete-modules-cascade.sql` i uwierzytelnienia właściciela.
 
+Paginowane sortowanie galerii korzysta z funkcji z migracji
+`supabase/manual/gallery-sorting.sql`.
+
 Pełna checklista wdrożenia i rollback znajdują się w
 [`docs/deployment.md`](../../docs/deployment.md).

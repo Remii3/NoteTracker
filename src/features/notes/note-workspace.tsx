@@ -455,6 +455,7 @@ export function NoteWorkspace({
           ) : activeView === "gallery" ? (
             <GalleryPage
               moduleId={moduleId}
+              sortMode={sortMode}
               service={imagesService}
               onOpenTopic={openChapter}
             />

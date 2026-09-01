@@ -21,17 +21,13 @@ type ImageRow = {
   position: number;
 };
 
-type TopicRow = {
-  id: string;
+type GalleryRow = Omit<ImageRow, "position"> & {
+  image_position: number;
+  topic_title: string;
+  topic_slug: string;
   chapter_id: string;
-  slug: string;
-  title: string;
-};
-
-type ChapterRow = {
-  id: string;
-  slug: string;
-  title: string;
+  chapter_title: string;
+  chapter_slug: string;
 };
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -132,81 +128,49 @@ function imageResponse(row: ImageRow) {
   };
 }
 
-function galleryImageResponse(
-  row: ImageRow,
-  topic: TopicRow,
-  chapter: ChapterRow,
-) {
-  return {
-    ...imageResponse(row),
-    topicTitle: topic.title,
-    topicSlug: topic.slug,
-    chapterId: chapter.id,
-    chapterTitle: chapter.title,
-    chapterSlug: chapter.slug,
-  };
-}
-
-async function listGalleryImages(
-  request: Request,
-  env: Env,
-  user: User,
-  url: URL,
-) {
+async function listGalleryImages(request: Request, env: Env, url: URL) {
   const requestedOffset = Number(url.searchParams.get("offset") ?? 0);
   const requestedLimit = Number(url.searchParams.get("limit") ?? 12);
   const moduleId = url.searchParams.get("moduleId") ?? "";
+  const sortMode = url.searchParams.get("sort") ?? "manual";
   if (
     !Number.isInteger(requestedOffset) ||
     requestedOffset < 0 ||
     !Number.isInteger(requestedLimit) ||
     requestedLimit < 1 ||
     requestedLimit > 24 ||
-    !UUID_PATTERN.test(moduleId)
+    !UUID_PATTERN.test(moduleId) ||
+    !["manual", "az", "za", "completed", "incomplete"].includes(sortMode)
   ) {
     return json(request, env, { error: "Invalid pagination" }, 400);
   }
 
-  const chaptersResponse = await databaseRequest(
-    request,
-    env,
-    `chapters?select=id,slug,title&user_id=eq.${encodeURIComponent(user.id)}&module_id=eq.${encodeURIComponent(moduleId)}`,
-  );
-  if (!chaptersResponse.ok) throw new Error("Gallery chapter list failed");
-  const chapters = (await chaptersResponse.json()) as ChapterRow[];
-  if (!chapters.length) {
-    return json(request, env, { images: [], hasMore: false });
-  }
-  const chapterIds = chapters.map((chapter) => chapter.id);
-  const topicsResponse = await databaseRequest(
-    request,
-    env,
-    `topics?select=id,chapter_id,slug,title&user_id=eq.${encodeURIComponent(user.id)}&chapter_id=in.(${chapterIds.join(",")})`,
-  );
-  if (!topicsResponse.ok) throw new Error("Gallery topic list failed");
-  const topics = (await topicsResponse.json()) as TopicRow[];
-  if (!topics.length) {
-    return json(request, env, { images: [], hasMore: false });
-  }
-  const topicIds = topics.map((topic) => topic.id);
   const queryLimit = requestedLimit + 1;
   const imagesResponse = await databaseRequest(
     request,
     env,
-    `topic_images?select=id,topic_id,storage_key,original_filename,format,width,height,bytes,position&user_id=eq.${encodeURIComponent(user.id)}&topic_id=in.(${topicIds.join(",")})&order=created_at.desc,id.desc&offset=${requestedOffset}&limit=${queryLimit}`,
+    "rpc/get_module_gallery_images",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        target_module_id: moduleId,
+        sort_mode: sortMode,
+        page_offset: requestedOffset,
+        page_limit: queryLimit,
+      }),
+    },
   );
   if (!imagesResponse.ok) throw new Error("Gallery image list failed");
-  const rows = (await imagesResponse.json()) as ImageRow[];
+  const rows = (await imagesResponse.json()) as GalleryRow[];
   const visibleRows = rows.slice(0, requestedLimit);
-  const topicsById = new Map(topics.map((topic) => [topic.id, topic]));
-  const chaptersById = new Map(
-    chapters.map((chapter) => [chapter.id, chapter]),
-  );
-  const images = visibleRows.flatMap((row) => {
-    const topic = topicsById.get(row.topic_id);
-    const chapter = topic ? chaptersById.get(topic.chapter_id) : undefined;
-    return topic && chapter ? [galleryImageResponse(row, topic, chapter)] : [];
-  });
+  const images = visibleRows.map((row) => ({
+    ...imageResponse({ ...row, position: row.image_position }),
+    topicTitle: row.topic_title,
+    topicSlug: row.topic_slug,
+    chapterId: row.chapter_id,
+    chapterTitle: row.chapter_title,
+    chapterSlug: row.chapter_slug,
+  }));
   return json(request, env, {
     images,
     hasMore: rows.length > requestedLimit,
@@ -446,7 +410,7 @@ export default {
         }
       }
       if (galleryMatch) {
-        return listGalleryImages(request, env, user, url);
+        return listGalleryImages(request, env, url);
       }
       if (moduleMatch && request.method === "DELETE") {
         return deleteModuleImages(request, env, resourceId);

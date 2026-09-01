@@ -1,4 +1,5 @@
 import type { GalleryImage, TopicImage } from "../model/topic-image";
+import type { SortMode } from "../model/workspace-types";
 
 export type TopicImageUploadFailure = {
   filename: string;
@@ -19,6 +20,7 @@ export interface TopicImagesService {
   list(topicId: string): Promise<TopicImage[]>;
   listGallery(
     moduleId: string,
+    sortMode: SortMode,
     offset: number,
     limit: number,
   ): Promise<GalleryImagesPage>;

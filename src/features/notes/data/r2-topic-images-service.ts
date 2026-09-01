@@ -67,9 +67,15 @@ export class R2TopicImagesService implements TopicImagesService {
     return this.attachUrls(images);
   }
 
-  async listGallery(moduleId: string, offset: number, limit: number) {
+  async listGallery(
+    moduleId: string,
+    sortMode: import("../model/workspace-types").SortMode,
+    offset: number,
+    limit: number,
+  ) {
     const params = new URLSearchParams({
       moduleId,
+      sort: sortMode,
       offset: String(offset),
       limit: String(limit),
     });

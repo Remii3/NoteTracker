@@ -1,21 +1,45 @@
-import { ArrowUpRight, Images, LoaderCircle } from "lucide-react";
+import { ArrowUpDown, ArrowUpRight, Images, LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { TopicImagesService } from "../data/topic-images-service";
 import type { GalleryImage, TopicImage } from "../model/topic-image";
+import type { SortMode } from "../model/workspace-types";
 import { ImagePreviewDialog } from "./image-preview-dialog";
 
 const PAGE_SIZE = 12;
 
 type Props = {
   moduleId: string;
+  sortMode: SortMode;
   service?: TopicImagesService;
   onOpenTopic: (chapterId: string, topicId: string) => void;
 };
 
-export function GalleryPage({ moduleId, service, onOpenTopic }: Props) {
+const SORT_LABELS: Record<SortMode, string> = {
+  manual: "Kolejność ręczna",
+  az: "Rozdziały A–Z",
+  za: "Rozdziały Z–A",
+  completed: "Ukończone najpierw",
+  incomplete: "Nieukończone najpierw",
+};
+
+export function GalleryPage({
+  moduleId,
+  sortMode,
+  service,
+  onOpenTopic,
+}: Props) {
+  const [gallerySort, setGallerySort] = useState(sortMode);
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -24,6 +48,7 @@ export function GalleryPage({ moduleId, service, onOpenTopic }: Props) {
   const [error, setError] = useState<string | null>(null);
   const imagesRef = useRef(images);
   const loadingRef = useRef(false);
+  const requestVersionRef = useRef(0);
 
   function applyImages(next: GalleryImage[]) {
     imagesRef.current = next;
@@ -32,19 +57,26 @@ export function GalleryPage({ moduleId, service, onOpenTopic }: Props) {
 
   async function loadMore() {
     if (!service || loadingRef.current) return [];
+    const requestVersion = requestVersionRef.current;
     loadingRef.current = true;
     setIsLoading(true);
     setError(null);
     try {
       const page = await service.listGallery(
         moduleId,
+        gallerySort,
         imagesRef.current.length,
         PAGE_SIZE,
       );
+      if (requestVersion !== requestVersionRef.current) {
+        for (const image of page.images) URL.revokeObjectURL(image.url);
+        return [];
+      }
       applyImages([...imagesRef.current, ...page.images]);
       setHasMore(page.hasMore);
       return page.images;
     } catch (caughtError) {
+      if (requestVersion !== requestVersionRef.current) return [];
       setError(
         caughtError instanceof Error
           ? caughtError.message
@@ -52,9 +84,11 @@ export function GalleryPage({ moduleId, service, onOpenTopic }: Props) {
       );
       return [];
     } finally {
-      loadingRef.current = false;
-      setIsLoading(false);
-      setHasLoaded(true);
+      if (requestVersion === requestVersionRef.current) {
+        loadingRef.current = false;
+        setIsLoading(false);
+        setHasLoaded(true);
+      }
     }
   }
 
@@ -63,7 +97,19 @@ export function GalleryPage({ moduleId, service, onOpenTopic }: Props) {
     void loadMore();
     // Pierwsza strona jest pobierana po zmianie instancji usługi.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moduleId, service]);
+  }, [gallerySort, moduleId, service]);
+
+  function changeSort(nextSort: SortMode) {
+    if (nextSort === gallerySort) return;
+    requestVersionRef.current += 1;
+    loadingRef.current = false;
+    for (const image of imagesRef.current) URL.revokeObjectURL(image.url);
+    applyImages([]);
+    setHasLoaded(false);
+    setHasMore(Boolean(service));
+    setError(null);
+    setGallerySort(nextSort);
+  }
 
   useEffect(
     () => () => {
@@ -80,14 +126,36 @@ export function GalleryPage({ moduleId, service, onOpenTopic }: Props) {
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
       <div className="mx-auto max-w-6xl">
-        <div>
-          <p className="mb-2 text-sm font-medium text-primary">
-            Twoje materiały
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight">Galeria</h1>
-          <p className="mt-2 text-muted-foreground">
-            Wszystkie zdjęcia dodane do Twoich tematów.
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="mb-2 text-sm font-medium text-primary">
+              Twoje materiały
+            </p>
+            <h1 className="text-3xl font-semibold tracking-tight">Galeria</h1>
+            <p className="mt-2 text-muted-foreground">
+              Wszystkie zdjęcia dodane do Twoich tematów.
+            </p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="outline" />}>
+              <ArrowUpDown /> {SORT_LABELS[gallerySort]}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Sortowanie galerii</DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={gallerySort}
+                onValueChange={(value) => changeSort(value as SortMode)}
+              >
+                {(Object.entries(SORT_LABELS) as [SortMode, string][]).map(
+                  ([value, label]) => (
+                    <DropdownMenuRadioItem key={value} value={value}>
+                      {label}
+                    </DropdownMenuRadioItem>
+                  ),
+                )}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {!service ? (
