@@ -84,11 +84,14 @@ type Props = {
   ) => void;
   onRenameItem: (item: ManagedItem) => void;
   onDeleteItem: (item: ManagedItem) => void;
+  onMoveChapter?: (chapter: Chapter) => void;
   onDragStart: (event: DragStartEvent) => void;
   onDragOver: (event: DragOverEvent) => void;
   onDragCancel: () => void;
   onDragEnd: (event: DragEndEvent) => void;
   userEmail?: string;
+  moduleName?: string;
+  onOpenModules?: () => void;
   userName?: string;
   onSignOut?: () => void;
   onOpenAccount?: () => void;
@@ -125,11 +128,14 @@ export function WorkspaceSidebar({
   onToggleTopic,
   onRenameItem,
   onDeleteItem,
+  onMoveChapter,
   onDragStart,
   onDragOver,
   onDragCancel,
   onDragEnd,
   userEmail,
+  moduleName,
+  onOpenModules,
   userName,
   onSignOut,
   onOpenAccount,
@@ -163,10 +169,12 @@ export function WorkspaceSidebar({
             <BookOpen className="size-5" />
           </Button>
           <div>
-            <p className="font-semibold leading-tight">NoteTracker</p>
-            <p className="text-xs text-muted-foreground">
-              Twoja przestrzeń nauki
-            </p>
+            <button type="button" className="text-left" onClick={onOpenModules}>
+              <p className="font-semibold leading-tight">
+                {moduleName ?? "NoteTracker"}
+              </p>
+              <p className="text-xs text-muted-foreground">Zmień moduł</p>
+            </button>
           </div>
         </div>
         <div className="mt-2 flex gap-2">
@@ -402,6 +410,7 @@ export function WorkspaceSidebar({
                         onToggleTopic={onToggleTopic}
                         onRenameItem={onRenameItem}
                         onDeleteItem={onDeleteItem}
+                        onMoveChapter={onMoveChapter}
                       />
                     ))}
                   {isSearching && (

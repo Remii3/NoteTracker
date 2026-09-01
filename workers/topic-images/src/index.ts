@@ -155,45 +155,49 @@ async function listGalleryImages(
 ) {
   const requestedOffset = Number(url.searchParams.get("offset") ?? 0);
   const requestedLimit = Number(url.searchParams.get("limit") ?? 12);
+  const moduleId = url.searchParams.get("moduleId") ?? "";
   if (
     !Number.isInteger(requestedOffset) ||
     requestedOffset < 0 ||
     !Number.isInteger(requestedLimit) ||
     requestedLimit < 1 ||
-    requestedLimit > 24
+    requestedLimit > 24 ||
+    !UUID_PATTERN.test(moduleId)
   ) {
     return json(request, env, { error: "Invalid pagination" }, 400);
   }
 
+  const chaptersResponse = await databaseRequest(
+    request,
+    env,
+    `chapters?select=id,slug,title&user_id=eq.${encodeURIComponent(user.id)}&module_id=eq.${encodeURIComponent(moduleId)}`,
+  );
+  if (!chaptersResponse.ok) throw new Error("Gallery chapter list failed");
+  const chapters = (await chaptersResponse.json()) as ChapterRow[];
+  if (!chapters.length) {
+    return json(request, env, { images: [], hasMore: false });
+  }
+  const chapterIds = chapters.map((chapter) => chapter.id);
+  const topicsResponse = await databaseRequest(
+    request,
+    env,
+    `topics?select=id,chapter_id,slug,title&user_id=eq.${encodeURIComponent(user.id)}&chapter_id=in.(${chapterIds.join(",")})`,
+  );
+  if (!topicsResponse.ok) throw new Error("Gallery topic list failed");
+  const topics = (await topicsResponse.json()) as TopicRow[];
+  if (!topics.length) {
+    return json(request, env, { images: [], hasMore: false });
+  }
+  const topicIds = topics.map((topic) => topic.id);
   const queryLimit = requestedLimit + 1;
   const imagesResponse = await databaseRequest(
     request,
     env,
-    `topic_images?select=id,topic_id,storage_key,original_filename,format,width,height,bytes,position&user_id=eq.${encodeURIComponent(user.id)}&order=created_at.desc,id.desc&offset=${requestedOffset}&limit=${queryLimit}`,
+    `topic_images?select=id,topic_id,storage_key,original_filename,format,width,height,bytes,position&user_id=eq.${encodeURIComponent(user.id)}&topic_id=in.(${topicIds.join(",")})&order=created_at.desc,id.desc&offset=${requestedOffset}&limit=${queryLimit}`,
   );
   if (!imagesResponse.ok) throw new Error("Gallery image list failed");
   const rows = (await imagesResponse.json()) as ImageRow[];
   const visibleRows = rows.slice(0, requestedLimit);
-  if (!visibleRows.length) {
-    return json(request, env, { images: [], hasMore: false });
-  }
-
-  const topicIds = [...new Set(visibleRows.map((row) => row.topic_id))];
-  const topicsResponse = await databaseRequest(
-    request,
-    env,
-    `topics?select=id,chapter_id,slug,title&user_id=eq.${encodeURIComponent(user.id)}&id=in.(${topicIds.join(",")})`,
-  );
-  if (!topicsResponse.ok) throw new Error("Gallery topic list failed");
-  const topics = (await topicsResponse.json()) as TopicRow[];
-  const chapterIds = [...new Set(topics.map((topic) => topic.chapter_id))];
-  const chaptersResponse = await databaseRequest(
-    request,
-    env,
-    `chapters?select=id,slug,title&user_id=eq.${encodeURIComponent(user.id)}&id=in.(${chapterIds.join(",")})`,
-  );
-  if (!chaptersResponse.ok) throw new Error("Gallery chapter list failed");
-  const chapters = (await chaptersResponse.json()) as ChapterRow[];
   const topicsById = new Map(topics.map((topic) => [topic.id, topic]));
   const chaptersById = new Map(
     chapters.map((chapter) => [chapter.id, chapter]),
@@ -367,6 +371,26 @@ async function deleteTopicImages(
   return json(request, env, { success: true });
 }
 
+async function deleteModuleImages(
+  request: Request,
+  env: Env,
+  moduleId: string,
+) {
+  const response = await databaseRequest(
+    request,
+    env,
+    "rpc/get_module_image_keys",
+    { method: "POST", body: JSON.stringify({ target_module_id: moduleId }) },
+  );
+  if (!response.ok) throw new Error("Module image list failed");
+  const rows = (await response.json()) as { storage_key: string }[];
+  const keys = rows.map((row) => row.storage_key);
+  for (let index = 0; index < keys.length; index += 1000) {
+    await env.IMAGES.delete(keys.slice(index, index + 1000));
+  }
+  return json(request, env, { success: true, deleted: keys.length });
+}
+
 export default {
   async fetch(request, env): Promise<Response> {
     if (request.method === "OPTIONS") {
@@ -380,16 +404,20 @@ export default {
     const galleryMatch = url.pathname === "/images";
     const topicMatch = url.pathname.match(/^\/topics\/([^/]+)\/images$/);
     const imageMatch = url.pathname.match(/^\/images\/([^/]+)$/);
+    const moduleMatch = url.pathname.match(/^\/modules\/([^/]+)\/images$/);
     const allowedMethod =
       (galleryMatch && request.method === "GET") ||
       (topicMatch && ["GET", "POST", "DELETE"].includes(request.method)) ||
-      (imageMatch && ["GET", "DELETE"].includes(request.method));
+      (imageMatch && ["GET", "DELETE"].includes(request.method)) ||
+      (moduleMatch && request.method === "DELETE");
     if (!allowedMethod) return json(request, env, { error: "Not found" }, 404);
 
     let resourceId = "";
     if (!galleryMatch) {
       try {
-        resourceId = decodeURIComponent((topicMatch ?? imageMatch)?.[1] ?? "");
+        resourceId = decodeURIComponent(
+          (topicMatch ?? imageMatch ?? moduleMatch)?.[1] ?? "",
+        );
       } catch {
         return json(request, env, { error: "Invalid identifier" }, 400);
       }
@@ -419,6 +447,9 @@ export default {
       }
       if (galleryMatch) {
         return listGalleryImages(request, env, user, url);
+      }
+      if (moduleMatch && request.method === "DELETE") {
+        return deleteModuleImages(request, env, resourceId);
       }
       if (topicMatch && request.method === "GET") {
         return listImages(request, env, resourceId);

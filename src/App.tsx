@@ -17,35 +17,49 @@ let router: ReturnType<typeof createBrowserRouter> | undefined;
 
 function getRouter() {
   router ??= createBrowserRouter([
-    { path: "/", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
-    { path: "/chapters", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
-    { path: "/gallery", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
+    { path: "/", element: <Navigate to="/modules" replace /> },
+    { path: "/modules", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
     {
-      path: "/questions",
+      path: "/modules/:moduleId",
       lazy: loadNoteWorkspace,
       HydrateFallback: AppLoading,
     },
     {
-      path: "/questions/history",
+      path: "/modules/:moduleId/chapters",
       lazy: loadNoteWorkspace,
       HydrateFallback: AppLoading,
     },
     {
-      path: "/study/:studyMode/:sessionId",
+      path: "/modules/:moduleId/gallery",
       lazy: loadNoteWorkspace,
       HydrateFallback: AppLoading,
     },
     {
-      path: "/chapters/:chapterSlug",
+      path: "/modules/:moduleId/questions",
       lazy: loadNoteWorkspace,
       HydrateFallback: AppLoading,
     },
     {
-      path: "/chapters/:chapterSlug/:topicSlug",
+      path: "/modules/:moduleId/questions/history",
       lazy: loadNoteWorkspace,
       HydrateFallback: AppLoading,
     },
-    { path: "*", element: <Navigate to="/" replace /> },
+    {
+      path: "/modules/:moduleId/study/:studyMode/:sessionId",
+      lazy: loadNoteWorkspace,
+      HydrateFallback: AppLoading,
+    },
+    {
+      path: "/modules/:moduleId/chapters/:chapterSlug",
+      lazy: loadNoteWorkspace,
+      HydrateFallback: AppLoading,
+    },
+    {
+      path: "/modules/:moduleId/chapters/:chapterSlug/:topicSlug",
+      lazy: loadNoteWorkspace,
+      HydrateFallback: AppLoading,
+    },
+    { path: "*", element: <Navigate to="/modules" replace /> },
   ]);
   return router;
 }

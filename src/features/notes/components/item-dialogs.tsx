@@ -146,6 +146,7 @@ export function DeleteItemDialog({ item, onClose, onDelete }: DeleteProps) {
 type UnsavedProps = {
   onCancel: () => void;
   onDiscard: () => void;
+  onSave?: () => Promise<boolean>;
   description?: string;
   discardLabel?: string;
 };
@@ -153,9 +154,19 @@ type UnsavedProps = {
 export function UnsavedChangesDialog({
   onCancel,
   onDiscard,
+  onSave,
   description = "Zmiany w treści tej notatki zostaną utracone po przejściu do innego tematu.",
   discardLabel = "Odrzuć i przejdź dalej",
 }: UnsavedProps) {
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function handleSave() {
+    if (!onSave) return;
+    setIsSaving(true);
+    await onSave();
+    setIsSaving(false);
+  }
+
   return (
     <AlertDialog open onOpenChange={(open) => !open && onCancel()}>
       <AlertDialogContent className="sm:max-w-xl">
@@ -164,10 +175,21 @@ export function UnsavedChangesDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Zostań</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={onDiscard}>
+          <AlertDialogCancel disabled={isSaving} onClick={onCancel}>
+            Zostań
+          </AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={isSaving}
+            onClick={onDiscard}
+          >
             {discardLabel}
           </AlertDialogAction>
+          {onSave && (
+            <AlertDialogAction disabled={isSaving} onClick={handleSave}>
+              {isSaving ? "Zapisywanie…" : "Zapisz i przejdź dalej"}
+            </AlertDialogAction>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

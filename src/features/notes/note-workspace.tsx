@@ -36,6 +36,8 @@ import { QuestionsPage } from "@/features/questions/components/questions-page";
 import { StudySession } from "@/features/questions/components/study-session";
 import { StudyHistoryPage } from "@/features/questions/components/study-history-page";
 import type { QuestionsRepository } from "@/features/questions/data/questions-repository";
+import type { ModulesRepository } from "@/features/modules/data/modules-repository";
+import { MoveChapterDialog } from "@/features/modules/move-chapter-dialog";
 
 const AddContentDialog = lazy(() =>
   import("./components/add-content-dialog").then((module) => ({
@@ -66,10 +68,13 @@ type Props = {
   repository?: NotesRepository;
   imagesService?: TopicImagesService;
   questionsRepository?: QuestionsRepository;
+  modulesRepository?: ModulesRepository;
   initialChapters?: Chapter[];
   loadOnMount?: boolean;
   userName?: string;
   userEmail?: string;
+  moduleName?: string;
+  onOpenModules?: () => void;
   onSignOut?: () => void;
   onOpenAccount?: () => void;
 };
@@ -78,16 +83,23 @@ export function NoteWorkspace({
   repository,
   imagesService,
   questionsRepository,
+  modulesRepository,
   initialChapters,
   loadOnMount,
   userName,
   userEmail,
+  moduleName,
+  onOpenModules,
   onSignOut,
   onOpenAccount,
 }: Props) {
-  const { sessionId } = useParams<{ sessionId: string }>();
+  const { moduleId = "", sessionId } = useParams<{
+    moduleId: string;
+    sessionId: string;
+  }>();
   const [isSearchPending, setIsSearchPending] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [movedChapter, setMovedChapter] = useState<Chapter | null>(null);
   const notesStore = useNotesStore({
     repository,
     initialChapters,
@@ -306,6 +318,14 @@ export function NoteWorkspace({
     if (navigationBlocker.state === "blocked") navigationBlocker.proceed();
   }
 
+  async function saveDraftAndContinueNavigation() {
+    const saved = await saveContent();
+    if (saved && navigationBlocker.state === "blocked") {
+      navigationBlocker.proceed();
+    }
+    return saved;
+  }
+
   function discardDraftAndOpenPreview() {
     if (topic) clearDraft(topic.id);
     setPreviewPending(false);
@@ -392,11 +412,14 @@ export function NoteWorkspace({
           onToggleTopic={toggleTopic}
           onRenameItem={setRenameItem}
           onDeleteItem={setDeleteItem}
+          onMoveChapter={modulesRepository ? setMovedChapter : undefined}
           onDragStart={handleSidebarDragStart}
           onDragOver={handleSidebarDragOver}
           onDragCancel={handleSidebarDragCancel}
           onDragEnd={handleSidebarDragEnd}
           userEmail={userEmail}
+          moduleName={moduleName}
+          onOpenModules={onOpenModules}
           userName={userName}
           onSignOut={onSignOut}
           onOpenAccount={onOpenAccount}
@@ -430,7 +453,11 @@ export function NoteWorkspace({
           ) : activeView === "chapters" ? (
             <ChaptersOverview chapters={chapters} onOpenChapter={openChapter} />
           ) : activeView === "gallery" ? (
-            <GalleryPage service={imagesService} onOpenTopic={openChapter} />
+            <GalleryPage
+              moduleId={moduleId}
+              service={imagesService}
+              onOpenTopic={openChapter}
+            />
           ) : activeView === "questions" && questionsRepository ? (
             sessionId ? (
               <StudySession
@@ -527,6 +554,7 @@ export function NoteWorkspace({
             <UnsavedChangesDialog
               onCancel={navigationBlocker.reset}
               onDiscard={discardDraftAndContinueNavigation}
+              onSave={saveDraftAndContinueNavigation}
             />
           )}
           {previewPending && (
@@ -535,6 +563,18 @@ export function NoteWorkspace({
               discardLabel="Odrzuć i włącz podgląd"
               onCancel={() => setPreviewPending(false)}
               onDiscard={discardDraftAndOpenPreview}
+            />
+          )}
+          {movedChapter && modulesRepository && (
+            <MoveChapterDialog
+              chapter={movedChapter}
+              currentModuleId={moduleId}
+              repository={modulesRepository}
+              onClose={() => setMovedChapter(null)}
+              onMoved={async () => {
+                navigateHome();
+                await notesStore.load();
+              }}
             />
           )}
         </Suspense>

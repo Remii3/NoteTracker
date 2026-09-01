@@ -17,9 +17,14 @@ export type GalleryImagesPage = {
 
 export interface TopicImagesService {
   list(topicId: string): Promise<TopicImage[]>;
-  listGallery(offset: number, limit: number): Promise<GalleryImagesPage>;
+  listGallery(
+    moduleId: string,
+    offset: number,
+    limit: number,
+  ): Promise<GalleryImagesPage>;
   upload(topicId: string, files: File[]): Promise<TopicImagesUploadResult>;
   reorder(topicId: string, imageIds: string[]): Promise<void>;
   remove(imageId: string): Promise<void>;
   removeAll(topicId: string): Promise<void>;
+  removeModuleImages(moduleId: string): Promise<void>;
 }

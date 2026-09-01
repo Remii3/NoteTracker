@@ -6,33 +6,52 @@ import type {
   NotesRepository,
   TopicUpdate,
 } from "./notes-repository";
-import type {
-  ChapterSummary,
-  LearningSummary,
-  NoteContent,
-  Topic,
-  TopicNavigation,
-} from "../model/types";
+import type { ChapterSummary, NoteContent, Topic } from "../model/types";
 import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
 import { throwIfPostgrestError } from "./supabase-error";
 
 export class SupabaseNotesRepository implements NotesRepository {
   private readonly client: SupabaseClient<Database>;
   private readonly userId: string;
+  private readonly moduleId: string;
 
-  constructor(client: SupabaseClient<Database>, userId: string) {
+  constructor(
+    client: SupabaseClient<Database>,
+    userId: string,
+    moduleId: string,
+  ) {
     this.client = client;
     this.userId = userId;
+    this.moduleId = moduleId;
   }
 
   async listChapters() {
-    const { data, error } = await this.client.rpc("get_chapter_summaries");
+    const { data, error } = await this.client
+      .from("chapters")
+      .select("id,slug,title,position,topics(id,slug,completed,position)")
+      .eq("user_id", this.userId)
+      .eq("module_id", this.moduleId)
+      .order("position")
+      .order("id");
     throwIfPostgrestError(error);
-    return ((data ?? []) as unknown as ChapterSummary[]).map((chapter) => ({
-      ...chapter,
-      topics: [],
-      topicsStatus: "idle" as const,
-    }));
+    return (data ?? []).map((chapter) => {
+      const topics = [...chapter.topics].sort(
+        (a, b) => a.position - b.position,
+      );
+      const firstIncomplete = topics.find((topic) => !topic.completed);
+      return {
+        id: chapter.id,
+        slug: chapter.slug,
+        title: chapter.title,
+        position: chapter.position,
+        topicsCount: topics.length,
+        completedTopicsCount: topics.filter((topic) => topic.completed).length,
+        firstIncompleteTopicId: firstIncomplete?.id ?? null,
+        firstIncompleteTopicSlug: firstIncomplete?.slug ?? null,
+        topics: [],
+        topicsStatus: "idle" as const,
+      };
+    });
   }
 
   async listChapterTopics(chapterId: string) {
@@ -65,12 +84,38 @@ export class SupabaseNotesRepository implements NotesRepository {
   }
 
   async getTopicNavigation(topicId: string) {
-    const { data, error } = await this.client.rpc("get_topic_navigation", {
-      current_topic_id: topicId,
-    });
+    const { data, error } = await this.client
+      .from("topics")
+      .select(
+        "id,slug,title,position,chapter_id,chapters!inner(id,slug,title,position,module_id)",
+      )
+      .eq("user_id", this.userId)
+      .eq("chapters.module_id", this.moduleId);
     throwIfPostgrestError(error);
-    if (!data) throw new Error("Nie znaleziono tematu.");
-    return data as unknown as TopicNavigation;
+    const topics = (data ?? []).sort(
+      (first, second) =>
+        first.chapters.position - second.chapters.position ||
+        first.position - second.position,
+    );
+    const index = topics.findIndex((topic) => topic.id === topicId);
+    if (index < 0) throw new Error("Nie znaleziono tematu.");
+    const mapTopic = (topic: (typeof topics)[number] | undefined) =>
+      topic
+        ? {
+            chapterId: topic.chapter_id,
+            chapterSlug: topic.chapters.slug,
+            chapterTitle: topic.chapters.title,
+            topicId: topic.id,
+            topicSlug: topic.slug,
+            topicTitle: topic.title,
+          }
+        : null;
+    return {
+      previous: mapTopic(topics[index - 1]),
+      next: mapTopic(topics[index + 1]),
+      currentIndex: index + 1,
+      total: topics.length,
+    };
   }
 
   async searchChapters(query: string, limit = 100) {
@@ -79,7 +124,11 @@ export class SupabaseNotesRepository implements NotesRepository {
       this.client
         .from("chapters")
         .select("id,slug,title,position")
+        .eq("user_id", this.userId)
+        .eq("module_id", this.moduleId)
         .ilike("title", pattern)
+        .eq("user_id", this.userId)
+        .eq("chapters.module_id", this.moduleId)
         .order("position")
         .limit(limit),
       this.client
@@ -141,9 +190,31 @@ export class SupabaseNotesRepository implements NotesRepository {
   }
 
   async getLearningSummary() {
-    const { data, error } = await this.client.rpc("get_learning_summary");
-    throwIfPostgrestError(error);
-    return data as LearningSummary;
+    const chapters = await this.listChapters();
+    const totalTopics = chapters.reduce(
+      (sum, chapter) => sum + chapter.topicsCount,
+      0,
+    );
+    const completedTopics = chapters.reduce(
+      (sum, chapter) => sum + chapter.completedTopicsCount,
+      0,
+    );
+    const nextChapter = chapters.find(
+      (chapter) => chapter.firstIncompleteTopicId,
+    );
+    return {
+      totalChapters: chapters.length,
+      completedChapters: chapters.filter(
+        (chapter) =>
+          chapter.topicsCount > 0 &&
+          chapter.topicsCount === chapter.completedTopicsCount,
+      ).length,
+      totalTopics,
+      completedTopics,
+      nextTopic: nextChapter?.firstIncompleteTopicId
+        ? { chapterId: nextChapter.id, id: nextChapter.firstIncompleteTopicId }
+        : null,
+    };
   }
 
   async createChapters(chapters: ChapterSummary[]) {
@@ -153,6 +224,7 @@ export class SupabaseNotesRepository implements NotesRepository {
         slug: chapter.slug,
         title: chapter.title,
         position: chapter.position,
+        module_id: this.moduleId,
         user_id: this.userId,
       })),
     );
@@ -255,10 +327,17 @@ export class SupabaseNotesRepository implements NotesRepository {
   }
 
   async reorderChapters(chapterIds: string[]) {
-    const { error } = await this.client.rpc("reorder_chapters", {
-      chapter_ids: chapterIds,
-    });
-    throwIfPostgrestError(error);
+    const results = await Promise.all(
+      chapterIds.map((id, index) =>
+        this.client
+          .from("chapters")
+          .update({ position: (index + 1) * 1000 })
+          .eq("id", id)
+          .eq("user_id", this.userId)
+          .eq("module_id", this.moduleId),
+      ),
+    );
+    for (const result of results) throwIfPostgrestError(result.error);
   }
 
   async reorderTopics(chapterId: string, topicIds: string[]) {

@@ -10,11 +10,12 @@ import { ImagePreviewDialog } from "./image-preview-dialog";
 const PAGE_SIZE = 12;
 
 type Props = {
+  moduleId: string;
   service?: TopicImagesService;
   onOpenTopic: (chapterId: string, topicId: string) => void;
 };
 
-export function GalleryPage({ service, onOpenTopic }: Props) {
+export function GalleryPage({ moduleId, service, onOpenTopic }: Props) {
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -36,6 +37,7 @@ export function GalleryPage({ service, onOpenTopic }: Props) {
     setError(null);
     try {
       const page = await service.listGallery(
+        moduleId,
         imagesRef.current.length,
         PAGE_SIZE,
       );
@@ -61,7 +63,7 @@ export function GalleryPage({ service, onOpenTopic }: Props) {
     void loadMore();
     // Pierwsza strona jest pobierana po zmianie instancji usługi.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [service]);
+  }, [moduleId, service]);
 
   useEffect(
     () => () => {

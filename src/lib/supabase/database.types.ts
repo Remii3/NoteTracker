@@ -9,10 +9,29 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      modules: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          position: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          position: number;
+          created_at?: string;
+        };
+        Update: { name?: string; position?: number };
+        Relationships: [];
+      };
       questions: {
         Row: {
           id: string;
           user_id: string;
+          module_id: string;
           chapter_id: string | null;
           topic_id: string | null;
           content: string;
@@ -23,12 +42,14 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
+          module_id: string;
           chapter_id?: string | null;
           topic_id?: string | null;
           content: string;
           explanation?: string | null;
         };
         Update: {
+          module_id?: string;
           chapter_id?: string | null;
           topic_id?: string | null;
           content?: string;
@@ -84,6 +105,7 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
+          module_id: string;
           mode: "flashcards" | "test";
           status: "in_progress" | "completed" | "abandoned";
           configuration: Json;
@@ -93,6 +115,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
+          module_id: string;
           mode: "flashcards" | "test";
           status?: "in_progress" | "completed" | "abandoned";
           configuration?: Json;
@@ -137,6 +160,7 @@ export type Database = {
       chapters: {
         Row: {
           id: string;
+          module_id: string;
           position: number;
           slug: string;
           title: string;
@@ -144,6 +168,7 @@ export type Database = {
         };
         Insert: {
           id?: string;
+          module_id: string;
           position: number;
           slug: string;
           title: string;
@@ -151,12 +176,21 @@ export type Database = {
         };
         Update: {
           id?: string;
+          module_id?: string;
           position?: number;
           slug?: string;
           title?: string;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "chapters_module_owner_fkey";
+            columns: ["module_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "modules";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
       };
       topics: {
         Row: {
@@ -209,8 +243,21 @@ export type Database = {
         };
         Returns: Json;
       };
+      delete_empty_module: {
+        Args: { target_module_id: string };
+        Returns: undefined;
+      };
+      delete_module_cascade: {
+        Args: { target_module_id: string };
+        Returns: undefined;
+      };
+      get_module_image_keys: {
+        Args: { target_module_id: string };
+        Returns: { storage_key: string }[];
+      };
       get_question_bank_availability: {
         Args: {
+          target_module_id: string;
           selected_chapter_id?: string | null;
           selected_topic_id?: string | null;
           only_unassigned?: boolean;
@@ -219,6 +266,7 @@ export type Database = {
       };
       create_study_session: {
         Args: {
+          target_module_id: string;
           study_mode: string;
           scope_mode: string;
           selected_chapter_id?: string | null;
@@ -230,6 +278,7 @@ export type Database = {
       };
       save_question: {
         Args: {
+          target_module_id: string;
           question_id: string | null;
           question_content: string;
           question_explanation: string;
@@ -264,6 +313,10 @@ export type Database = {
       };
       reorder_chapters: {
         Args: { chapter_ids: string[] };
+        Returns: undefined;
+      };
+      reorder_modules: {
+        Args: { module_ids: string[] };
         Returns: undefined;
       };
       reorder_topic_images: {

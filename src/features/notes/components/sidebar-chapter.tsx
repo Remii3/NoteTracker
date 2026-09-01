@@ -2,7 +2,13 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { ChevronRight, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import {
+  ChevronRight,
+  FolderInput,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -53,6 +59,7 @@ type Props = {
   ) => void;
   onRenameItem: (item: ManagedItem) => void;
   onDeleteItem: (item: ManagedItem) => void;
+  onMoveChapter?: (chapter: Chapter) => void;
 };
 
 export function SidebarChapter(props: Props) {
@@ -75,6 +82,7 @@ export function SidebarChapter(props: Props) {
     onToggleTopic,
     onRenameItem,
     onDeleteItem,
+    onMoveChapter,
   } = props;
   const isSearch = Boolean(search.trim());
   const allTopics = isSearch
@@ -156,6 +164,11 @@ export function SidebarChapter(props: Props) {
                 >
                   <Pencil /> Zmień nazwę
                 </DropdownMenuItem>
+                {onMoveChapter && (
+                  <DropdownMenuItem onClick={() => onMoveChapter(chapter)}>
+                    <FolderInput /> Przenieś do modułu
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="whitespace-nowrap"

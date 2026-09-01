@@ -12,9 +12,15 @@ import type {
 export class SupabaseQuestionsRepository implements QuestionsRepository {
   private readonly client: SupabaseClient<Database>;
   private readonly userId: string;
-  constructor(client: SupabaseClient<Database>, userId: string) {
+  private readonly moduleId: string;
+  constructor(
+    client: SupabaseClient<Database>,
+    userId: string,
+    moduleId: string,
+  ) {
     this.client = client;
     this.userId = userId;
+    this.moduleId = moduleId;
   }
 
   async getAvailability(
@@ -27,6 +33,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
     const { data, error } = await this.client.rpc(
       "get_question_bank_availability",
       {
+        target_module_id: this.moduleId,
         selected_chapter_id: filters.chapterId ?? null,
         selected_topic_id: filters.topicId ?? null,
         only_unassigned: filters.onlyUnassigned ?? false,
@@ -49,6 +56,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
         { count: "exact" },
       )
       .eq("user_id", this.userId)
+      .eq("module_id", this.moduleId)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
     if (filters.topicId) query = query.eq("topic_id", filters.topicId);
@@ -69,6 +77,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
 
   async save(input: Parameters<QuestionsRepository["save"]>[0]) {
     const { data, error } = await this.client.rpc("save_question", {
+      target_module_id: this.moduleId,
       question_id: input.id ?? null,
       question_content: input.content,
       question_explanation: input.explanation ?? "",
@@ -90,6 +99,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
       .delete()
       .eq("id", id)
       .eq("user_id", this.userId)
+      .eq("module_id", this.moduleId)
       .select("id")
       .single();
     throwIfPostgrestError(error);
@@ -99,6 +109,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
     input: Parameters<QuestionsRepository["createSession"]>[0],
   ) {
     const { data, error } = await this.client.rpc("create_study_session", {
+      target_module_id: this.moduleId,
       study_mode: input.mode,
       scope_mode: input.scope,
       selected_chapter_id: input.chapterId ?? null,
@@ -122,6 +133,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
         count: "exact",
       })
       .eq("user_id", this.userId)
+      .eq("module_id", this.moduleId)
       .order("started_at", { ascending: false })
       .range(offset, offset + limit - 1);
     throwIfPostgrestError(sessionsResult.error);
@@ -186,6 +198,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
         .select("id,mode,status,configuration,started_at,completed_at")
         .eq("id", id)
         .eq("user_id", this.userId)
+        .eq("module_id", this.moduleId)
         .single(),
       this.client
         .from("study_session_items")
@@ -238,6 +251,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
       .update({ status: "completed", completed_at: new Date().toISOString() })
       .eq("id", id)
       .eq("user_id", this.userId)
+      .eq("module_id", this.moduleId)
       .select("id")
       .single();
     throwIfPostgrestError(error);

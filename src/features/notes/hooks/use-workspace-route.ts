@@ -1,5 +1,11 @@
 import { useCallback, useEffect } from "react";
-import { matchPath, useBlocker, useLocation, useNavigate } from "react-router";
+import {
+  matchPath,
+  useBlocker,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router";
 
 import type { Chapter } from "../model/types";
 import type { ActiveView } from "../model/workspace-types";
@@ -19,22 +25,27 @@ export function useWorkspaceRoute({
 }: Options) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { moduleId = "" } = useParams<{ moduleId: string }>();
+  const basePath = `/modules/${moduleId}`;
   const topicRoute = matchPath(
-    "/chapters/:chapterSlug/:topicSlug",
+    "/modules/:moduleId/chapters/:chapterSlug/:topicSlug",
     location.pathname,
   );
-  const chapterRoute = matchPath("/chapters/:chapterSlug", location.pathname);
+  const chapterRoute = matchPath(
+    "/modules/:moduleId/chapters/:chapterSlug",
+    location.pathname,
+  );
   const chapterSlug =
     topicRoute?.params.chapterSlug ?? chapterRoute?.params.chapterSlug ?? "";
   const topicSlug = topicRoute?.params.topicSlug ?? "";
   const activeView: ActiveView = chapterSlug
     ? "notes"
-    : location.pathname.startsWith("/questions") ||
-        location.pathname.startsWith("/study/")
+    : location.pathname.startsWith(`${basePath}/questions`) ||
+        location.pathname.startsWith(`${basePath}/study/`)
       ? "questions"
-      : location.pathname === "/gallery"
+      : location.pathname === `${basePath}/gallery`
         ? "gallery"
-        : location.pathname === "/chapters"
+        : location.pathname === `${basePath}/chapters`
           ? "chapters"
           : "home";
   const chapter = chapters.find(
@@ -55,40 +66,51 @@ export function useWorkspaceRoute({
         (item) => item.id === nextTopicId,
       );
       const path = nextTopic
-        ? `/chapters/${nextChapter.slug}/${nextTopic.slug}`
-        : `/chapters/${nextChapter.slug}`;
+        ? `${basePath}/chapters/${nextChapter.slug}/${nextTopic.slug}`
+        : `${basePath}/chapters/${nextChapter.slug}`;
       navigate(path, { replace });
     },
-    [chapters, navigate],
+    [basePath, chapters, navigate],
   );
-  const navigateHome = useCallback(() => navigate("/"), [navigate]);
-  const navigateChapters = useCallback(() => navigate("/chapters"), [navigate]);
-  const navigateGallery = useCallback(() => navigate("/gallery"), [navigate]);
+  const navigateHome = useCallback(
+    () => navigate(basePath),
+    [basePath, navigate],
+  );
+  const navigateChapters = useCallback(
+    () => navigate(`${basePath}/chapters`),
+    [basePath, navigate],
+  );
+  const navigateGallery = useCallback(
+    () => navigate(`${basePath}/gallery`),
+    [basePath, navigate],
+  );
   const navigateQuestions = useCallback(
-    () => navigate("/questions"),
-    [navigate],
+    () => navigate(`${basePath}/questions`),
+    [basePath, navigate],
   );
   const navigateQuestionHistory = useCallback(
-    () => navigate("/questions/history"),
-    [navigate],
+    () => navigate(`${basePath}/questions/history`),
+    [basePath, navigate],
   );
   const navigateStudySession = useCallback(
-    (mode: string, id: string) => navigate(`/study/${mode}/${id}`),
-    [navigate],
+    (mode: string, id: string) => navigate(`${basePath}/study/${mode}/${id}`),
+    [basePath, navigate],
   );
 
   const navigationBlocker = useBlocker(
     ({ nextLocation }) =>
       editorDirty &&
-      matchPath("/chapters/:chapterSlug/:topicSlug", nextLocation.pathname)
-        ?.params.topicSlug !== topic?.slug,
+      matchPath(
+        "/modules/:moduleId/chapters/:chapterSlug/:topicSlug",
+        nextLocation.pathname,
+      )?.params.topicSlug !== topic?.slug,
   );
 
   useEffect(() => {
     if (isLoading) return;
     if (activeView !== "notes") return;
     if (!chapter) {
-      navigate("/", { replace: true });
+      navigate(basePath, { replace: true });
       return;
     }
     if (chapter.topicsStatus !== "loaded") {
@@ -97,21 +119,24 @@ export function useWorkspaceRoute({
     }
     if (topic) {
       if (chapterSlug !== chapter.slug || topicSlug !== topic.slug) {
-        navigate(`/chapters/${chapter.slug}/${topic.slug}`, { replace: true });
+        navigate(`${basePath}/chapters/${chapter.slug}/${topic.slug}`, {
+          replace: true,
+        });
       }
       return;
     }
 
     const firstTopic = chapter.topics[0];
     if (firstTopic) {
-      navigate(`/chapters/${chapter.slug}/${firstTopic.slug}`, {
+      navigate(`${basePath}/chapters/${chapter.slug}/${firstTopic.slug}`, {
         replace: true,
       });
     } else if (chapterSlug !== chapter.slug || topicSlug) {
-      navigate(`/chapters/${chapter.slug}`, { replace: true });
+      navigate(`${basePath}/chapters/${chapter.slug}`, { replace: true });
     }
   }, [
     activeView,
+    basePath,
     chapter,
     chapterSlug,
     isLoading,
@@ -136,6 +161,6 @@ export function useWorkspaceRoute({
     navigationBlocker,
     topic,
     topicId,
-    isQuestionHistory: location.pathname === "/questions/history",
+    isQuestionHistory: location.pathname === `${basePath}/questions/history`,
   };
 }

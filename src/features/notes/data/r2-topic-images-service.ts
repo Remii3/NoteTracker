@@ -67,8 +67,9 @@ export class R2TopicImagesService implements TopicImagesService {
     return this.attachUrls(images);
   }
 
-  async listGallery(offset: number, limit: number) {
+  async listGallery(moduleId: string, offset: number, limit: number) {
     const params = new URLSearchParams({
+      moduleId,
       offset: String(offset),
       limit: String(limit),
     });
@@ -130,5 +131,9 @@ export class R2TopicImagesService implements TopicImagesService {
 
   async removeAll(topicId: string) {
     await this.request(`/topics/${topicId}/images`, { method: "DELETE" });
+  }
+
+  async removeModuleImages(moduleId: string) {
+    await this.request(`/modules/${moduleId}/images`, { method: "DELETE" });
   }
 }

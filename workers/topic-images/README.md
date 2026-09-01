@@ -65,5 +65,9 @@ npm run dev
 Worker korzysta z `@cloudflare/workers-types`. Nie uruchamiaj `wrangler types`
 i nie commituj generowanego `worker-configuration.d.ts`.
 
+Endpoint `DELETE /modules/:moduleId/images` usuwa z R2 wszystkie obiekty
+zdjęć należące do wskazanego modułu. Wymaga funkcji z migracji
+`supabase/manual/delete-modules-cascade.sql` i uwierzytelnienia właściciela.
+
 Pełna checklista wdrożenia i rollback znajdują się w
 [`docs/deployment.md`](../../docs/deployment.md).
