@@ -132,6 +132,8 @@ function imageResponse(row: ImageRow) {
 async function listGalleryImages(request: Request, env: Env, url: URL) {
   const requestedOffset = Number(url.searchParams.get("offset") ?? 0);
   const requestedLimit = Number(url.searchParams.get("limit") ?? 12);
+  const chapterOffset = Number(url.searchParams.get("chapterOffset") ?? 0);
+  const chapterLimit = Number(url.searchParams.get("chapterLimit") ?? 6);
   const moduleId = url.searchParams.get("moduleId") ?? "";
   const chapterId = url.searchParams.get("chapterId");
   const sortMode = url.searchParams.get("sort") ?? "manual";
@@ -141,6 +143,11 @@ async function listGalleryImages(request: Request, env: Env, url: URL) {
     !Number.isInteger(requestedLimit) ||
     requestedLimit < 1 ||
     requestedLimit > 24 ||
+    !Number.isInteger(chapterOffset) ||
+    chapterOffset < 0 ||
+    !Number.isInteger(chapterLimit) ||
+    chapterLimit < 1 ||
+    chapterLimit > 12 ||
     !UUID_PATTERN.test(moduleId) ||
     (chapterId !== null && !UUID_PATTERN.test(chapterId)) ||
     !["manual", "az", "za", "completed", "incomplete"].includes(sortMode)
@@ -169,6 +176,8 @@ async function listGalleryImages(request: Request, env: Env, url: URL) {
               target_module_id: moduleId,
               sort_mode: sortMode,
               per_chapter_limit: requestedLimit,
+              chapter_offset: chapterOffset,
+              chapter_limit: chapterLimit + 1,
             },
       ),
     },
@@ -214,7 +223,11 @@ async function listGalleryImages(request: Request, env: Env, url: URL) {
     section.images.push(mapGalleryRow(row));
     sections.set(row.chapter_id, section);
   }
-  return json(request, env, { sections: [...sections.values()] });
+  const sectionList = [...sections.values()];
+  return json(request, env, {
+    sections: sectionList.slice(0, chapterLimit),
+    hasMore: sectionList.length > chapterLimit,
+  });
 }
 
 async function getImageRow(request: Request, env: Env, imageId: string) {

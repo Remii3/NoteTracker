@@ -21,6 +21,7 @@ import type { SortMode } from "../model/workspace-types";
 import { ImagePreviewDialog } from "./image-preview-dialog";
 
 const SECTION_PAGE_SIZE = 4;
+const CHAPTER_PAGE_SIZE = 6;
 const SORT_LABELS: Record<SortMode, string> = {
   manual: "Kolejność ręczna",
   az: "Rozdziały A–Z",
@@ -47,10 +48,13 @@ export function GalleryPage({
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [hasMoreChapters, setHasMoreChapters] = useState(Boolean(service));
   const [loadingChapterId, setLoadingChapterId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const sectionsRef = useRef(sections);
   const requestVersionRef = useRef(0);
+  const sectionsLoadingRef = useRef(false);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const chapterRequestsRef = useRef(new Map<string, Promise<GalleryImage[]>>());
   const images = useMemo(
     () => sections.flatMap((section) => section.images),
@@ -63,31 +67,43 @@ export function GalleryPage({
   }
 
   async function loadSections() {
-    if (!service) return;
+    if (!service || sectionsLoadingRef.current) return [];
     const requestVersion = requestVersionRef.current;
+    const chapterOffset = sectionsRef.current.length;
+    sectionsLoadingRef.current = true;
     setIsLoading(true);
     setError(null);
     try {
-      const next = await service.listGallerySections(
+      const page = await service.listGallerySections(
         moduleId,
         gallerySort,
         SECTION_PAGE_SIZE,
+        chapterOffset,
+        CHAPTER_PAGE_SIZE,
       );
       if (requestVersion !== requestVersionRef.current) {
-        for (const image of next.flatMap((section) => section.images))
+        for (const image of page.sections.flatMap((section) => section.images))
           URL.revokeObjectURL(image.url);
-        return;
+        return [];
       }
-      applySections(next);
+      applySections(
+        chapterOffset
+          ? [...sectionsRef.current, ...page.sections]
+          : page.sections,
+      );
+      setHasMoreChapters(page.hasMore);
+      return page.sections;
     } catch (caughtError) {
-      if (requestVersion !== requestVersionRef.current) return;
+      if (requestVersion !== requestVersionRef.current) return [];
       setError(
         caughtError instanceof Error
           ? caughtError.message
           : "Nie udało się pobrać galerii.",
       );
+      return [];
     } finally {
       if (requestVersion === requestVersionRef.current) {
+        sectionsLoadingRef.current = false;
         setIsLoading(false);
         setHasLoaded(true);
       }
@@ -162,6 +178,21 @@ export function GalleryPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gallerySort, moduleId, service]);
 
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel || !hasMoreChapters || !service) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) void loadSections();
+      },
+      { rootMargin: "300px 0px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+    // Kolejne strony korzystają z aktualnej wartości sectionsRef.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMoreChapters, service]);
+
   useEffect(
     () => () => {
       for (const image of sectionsRef.current.flatMap(
@@ -176,6 +207,7 @@ export function GalleryPage({
     if (nextSort === gallerySort) return;
     requestVersionRef.current += 1;
     chapterRequestsRef.current.clear();
+    sectionsLoadingRef.current = false;
     for (const image of sectionsRef.current.flatMap(
       (section) => section.images,
     ))
@@ -183,6 +215,7 @@ export function GalleryPage({
     applySections([]);
     setPreviewId(null);
     setHasLoaded(false);
+    setHasMoreChapters(Boolean(service));
     setLoadingChapterId(null);
     setError(null);
     setGallerySort(nextSort);
@@ -198,9 +231,14 @@ export function GalleryPage({
     const section = sectionsRef.current.find(
       (item) => item.chapterId === image.chapterId,
     );
-    if (!section || section.images.at(-1)?.id !== image.id || !section.hasMore)
-      return null;
-    return (await loadChapter(section.chapterId))[0]?.id ?? false;
+    if (!section || section.images.at(-1)?.id !== image.id) return null;
+    if (section.hasMore)
+      return (await loadChapter(section.chapterId))[0]?.id ?? false;
+    if (images.at(-1)?.id === image.id && hasMoreChapters) {
+      const nextSections = await loadSections();
+      return nextSections[0]?.images[0]?.id ?? false;
+    }
+    return null;
   }
 
   return (
@@ -340,6 +378,17 @@ export function GalleryPage({
         {error && (
           <div className="mt-6 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
             {error}
+          </div>
+        )}
+        {hasMoreChapters && (
+          <div
+            ref={loadMoreSentinelRef}
+            className="flex h-24 items-center justify-center"
+            aria-label="Ładowanie kolejnych rozdziałów"
+          >
+            {isLoading && (
+              <LoaderCircle className="animate-spin text-muted-foreground" />
+            )}
           </div>
         )}
       </div>

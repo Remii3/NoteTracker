@@ -284,6 +284,8 @@ export type Database = {
           target_module_id: string;
           sort_mode: string;
           per_chapter_limit?: number;
+          chapter_offset?: number;
+          chapter_limit?: number;
         };
         Returns: Json;
       };

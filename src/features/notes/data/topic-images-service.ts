@@ -26,13 +26,20 @@ export type GalleryChapterSection = {
   total: number;
 };
 
+export type GallerySectionsPage = {
+  sections: GalleryChapterSection[];
+  hasMore: boolean;
+};
+
 export interface TopicImagesService {
   list(topicId: string): Promise<TopicImage[]>;
   listGallerySections(
     moduleId: string,
     sortMode: SortMode,
     perChapterLimit: number,
-  ): Promise<GalleryChapterSection[]>;
+    chapterOffset: number,
+    chapterLimit: number,
+  ): Promise<GallerySectionsPage>;
   listChapterGallery(
     moduleId: string,
     chapterId: string,

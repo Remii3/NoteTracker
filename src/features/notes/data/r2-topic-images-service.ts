@@ -71,11 +71,15 @@ export class R2TopicImagesService implements TopicImagesService {
     moduleId: string,
     sortMode: import("../model/workspace-types").SortMode,
     perChapterLimit: number,
+    chapterOffset: number,
+    chapterLimit: number,
   ) {
     const params = new URLSearchParams({
       moduleId,
       sort: sortMode,
       limit: String(perChapterLimit),
+      chapterOffset: String(chapterOffset),
+      chapterLimit: String(chapterLimit),
     });
     const response = await this.request(`/images?${params}`);
     const result = (await response.json()) as {
@@ -87,13 +91,17 @@ export class R2TopicImagesService implements TopicImagesService {
         hasMore: boolean;
         total: number;
       }>;
+      hasMore: boolean;
     };
-    return Promise.all(
-      result.sections.map(async (section) => ({
-        ...section,
-        images: await this.attachUrls(section.images),
-      })),
-    );
+    return {
+      sections: await Promise.all(
+        result.sections.map(async (section) => ({
+          ...section,
+          images: await this.attachUrls(section.images),
+        })),
+      ),
+      hasMore: result.hasMore,
+    };
   }
 
   async listChapterGallery(
