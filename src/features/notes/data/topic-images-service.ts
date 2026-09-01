@@ -14,13 +14,28 @@ export type TopicImagesUploadResult = {
 export type GalleryImagesPage = {
   images: GalleryImage[];
   hasMore: boolean;
+  total: number;
+};
+
+export type GalleryChapterSection = {
+  chapterId: string;
+  chapterSlug: string;
+  chapterTitle: string;
+  images: GalleryImage[];
+  hasMore: boolean;
+  total: number;
 };
 
 export interface TopicImagesService {
   list(topicId: string): Promise<TopicImage[]>;
-  listGallery(
+  listGallerySections(
     moduleId: string,
     sortMode: SortMode,
+    perChapterLimit: number,
+  ): Promise<GalleryChapterSection[]>;
+  listChapterGallery(
+    moduleId: string,
+    chapterId: string,
     offset: number,
     limit: number,
   ): Promise<GalleryImagesPage>;

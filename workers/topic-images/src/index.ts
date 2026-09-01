@@ -28,6 +28,7 @@ type GalleryRow = Omit<ImageRow, "position"> & {
   chapter_id: string;
   chapter_title: string;
   chapter_slug: string;
+  chapter_total: number;
 };
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -132,6 +133,7 @@ async function listGalleryImages(request: Request, env: Env, url: URL) {
   const requestedOffset = Number(url.searchParams.get("offset") ?? 0);
   const requestedLimit = Number(url.searchParams.get("limit") ?? 12);
   const moduleId = url.searchParams.get("moduleId") ?? "";
+  const chapterId = url.searchParams.get("chapterId");
   const sortMode = url.searchParams.get("sort") ?? "manual";
   if (
     !Number.isInteger(requestedOffset) ||
@@ -140,6 +142,7 @@ async function listGalleryImages(request: Request, env: Env, url: URL) {
     requestedLimit < 1 ||
     requestedLimit > 24 ||
     !UUID_PATTERN.test(moduleId) ||
+    (chapterId !== null && !UUID_PATTERN.test(chapterId)) ||
     !["manual", "az", "za", "completed", "incomplete"].includes(sortMode)
   ) {
     return json(request, env, { error: "Invalid pagination" }, 400);
@@ -149,32 +152,69 @@ async function listGalleryImages(request: Request, env: Env, url: URL) {
   const imagesResponse = await databaseRequest(
     request,
     env,
-    "rpc/get_module_gallery_images",
+    chapterId
+      ? "rpc/get_chapter_gallery_images"
+      : "rpc/get_module_gallery_sections",
     {
       method: "POST",
-      body: JSON.stringify({
-        target_module_id: moduleId,
-        sort_mode: sortMode,
-        page_offset: requestedOffset,
-        page_limit: queryLimit,
-      }),
+      body: JSON.stringify(
+        chapterId
+          ? {
+              target_module_id: moduleId,
+              target_chapter_id: chapterId,
+              page_offset: requestedOffset,
+              page_limit: queryLimit,
+            }
+          : {
+              target_module_id: moduleId,
+              sort_mode: sortMode,
+              per_chapter_limit: requestedLimit,
+            },
+      ),
     },
   );
   if (!imagesResponse.ok) throw new Error("Gallery image list failed");
   const rows = (await imagesResponse.json()) as GalleryRow[];
-  const visibleRows = rows.slice(0, requestedLimit);
-  const images = visibleRows.map((row) => ({
+  const visibleRows = chapterId ? rows.slice(0, requestedLimit) : rows;
+  const mapGalleryRow = (row: GalleryRow) => ({
     ...imageResponse({ ...row, position: row.image_position }),
     topicTitle: row.topic_title,
     topicSlug: row.topic_slug,
     chapterId: row.chapter_id,
     chapterTitle: row.chapter_title,
     chapterSlug: row.chapter_slug,
-  }));
-  return json(request, env, {
-    images,
-    hasMore: rows.length > requestedLimit,
   });
+  if (chapterId) {
+    return json(request, env, {
+      images: visibleRows.map(mapGalleryRow),
+      hasMore: rows.length > requestedLimit,
+      total: rows[0]?.chapter_total ?? requestedOffset,
+    });
+  }
+  const sections = new Map<
+    string,
+    {
+      chapterId: string;
+      chapterSlug: string;
+      chapterTitle: string;
+      images: ReturnType<typeof mapGalleryRow>[];
+      hasMore: boolean;
+      total: number;
+    }
+  >();
+  for (const row of rows) {
+    const section = sections.get(row.chapter_id) ?? {
+      chapterId: row.chapter_id,
+      chapterSlug: row.chapter_slug,
+      chapterTitle: row.chapter_title,
+      images: [],
+      hasMore: row.chapter_total > requestedLimit,
+      total: row.chapter_total,
+    };
+    section.images.push(mapGalleryRow(row));
+    sections.set(row.chapter_id, section);
+  }
+  return json(request, env, { sections: [...sections.values()] });
 }
 
 async function getImageRow(request: Request, env: Env, imageId: string) {

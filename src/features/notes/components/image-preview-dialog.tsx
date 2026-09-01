@@ -53,6 +53,7 @@ type Props = {
   onOpenDescription?: (image: TopicImage) => void;
   hasMore?: boolean;
   onRequestMore?: () => Promise<string | null>;
+  onRequestNext?: (image: TopicImage) => Promise<string | null | false>;
 };
 
 function clamp(value: number, minimum: number, maximum: number) {
@@ -101,6 +102,7 @@ export function ImagePreviewDialog({
   onOpenDescription,
   hasMore = false,
   onRequestMore,
+  onRequestNext,
 }: Props) {
   const image = images.find((item) => item.id === previewId);
   const imageIndex = image
@@ -130,6 +132,16 @@ export function ImagePreviewDialog({
 
   async function changeImage(direction: -1 | 1) {
     if (imageIndex < 0) return;
+    if (direction === 1 && image && onRequestNext) {
+      const requestedId = await onRequestNext(image);
+      if (requestedId === false) return;
+      if (requestedId) {
+        resetView();
+        readerScrollRef.current?.scrollTo({ top: 0 });
+        onPreviewChange(requestedId);
+        return;
+      }
+    }
     if (
       direction === 1 &&
       imageIndex === images.length - 1 &&

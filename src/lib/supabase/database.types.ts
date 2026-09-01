@@ -279,6 +279,23 @@ export type Database = {
           chapter_slug: string;
         }>;
       };
+      get_module_gallery_sections: {
+        Args: {
+          target_module_id: string;
+          sort_mode: string;
+          per_chapter_limit?: number;
+        };
+        Returns: Json;
+      };
+      get_chapter_gallery_images: {
+        Args: {
+          target_module_id: string;
+          target_chapter_id: string;
+          page_offset?: number;
+          page_limit?: number;
+        };
+        Returns: Json;
+      };
       get_question_bank_availability: {
         Args: {
           target_module_id: string;

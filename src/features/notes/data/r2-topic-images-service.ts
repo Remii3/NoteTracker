@@ -67,15 +67,44 @@ export class R2TopicImagesService implements TopicImagesService {
     return this.attachUrls(images);
   }
 
-  async listGallery(
+  async listGallerySections(
     moduleId: string,
     sortMode: import("../model/workspace-types").SortMode,
+    perChapterLimit: number,
+  ) {
+    const params = new URLSearchParams({
+      moduleId,
+      sort: sortMode,
+      limit: String(perChapterLimit),
+    });
+    const response = await this.request(`/images?${params}`);
+    const result = (await response.json()) as {
+      sections: Array<{
+        chapterId: string;
+        chapterSlug: string;
+        chapterTitle: string;
+        images: GalleryImageMetadata[];
+        hasMore: boolean;
+        total: number;
+      }>;
+    };
+    return Promise.all(
+      result.sections.map(async (section) => ({
+        ...section,
+        images: await this.attachUrls(section.images),
+      })),
+    );
+  }
+
+  async listChapterGallery(
+    moduleId: string,
+    chapterId: string,
     offset: number,
     limit: number,
   ) {
     const params = new URLSearchParams({
       moduleId,
-      sort: sortMode,
+      chapterId,
       offset: String(offset),
       limit: String(limit),
     });
@@ -83,10 +112,12 @@ export class R2TopicImagesService implements TopicImagesService {
     const result = (await response.json()) as {
       images: GalleryImageMetadata[];
       hasMore: boolean;
+      total: number;
     };
     return {
       images: await this.attachUrls(result.images),
       hasMore: result.hasMore,
+      total: result.total,
     };
   }
 
