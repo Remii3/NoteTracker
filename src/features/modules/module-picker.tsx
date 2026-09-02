@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { Module, ModulesRepository } from "./data/modules-repository";
-import type { TopicImagesService } from "@/features/notes/data/topic-images-service";
 import {
   MODULE_NAME_MAX_LENGTH,
   moveModule,
@@ -40,14 +39,14 @@ type Props = {
   repository: ModulesRepository;
   onSelect: (module: Module) => void;
   onSignOut: () => void;
-  imagesService?: TopicImagesService;
+  onOpenTrash?: () => void;
 };
 
 export function ModulePicker({
   repository,
   onSelect,
   onSignOut,
-  imagesService,
+  onOpenTrash,
 }: Props) {
   const [modules, setModules] = useState<Module[]>([]);
   const [name, setName] = useState("");
@@ -132,9 +131,14 @@ export function ModulePicker({
               Moduł grupuje rozdziały należące do jednego obszaru nauki.
             </p>
           </div>
-          <Button variant="ghost" onClick={onSignOut}>
-            <LogOut /> Wyloguj
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onOpenTrash}>
+              <Trash2 /> Usunięte
+            </Button>
+            <Button variant="ghost" onClick={onSignOut}>
+              <LogOut /> Wyloguj
+            </Button>
+          </div>
         </header>
         <form
           className="mt-8"
@@ -276,8 +280,6 @@ export function ModulePicker({
           module={deletedModule}
           onClose={() => setDeletedModule(null)}
           onDelete={async () => {
-            if (imagesService)
-              await imagesService.removeModuleImages(deletedModule.id);
             await repository.remove(deletedModule.id);
             setModules((current) =>
               current.filter((item) => item.id !== deletedModule.id),
@@ -324,11 +326,11 @@ function DeleteModuleDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            Trwale usunąć moduł „{module.name}”?
+            Przenieść moduł „{module.name}” do usuniętych?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Usunięte zostaną wszystkie rozdziały, tematy, notatki, pytania,
-            sesje nauki i zdjęcia z tego modułu. Tej operacji nie można cofnąć.
+            Moduł wraz z rozdziałami, tematami, zdjęciami, pytaniami i sesjami
+            nauki będzie można przywrócić przez 24 godziny.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="space-y-2">
@@ -358,7 +360,7 @@ function DeleteModuleDialog({
             disabled={!confirmed || isDeleting}
             onClick={() => void remove()}
           >
-            {isDeleting ? "Usuwanie…" : "Usuń cały moduł"}
+            {isDeleting ? "Przenoszenie…" : "Przenieś do usuniętych"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

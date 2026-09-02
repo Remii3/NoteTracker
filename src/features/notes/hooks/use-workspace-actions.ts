@@ -4,7 +4,6 @@ import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
 import { createUniqueSlug } from "../lib/slug-utils";
 import type { Chapter, NoteContent, Topic } from "../model/types";
 import type { ManagedItem } from "../model/workspace-types";
-import type { TopicImagesService } from "../data/topic-images-service";
 
 type Options = {
   chapters: Chapter[];
@@ -33,7 +32,6 @@ type Options = {
       completed: boolean,
     ) => Promise<boolean>;
   };
-  imagesService?: TopicImagesService;
   expandChapter: (chapterId: string) => void;
   clearDraft: (topicId: string) => void;
   getDraftContent: (topic: Topic) => Topic["content"];
@@ -54,7 +52,6 @@ export function useWorkspaceActions({
   isSaving,
   editorDirty,
   commands,
-  imagesService,
   expandChapter,
   clearDraft,
   getDraftContent,
@@ -168,22 +165,8 @@ export function useWorkspaceActions({
   async function deleteItem(item: ManagedItem) {
     if (!isEditing || isSaving) return false;
     if (item.kind === "chapter") {
-      const deletedTopicIds = imagesService
-        ? ((await commands.loadChapterTopics(item.id)) ?? []).map(
-            (child) => child.id,
-          )
-        : [];
       const remaining = chapters.filter((chapter) => chapter.id !== item.id);
       if (!(await commands.removeItem(item))) return false;
-      try {
-        await Promise.all(
-          deletedTopicIds.map((id) => imagesService?.removeAll(id)),
-        );
-      } catch {
-        toast.error(
-          "Rozdział usunięto, ale nie udało się posprzątać wszystkich zdjęć.",
-        );
-      }
       if (chapterId === item.id && topic) clearDraft(topic.id);
       if (chapterId === item.id) {
         const nextChapter = remaining[0];
@@ -193,7 +176,7 @@ export function useWorkspaceActions({
           navigateHome();
         }
       }
-      toast.success("Usunięto rozdział.");
+      toast.success("Rozdział przeniesiono do usuniętych.");
       return true;
     }
 
@@ -201,15 +184,10 @@ export function useWorkspaceActions({
     const remainingTopics =
       parent?.topics.filter((child) => child.id !== item.id) ?? [];
     if (!(await commands.removeItem(item))) return false;
-    try {
-      await imagesService?.removeAll(item.id);
-    } catch {
-      toast.error("Temat usunięto, ale nie udało się posprzątać jego zdjęć.");
-    }
     clearDraft(item.id);
     if (topicId === item.id)
       navigateToChapter(item.chapterId, remainingTopics[0]?.id ?? "");
-    toast.success("Usunięto temat.");
+    toast.success("Temat przeniesiono do usuniętych.");
     return true;
   }
 
@@ -226,15 +204,6 @@ export function useWorkspaceActions({
     }
 
     if (!(await commands.removeItems(chapterIds, topicIds))) return false;
-
-    const cleanupResults = await Promise.allSettled(
-      [...topicIdsForCleanup].map((id) => imagesService?.removeAll(id)),
-    );
-    if (cleanupResults.some((result) => result.status === "rejected")) {
-      toast.error(
-        "Elementy usunięto, ale nie udało się posprzątać wszystkich zdjęć.",
-      );
-    }
 
     for (const deletedTopicId of topicIdsForCleanup) clearDraft(deletedTopicId);
 
@@ -254,8 +223,8 @@ export function useWorkspaceActions({
     const deletedCount = chapterIds.length + topicIds.length;
     toast.success(
       deletedCount === 1
-        ? "Usunięto wybrany element."
-        : `Usunięto ${deletedCount} wybranych elementów.`,
+        ? "Element przeniesiono do usuniętych."
+        : `${deletedCount} elementów przeniesiono do usuniętych.`,
     );
     return true;
   }

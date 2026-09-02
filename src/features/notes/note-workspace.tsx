@@ -216,7 +216,6 @@ export function NoteWorkspace({
     isSaving: notesStore.isSaving,
     editorDirty,
     commands: notesStore,
-    imagesService,
     expandChapter,
     clearDraft,
     getDraftContent,

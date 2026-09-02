@@ -12,6 +12,10 @@ async function loadNoteWorkspace() {
   const module = await import("@/features/notes");
   return { Component: module.SupabaseNoteWorkspace };
 }
+async function loadTrash() {
+  const module = await import("@/features/trash/trash-page");
+  return { Component: module.TrashPage };
+}
 
 let router: ReturnType<typeof createBrowserRouter> | undefined;
 
@@ -19,6 +23,7 @@ function getRouter() {
   router ??= createBrowserRouter([
     { path: "/", element: <Navigate to="/modules" replace /> },
     { path: "/modules", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
+    { path: "/trash", lazy: loadTrash, HydrateFallback: AppLoading },
     {
       path: "/modules/:moduleId",
       lazy: loadNoteWorkspace,

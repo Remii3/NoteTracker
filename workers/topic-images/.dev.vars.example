@@ -1,3 +1,4 @@
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+SUPABASE_SECRET_KEY=your-backend-secret-key
 ALLOWED_ORIGINS=http://localhost:5173,https://note-tracker-orcin.vercel.app

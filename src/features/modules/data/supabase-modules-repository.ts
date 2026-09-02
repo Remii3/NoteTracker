@@ -32,6 +32,8 @@ export class SupabaseModulesRepository implements ModulesRepository {
       .from("modules")
       .select("id,name,position,chapters(count)")
       .eq("user_id", this.userId)
+      .is("trash_id", null)
+      .is("chapters.trash_id", null)
       .order("position")
       .order("id");
     throwIfPostgrestError(error);
@@ -44,6 +46,8 @@ export class SupabaseModulesRepository implements ModulesRepository {
       .select("id,name,position,chapters(count)")
       .eq("id", id)
       .eq("user_id", this.userId)
+      .is("trash_id", null)
+      .is("chapters.trash_id", null)
       .maybeSingle();
     throwIfPostgrestError(error);
     return data ? this.map(data) : null;
@@ -72,8 +76,9 @@ export class SupabaseModulesRepository implements ModulesRepository {
   }
 
   async remove(id: string) {
-    const { error } = await this.client.rpc("delete_module_cascade", {
-      target_module_id: id,
+    const { error } = await this.client.rpc("move_to_trash", {
+      target_type: "module",
+      target_id: id,
     });
     throwIfPostgrestError(error);
   }

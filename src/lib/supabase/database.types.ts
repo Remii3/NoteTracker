@@ -16,6 +16,7 @@ export type Database = {
           name: string;
           position: number;
           created_at: string;
+          trash_id: string | null;
         };
         Insert: {
           id?: string;
@@ -23,8 +24,9 @@ export type Database = {
           name: string;
           position: number;
           created_at?: string;
+          trash_id?: string | null;
         };
-        Update: { name?: string; position?: number };
+        Update: { name?: string; position?: number; trash_id?: string | null };
         Relationships: [];
       };
       questions: {
@@ -38,6 +40,7 @@ export type Database = {
           explanation: string | null;
           created_at: string;
           updated_at: string;
+          trash_id: string | null;
         };
         Insert: {
           id?: string;
@@ -47,6 +50,7 @@ export type Database = {
           topic_id?: string | null;
           content: string;
           explanation?: string | null;
+          trash_id?: string | null;
         };
         Update: {
           module_id?: string;
@@ -55,6 +59,7 @@ export type Database = {
           content?: string;
           explanation?: string | null;
           updated_at?: string;
+          trash_id?: string | null;
         };
         Relationships: [
           {
@@ -111,6 +116,7 @@ export type Database = {
           configuration: Json;
           started_at: string;
           completed_at: string | null;
+          trash_id: string | null;
         };
         Insert: {
           id?: string;
@@ -119,10 +125,12 @@ export type Database = {
           mode: "flashcards" | "test";
           status?: "in_progress" | "completed" | "abandoned";
           configuration?: Json;
+          trash_id?: string | null;
         };
         Update: {
           status?: "in_progress" | "completed" | "abandoned";
           completed_at?: string | null;
+          trash_id?: string | null;
         };
         Relationships: [];
       };
@@ -165,6 +173,7 @@ export type Database = {
           slug: string;
           title: string;
           user_id: string;
+          trash_id: string | null;
         };
         Insert: {
           id?: string;
@@ -173,6 +182,7 @@ export type Database = {
           slug: string;
           title: string;
           user_id: string;
+          trash_id?: string | null;
         };
         Update: {
           id?: string;
@@ -181,6 +191,7 @@ export type Database = {
           slug?: string;
           title?: string;
           user_id?: string;
+          trash_id?: string | null;
         };
         Relationships: [
           {
@@ -202,6 +213,7 @@ export type Database = {
           slug: string;
           title: string;
           user_id: string;
+          trash_id: string | null;
         };
         Insert: {
           chapter_id: string;
@@ -212,6 +224,7 @@ export type Database = {
           slug: string;
           title: string;
           user_id: string;
+          trash_id?: string | null;
         };
         Update: {
           chapter_id?: string;
@@ -222,6 +235,7 @@ export type Database = {
           slug?: string;
           title?: string;
           user_id?: string;
+          trash_id?: string | null;
         };
         Relationships: [
           {
@@ -233,9 +247,49 @@ export type Database = {
           },
         ];
       };
+      trash_items: {
+        Row: {
+          id: string;
+          user_id: string;
+          item_type:
+            | "module"
+            | "chapter"
+            | "topic"
+            | "image"
+            | "question"
+            | "study_session";
+          item_id: string;
+          title: string;
+          deleted_at: string;
+          purge_after: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: Record<never, never>;
     Functions: {
+      move_to_trash: {
+        Args: { target_type: string; target_id: string };
+        Returns: string;
+      };
+      move_notes_to_trash: {
+        Args: { chapter_ids: string[]; topic_ids: string[] };
+        Returns: undefined;
+      };
+      restore_trash_item: {
+        Args: { target_trash_id: string };
+        Returns: undefined;
+      };
+      purge_trash_item: {
+        Args: { target_trash_id: string };
+        Returns: undefined;
+      };
+      get_trash_image_keys: {
+        Args: { target_trash_id: string };
+        Returns: { storage_key: string }[];
+      };
       delete_notes_bulk: {
         Args: {
           chapter_ids: string[];

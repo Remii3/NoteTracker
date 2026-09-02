@@ -113,12 +113,13 @@ export function DeleteItemDialog({ item, onClose, onDelete }: DeleteProps) {
       <AlertDialogContent className="sm:max-w-xl">
         <AlertDialogHeader>
           <AlertDialogTitle>
-            Usunąć {isChapter ? "rozdział" : "temat"} „{item.title}”?
+            Przenieść {isChapter ? "rozdział" : "temat"} „{item.title}” do
+            usuniętych?
           </AlertDialogTitle>
           <AlertDialogDescription>
             {isChapter && item.childCount
-              ? `Razem z rozdziałem usuniesz ${item.childCount} ${item.childCount === 1 ? "temat" : "tematy"} i wszystkie ich notatki.`
-              : "Tej operacji nie będzie można cofnąć."}
+              ? `Razem z rozdziałem przeniesiesz ${item.childCount} ${item.childCount === 1 ? "temat" : "tematy"} i całą ich zawartość. Wszystko można przywrócić przez 24 godziny.`
+              : "Element można przywrócić przez 24 godziny."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -135,7 +136,7 @@ export function DeleteItemDialog({ item, onClose, onDelete }: DeleteProps) {
               if (deleted) onClose();
             }}
           >
-            {isSubmitting ? "Usuwanie…" : "Usuń"}
+            {isSubmitting ? "Przenoszenie…" : "Przenieś"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

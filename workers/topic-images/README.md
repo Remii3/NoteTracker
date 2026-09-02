@@ -30,6 +30,7 @@ Wymagane są Node.js 22+ i npm. Zainstaluj zależności Workera przez `npm ci`.
    ```bash
    npx wrangler secret put SUPABASE_URL
    npx wrangler secret put SUPABASE_PUBLISHABLE_KEY
+   npx wrangler secret put SUPABASE_SECRET_KEY
    npx wrangler secret put ALLOWED_ORIGINS
    ```
 
@@ -65,9 +66,11 @@ npm run dev
 Worker korzysta z `@cloudflare/workers-types`. Nie uruchamiaj `wrangler types`
 i nie commituj generowanego `worker-configuration.d.ts`.
 
-Endpoint `DELETE /modules/:moduleId/images` usuwa z R2 wszystkie obiekty
-zdjęć należące do wskazanego modułu. Wymaga funkcji z migracji
-`supabase/manual/delete-modules-cascade.sql` i uwierzytelnienia właściciela.
+`SUPABASE_SECRET_KEY` to backendowy secret key projektu. Nie wolno dodawać go
+do zmiennych Vite ani udostępniać w przeglądarce. Worker używa go wyłącznie do
+godzinnego czyszczenia kosza po upływie 24 godzin.
+
+Kosz i trwałe usuwanie wymagają migracji `supabase/manual/trash.sql`.
 
 Paginowane sortowanie galerii korzysta z funkcji z migracji
 `supabase/manual/gallery-sorting.sql`.

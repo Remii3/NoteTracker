@@ -31,6 +31,8 @@ export class SupabaseNotesRepository implements NotesRepository {
       .select("id,slug,title,position,topics(id,slug,completed,position)")
       .eq("user_id", this.userId)
       .eq("module_id", this.moduleId)
+      .is("trash_id", null)
+      .is("topics.trash_id", null)
       .order("position")
       .order("id");
     throwIfPostgrestError(error);
@@ -60,6 +62,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       .select("id,slug,title,completed,position")
       .eq("chapter_id", chapterId)
       .eq("user_id", this.userId)
+      .is("trash_id", null)
       .order("position")
       .order("id");
     throwIfPostgrestError(error);
@@ -77,6 +80,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       .eq("id", topicId)
       .eq("chapter_id", chapterId)
       .eq("user_id", this.userId)
+      .is("trash_id", null)
       .single();
     throwIfPostgrestError(error);
     if (!data) throw new Error("Nie znaleziono notatki.");
@@ -90,7 +94,9 @@ export class SupabaseNotesRepository implements NotesRepository {
         "id,slug,title,position,chapter_id,chapters!inner(id,slug,title,position,module_id)",
       )
       .eq("user_id", this.userId)
-      .eq("chapters.module_id", this.moduleId);
+      .eq("chapters.module_id", this.moduleId)
+      .is("trash_id", null)
+      .is("chapters.trash_id", null);
     throwIfPostgrestError(error);
     const topics = (data ?? []).sort(
       (first, second) =>
@@ -129,6 +135,7 @@ export class SupabaseNotesRepository implements NotesRepository {
         .ilike("title", pattern)
         .eq("user_id", this.userId)
         .eq("chapters.module_id", this.moduleId)
+        .is("trash_id", null)
         .order("position")
         .limit(limit),
       this.client
@@ -137,6 +144,10 @@ export class SupabaseNotesRepository implements NotesRepository {
           "id,slug,title,completed,position,chapter_id,chapters!inner(id,slug,title,position)",
         )
         .ilike("title", pattern)
+        .eq("user_id", this.userId)
+        .eq("chapters.module_id", this.moduleId)
+        .is("trash_id", null)
+        .is("chapters.trash_id", null)
         .order("position")
         .limit(limit),
     ]);
@@ -243,13 +254,10 @@ export class SupabaseNotesRepository implements NotesRepository {
   }
 
   async deleteChapter(chapterId: string) {
-    const { error } = await this.client
-      .from("chapters")
-      .delete()
-      .eq("id", chapterId)
-      .eq("user_id", this.userId)
-      .select("id")
-      .single();
+    const { error } = await this.client.rpc("move_to_trash", {
+      target_type: "chapter",
+      target_id: chapterId,
+    });
     throwIfPostgrestError(error);
   }
 
@@ -298,19 +306,16 @@ export class SupabaseNotesRepository implements NotesRepository {
   }
 
   async deleteTopic(chapterId: string, topicId: string) {
-    const { error } = await this.client
-      .from("topics")
-      .delete()
-      .eq("id", topicId)
-      .eq("chapter_id", chapterId)
-      .eq("user_id", this.userId)
-      .select("id")
-      .single();
+    void chapterId;
+    const { error } = await this.client.rpc("move_to_trash", {
+      target_type: "topic",
+      target_id: topicId,
+    });
     throwIfPostgrestError(error);
   }
 
   async deleteItems(chapterIds: string[], topicIds: string[]) {
-    const { error } = await this.client.rpc("delete_notes_bulk", {
+    const { error } = await this.client.rpc("move_notes_to_trash", {
       chapter_ids: chapterIds,
       topic_ids: topicIds,
     });

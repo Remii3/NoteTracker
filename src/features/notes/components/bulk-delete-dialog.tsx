@@ -98,10 +98,10 @@ export function BulkDeleteDialog({
     <Dialog open onOpenChange={(open) => !open && !submitting && onClose()}>
       <DialogContent className="flex max-h-[min(90dvh,52rem)] flex-col overflow-hidden sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Usuń wiele elementów</DialogTitle>
+          <DialogTitle>Przenieś wiele elementów do usuniętych</DialogTitle>
           <DialogDescription>
-            Wybierz całe rozdziały albo pojedyncze tematy. Usunięte zostaną też
-            ich notatki i zdjęcia.
+            Wybierz całe rozdziały albo pojedyncze tematy. Ich zawartość można
+            przywrócić przez 24 godziny.
           </DialogDescription>
         </DialogHeader>
 
@@ -241,10 +241,10 @@ export function BulkDeleteDialog({
           >
             <Trash2 />
             {submitting
-              ? "Usuwanie…"
+              ? "Przenoszenie…"
               : selectedCount
-                ? `Usuń wybrane (${selectedCount})`
-                : "Usuń wybrane"}
+                ? `Przenieś wybrane (${selectedCount})`
+                : "Przenieś wybrane"}
           </Button>
         </DialogFooter>
       </DialogContent>

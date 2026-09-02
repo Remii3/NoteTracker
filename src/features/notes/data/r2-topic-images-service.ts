@@ -173,12 +173,4 @@ export class R2TopicImagesService implements TopicImagesService {
       });
     }
   }
-
-  async removeAll(topicId: string) {
-    await this.request(`/topics/${topicId}/images`, { method: "DELETE" });
-  }
-
-  async removeModuleImages(moduleId: string) {
-    await this.request(`/modules/${moduleId}/images`, { method: "DELETE" });
-  }
 }

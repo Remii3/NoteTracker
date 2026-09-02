@@ -4,6 +4,7 @@ interface Env {
   WRITE_RATE_LIMITER: RateLimit;
   SUPABASE_URL: string;
   SUPABASE_PUBLISHABLE_KEY: string;
+  SUPABASE_SECRET_KEY: string;
   ALLOWED_ORIGINS: string;
 }
 
@@ -109,6 +110,21 @@ async function databaseRequest(
     headers: {
       apikey: env.SUPABASE_PUBLISHABLE_KEY,
       Authorization: `Bearer ${bearerToken(request)}`,
+      "Content-Type": "application/json",
+      ...init?.headers,
+    },
+  });
+}
+
+async function adminDatabaseRequest(
+  env: Env,
+  path: string,
+  init?: RequestInit,
+) {
+  return fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: env.SUPABASE_SECRET_KEY,
       "Content-Type": "application/json",
       ...init?.headers,
     },
@@ -234,7 +250,7 @@ async function getImageRow(request: Request, env: Env, imageId: string) {
   const response = await databaseRequest(
     request,
     env,
-    `topic_images?select=id,topic_id,storage_key,original_filename,format,width,height,bytes,position&id=eq.${encodeURIComponent(imageId)}`,
+    `topic_images?select=id,topic_id,storage_key,original_filename,format,width,height,bytes,position&id=eq.${encodeURIComponent(imageId)}&trash_id=is.null`,
   );
   if (!response.ok) throw new Error("Image query failed");
   return ((await response.json()) as ImageRow[])[0] ?? null;
@@ -244,7 +260,7 @@ async function listImages(request: Request, env: Env, topicId: string) {
   const response = await databaseRequest(
     request,
     env,
-    `topic_images?select=id,topic_id,storage_key,original_filename,format,width,height,bytes,position&topic_id=eq.${encodeURIComponent(topicId)}&order=position.asc,id.asc`,
+    `topic_images?select=id,topic_id,storage_key,original_filename,format,width,height,bytes,position&topic_id=eq.${encodeURIComponent(topicId)}&trash_id=is.null&order=position.asc,id.asc`,
   );
   if (!response.ok) throw new Error("Image list failed");
   const rows = (await response.json()) as ImageRow[];
@@ -260,7 +276,7 @@ async function uploadImage(
   const topicResponse = await databaseRequest(
     request,
     env,
-    `topics?select=id&id=eq.${encodeURIComponent(topicId)}&user_id=eq.${encodeURIComponent(user.id)}`,
+    `topics?select=id&id=eq.${encodeURIComponent(topicId)}&user_id=eq.${encodeURIComponent(user.id)}&trash_id=is.null`,
   );
   if (!topicResponse.ok) throw new Error("Topic query failed");
   if (((await topicResponse.json()) as Array<{ id: string }>).length === 0) {
@@ -302,7 +318,7 @@ async function uploadImage(
     const positionResponse = await databaseRequest(
       request,
       env,
-      `topic_images?select=position&topic_id=eq.${encodeURIComponent(topicId)}&order=position.desc&limit=1`,
+      `topic_images?select=position&topic_id=eq.${encodeURIComponent(topicId)}&trash_id=is.null&order=position.desc&limit=1`,
     );
     const latest = positionResponse.ok
       ? ((await positionResponse.json()) as Array<{ position: number }>)[0]
@@ -358,54 +374,81 @@ async function serveImage(request: Request, env: Env, imageId: string) {
 async function deleteImage(request: Request, env: Env, imageId: string) {
   const row = await getImageRow(request, env, imageId);
   if (!row) return json(request, env, { error: "Image not found" }, 404);
-  await env.IMAGES.delete(row.storage_key);
-  const response = await databaseRequest(
-    request,
-    env,
-    `topic_images?id=eq.${encodeURIComponent(imageId)}`,
-    { method: "DELETE" },
-  );
-  if (!response.ok) throw new Error("Image metadata delete failed");
+  const response = await databaseRequest(request, env, "rpc/move_to_trash", {
+    method: "POST",
+    body: JSON.stringify({ target_type: "image", target_id: imageId }),
+  });
+  if (!response.ok) throw new Error("Image move to trash failed");
   return json(request, env, { success: true });
 }
 
-async function deleteTopicImages(
-  request: Request,
-  env: Env,
-  user: User,
-  topicId: string,
-) {
-  const prefix = `${user.id}/${topicId}/`;
-  let cursor: string | undefined;
-  do {
-    const result = await env.IMAGES.list({ prefix, cursor });
-    if (result.objects.length) {
-      await env.IMAGES.delete(result.objects.map((object) => object.key));
-    }
-    cursor = result.truncated ? result.cursor : undefined;
-  } while (cursor);
-
-  return json(request, env, { success: true });
-}
-
-async function deleteModuleImages(
-  request: Request,
-  env: Env,
-  moduleId: string,
-) {
-  const response = await databaseRequest(
+async function purgeTrash(request: Request, env: Env, trashId: string) {
+  const keysResponse = await databaseRequest(
     request,
     env,
-    "rpc/get_module_image_keys",
-    { method: "POST", body: JSON.stringify({ target_module_id: moduleId }) },
+    "rpc/get_trash_image_keys",
+    {
+      method: "POST",
+      body: JSON.stringify({ target_trash_id: trashId }),
+    },
   );
-  if (!response.ok) throw new Error("Module image list failed");
-  const rows = (await response.json()) as { storage_key: string }[];
-  const keys = rows.map((row) => row.storage_key);
-  for (let index = 0; index < keys.length; index += 1000) {
+  if (!keysResponse.ok)
+    return json(request, env, { error: "Trash item not found" }, 404);
+  const keys = ((await keysResponse.json()) as { storage_key: string }[]).map(
+    (row) => row.storage_key,
+  );
+  for (let index = 0; index < keys.length; index += 1000)
     await env.IMAGES.delete(keys.slice(index, index + 1000));
+  const purgeResponse = await databaseRequest(
+    request,
+    env,
+    "rpc/purge_trash_item",
+    {
+      method: "POST",
+      body: JSON.stringify({ target_trash_id: trashId }),
+    },
+  );
+  if (!purgeResponse.ok) throw new Error("Trash database purge failed");
+  return json(request, env, { success: true });
+}
+
+async function purgeExpiredTrash(env: Env) {
+  const expiredResponse = await adminDatabaseRequest(
+    env,
+    `trash_items?select=id&purge_after=lte.${encodeURIComponent(new Date().toISOString())}&order=purge_after&limit=100`,
+  );
+  if (!expiredResponse.ok) throw new Error("Expired trash query failed");
+  for (const item of (await expiredResponse.json()) as { id: string }[]) {
+    const keysResponse = await adminDatabaseRequest(
+      env,
+      "rpc/get_trash_image_keys",
+      {
+        method: "POST",
+        body: JSON.stringify({ target_trash_id: item.id }),
+      },
+    );
+    if (!keysResponse.ok) continue;
+    const keys = ((await keysResponse.json()) as { storage_key: string }[]).map(
+      (row) => row.storage_key,
+    );
+    for (let index = 0; index < keys.length; index += 1000)
+      await env.IMAGES.delete(keys.slice(index, index + 1000));
+    const purgeResponse = await adminDatabaseRequest(
+      env,
+      "rpc/purge_trash_item",
+      {
+        method: "POST",
+        body: JSON.stringify({ target_trash_id: item.id }),
+      },
+    );
+    if (!purgeResponse.ok)
+      console.error(
+        JSON.stringify({
+          message: "Expired trash purge failed",
+          trashId: item.id,
+        }),
+      );
   }
-  return json(request, env, { success: true, deleted: keys.length });
 }
 
 export default {
@@ -421,19 +464,19 @@ export default {
     const galleryMatch = url.pathname === "/images";
     const topicMatch = url.pathname.match(/^\/topics\/([^/]+)\/images$/);
     const imageMatch = url.pathname.match(/^\/images\/([^/]+)$/);
-    const moduleMatch = url.pathname.match(/^\/modules\/([^/]+)\/images$/);
+    const trashMatch = url.pathname.match(/^\/trash\/([^/]+)$/);
     const allowedMethod =
       (galleryMatch && request.method === "GET") ||
-      (topicMatch && ["GET", "POST", "DELETE"].includes(request.method)) ||
+      (topicMatch && ["GET", "POST"].includes(request.method)) ||
       (imageMatch && ["GET", "DELETE"].includes(request.method)) ||
-      (moduleMatch && request.method === "DELETE");
+      (trashMatch && request.method === "DELETE");
     if (!allowedMethod) return json(request, env, { error: "Not found" }, 404);
 
     let resourceId = "";
     if (!galleryMatch) {
       try {
         resourceId = decodeURIComponent(
-          (topicMatch ?? imageMatch ?? moduleMatch)?.[1] ?? "",
+          (topicMatch ?? imageMatch ?? trashMatch)?.[1] ?? "",
         );
       } catch {
         return json(request, env, { error: "Invalid identifier" }, 400);
@@ -465,17 +508,14 @@ export default {
       if (galleryMatch) {
         return listGalleryImages(request, env, url);
       }
-      if (moduleMatch && request.method === "DELETE") {
-        return deleteModuleImages(request, env, resourceId);
+      if (trashMatch && request.method === "DELETE") {
+        return purgeTrash(request, env, resourceId);
       }
       if (topicMatch && request.method === "GET") {
         return listImages(request, env, resourceId);
       }
       if (topicMatch && request.method === "POST") {
         return uploadImage(request, env, user, resourceId);
-      }
-      if (topicMatch && request.method === "DELETE") {
-        return deleteTopicImages(request, env, user, resourceId);
       }
       if (imageMatch && request.method === "GET") {
         return serveImage(request, env, resourceId);
@@ -495,5 +535,8 @@ export default {
       );
       return json(request, env, { error: "Operation failed" }, 500);
     }
+  },
+  async scheduled(_controller, env, ctx): Promise<void> {
+    ctx.waitUntil(purgeExpiredTrash(env));
   },
 } satisfies ExportedHandler<Env>;

@@ -64,8 +64,8 @@ export function SupabaseNoteWorkspace() {
     return (
       <ModulePicker
         repository={modulesRepository}
-        imagesService={imagesService}
         onSelect={(module) => navigate(`/modules/${module.id}`)}
+        onOpenTrash={() => navigate("/trash")}
         onSignOut={() => void signOut()}
       />
     );

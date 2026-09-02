@@ -57,6 +57,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
       )
       .eq("user_id", this.userId)
       .eq("module_id", this.moduleId)
+      .is("trash_id", null)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
     if (filters.topicId) query = query.eq("topic_id", filters.topicId);
@@ -94,14 +95,10 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
   }
 
   async remove(id: string) {
-    const { error } = await this.client
-      .from("questions")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId)
-      .eq("module_id", this.moduleId)
-      .select("id")
-      .single();
+    const { error } = await this.client.rpc("move_to_trash", {
+      target_type: "question",
+      target_id: id,
+    });
     throwIfPostgrestError(error);
   }
 
@@ -134,6 +131,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
       })
       .eq("user_id", this.userId)
       .eq("module_id", this.moduleId)
+      .is("trash_id", null)
       .order("started_at", { ascending: false })
       .range(offset, offset + limit - 1);
     throwIfPostgrestError(sessionsResult.error);
@@ -199,6 +197,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
         .eq("id", id)
         .eq("user_id", this.userId)
         .eq("module_id", this.moduleId)
+        .is("trash_id", null)
         .single(),
       this.client
         .from("study_session_items")
@@ -252,6 +251,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
       .eq("id", id)
       .eq("user_id", this.userId)
       .eq("module_id", this.moduleId)
+      .is("trash_id", null)
       .select("id")
       .single();
     throwIfPostgrestError(error);
@@ -264,6 +264,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
       .eq("id", id)
       .eq("user_id", this.userId)
       .eq("status", "in_progress")
+      .is("trash_id", null)
       .select("id")
       .single();
     throwIfPostgrestError(error);
