@@ -12,6 +12,7 @@ import type {
   Topic,
   TopicNavigation,
 } from "../model/types";
+import { createTopicNavigation } from "../lib/topic-navigation";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -53,14 +54,7 @@ class MemoryNotesRepository implements NotesRepository {
         topicTitle: topic.title,
       })),
     );
-    const currentIndex = topics.findIndex((topic) => topic.topicId === topicId);
-    if (currentIndex < 0) throw new Error("Nie znaleziono tematu.");
-    return {
-      previous: topics[currentIndex - 1] ?? null,
-      next: topics[currentIndex + 1] ?? null,
-      currentIndex,
-      total: topics.length,
-    };
+    return createTopicNavigation(topics, topicId);
   }
 
   async searchChapters(query: string, limit = 100) {

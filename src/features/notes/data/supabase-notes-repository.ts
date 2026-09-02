@@ -9,6 +9,7 @@ import type {
 import type { ChapterSummary, NoteContent, Topic } from "../model/types";
 import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
 import { throwIfPostgrestError } from "./supabase-error";
+import { createTopicNavigation } from "../lib/topic-navigation";
 
 export class SupabaseNotesRepository implements NotesRepository {
   private readonly client: SupabaseClient<Database>;
@@ -103,25 +104,17 @@ export class SupabaseNotesRepository implements NotesRepository {
         first.chapters.position - second.chapters.position ||
         first.position - second.position,
     );
-    const index = topics.findIndex((topic) => topic.id === topicId);
-    if (index < 0) throw new Error("Nie znaleziono tematu.");
-    const mapTopic = (topic: (typeof topics)[number] | undefined) =>
-      topic
-        ? {
-            chapterId: topic.chapter_id,
-            chapterSlug: topic.chapters.slug,
-            chapterTitle: topic.chapters.title,
-            topicId: topic.id,
-            topicSlug: topic.slug,
-            topicTitle: topic.title,
-          }
-        : null;
-    return {
-      previous: mapTopic(topics[index - 1]),
-      next: mapTopic(topics[index + 1]),
-      currentIndex: index + 1,
-      total: topics.length,
-    };
+    return createTopicNavigation(
+      topics.map((topic) => ({
+        chapterId: topic.chapter_id,
+        chapterSlug: topic.chapters.slug,
+        chapterTitle: topic.chapters.title,
+        topicId: topic.id,
+        topicSlug: topic.slug,
+        topicTitle: topic.title,
+      })),
+      topicId,
+    );
   }
 
   async searchChapters(query: string, limit = 100) {
