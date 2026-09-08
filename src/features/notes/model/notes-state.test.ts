@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Chapter } from "./types";
+import type { Chapter } from "../types/model";
 import { materializeChapters, normalizeChapters } from "./notes-state";
 
 const chapters: Chapter[] = [

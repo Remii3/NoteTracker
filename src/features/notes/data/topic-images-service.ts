@@ -1,5 +1,5 @@
-import type { GalleryImage, TopicImage } from "../model/topic-image";
-import type { SortMode } from "../model/workspace-types";
+import type { GalleryImage, TopicImage } from "../types/topic-image";
+import type { SortMode } from "../types/workspace-types";
 
 export type TopicImageUploadFailure = {
   filename: string;

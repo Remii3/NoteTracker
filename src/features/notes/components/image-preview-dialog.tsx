@@ -29,7 +29,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { TopicImage } from "../model/topic-image";
+import type { TopicImage } from "../types/topic-image";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 5;

@@ -32,8 +32,8 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import type { Chapter } from "../model/types";
-import type { ManagedItem, SortMode } from "../model/workspace-types";
+import type { Chapter } from "../types/model";
+import type { ManagedItem, SortMode } from "../types/workspace-types";
 import { SortableRow } from "./sortable-row";
 
 type Props = {
@@ -42,7 +42,6 @@ type Props = {
   expanded: boolean;
   chapterId: string;
   topicId: string;
-  isHome: boolean;
   isEditing: boolean;
   search: string;
   sortMode: SortMode;
@@ -69,7 +68,6 @@ export function SidebarChapter(props: Props) {
     expanded,
     chapterId,
     topicId,
-    isHome,
     isEditing,
     search,
     sortMode,
@@ -105,7 +103,7 @@ export function SidebarChapter(props: Props) {
       <SidebarMenuItem onPointerEnter={() => onPrefetchTopics(chapter.id)}>
         <SortableRow
           id={chapter.id}
-          active={!isHome && chapter.id === chapterId}
+          active={chapter.id === chapterId}
           disabled={
             !isEditing || sortMode !== "manual" || Boolean(search.trim())
           }
@@ -121,7 +119,7 @@ export function SidebarChapter(props: Props) {
             className="ml-1"
           />
           <SidebarMenuButton
-            isActive={!isHome && chapter.id === chapterId}
+            isActive={chapter.id === chapterId}
             onClick={() => onSelectChapter(chapter)}
             className={
               isEditing
@@ -219,7 +217,7 @@ export function SidebarChapter(props: Props) {
                 <SidebarMenuSubItem key={child.id}>
                   <SortableRow
                     id={child.id}
-                    active={!isHome && child.id === topicId}
+                    active={child.id === topicId}
                     disabled={!isEditing || Boolean(search.trim())}
                     data={{
                       type: "topic",
@@ -235,7 +233,7 @@ export function SidebarChapter(props: Props) {
                       }
                     />
                     <SidebarMenuSubButton
-                      isActive={!isHome && child.id === topicId}
+                      isActive={child.id === topicId}
                       render={<button type="button" />}
                       onClick={() => onSelectTopic(chapter.id, child.id)}
                       className={

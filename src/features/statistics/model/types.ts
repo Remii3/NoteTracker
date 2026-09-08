@@ -62,7 +62,53 @@ export type RecentSessionStatistics = {
   durationSeconds: number;
 };
 
+export type ProgressStatistics = {
+  summary: {
+    totalModules: number;
+    completedModules: number;
+    totalTopics: number;
+    completedTopics: number;
+    remainingTopics: number;
+    totalChapters: number;
+    completedChapters: number;
+    currentStreak: number;
+    longestStreak: number;
+  };
+  daily: Array<{
+    date: string;
+    completedTopics: number;
+  }>;
+  modules: Array<{
+    id: string;
+    name: string;
+    chapters: number;
+    completedChapters: number;
+    topics: number;
+    completedTopics: number;
+  }>;
+  chapters: Array<{
+    id: string;
+    moduleId: string;
+    title: string;
+    topics: number;
+    completedTopics: number;
+  }>;
+  topics: Array<{
+    id: string;
+    chapterId: string;
+    title: string;
+    completed: boolean;
+    firstCompletedAt: string | null;
+  }>;
+  weeklyGoal: {
+    topics: number;
+    completedTopics: number;
+    bestCompletedTopics: number;
+  };
+};
+
 export type StudyStatistics = {
+  progress: ProgressStatistics;
   summary: StatisticsSummary;
   daily: DailyStatistics[];
   sessionTrend: SessionTrend[];

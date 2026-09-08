@@ -1,4 +1,4 @@
-import type { NoteContent } from "./types";
+import type { NoteContent } from "../types/model";
 
 export const EMPTY_RICH_TEXT: NoteContent = {
   type: "doc",

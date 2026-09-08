@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-import type { ManagedItem, SortMode } from "../model/workspace-types";
+import type { ManagedItem, SortMode } from "../types/workspace-types";
 
 type Options = {
   initialChapterId?: string;

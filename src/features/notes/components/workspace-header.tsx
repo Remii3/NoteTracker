@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/tooltip";
 
 type Props = {
-  isHome: boolean;
   isChapters?: boolean;
   isGallery?: boolean;
   isQuestions?: boolean;
@@ -24,7 +23,6 @@ type Props = {
 };
 
 export function WorkspaceHeader({
-  isHome,
   isChapters,
   isGallery,
   isQuestions,
@@ -43,22 +41,20 @@ export function WorkspaceHeader({
         <SidebarTrigger />
         <div className="min-w-0">
           <p className="text-xs font-medium text-primary">
-            {isHome || isChapters || isGallery || isQuestions
+            {isChapters || isGallery || isQuestions
               ? "NoteTracker"
               : (chapterTitle ?? "Rozdział")}
           </p>
           <h1 className="truncate font-semibold">
-            {isHome
-              ? "Strona główna"
-              : isChapters
-                ? "Wszystkie rozdziały"
-                : isGallery
-                  ? "Galeria"
-                  : isQuestions
-                    ? isQuestionHistory
-                      ? "Historia nauki"
-                      : "Baza pytań"
-                    : (topicTitle ?? "Wybierz temat")}
+            {isChapters
+              ? "Wszystkie rozdziały"
+              : isGallery
+                ? "Galeria"
+                : isQuestions
+                  ? isQuestionHistory
+                    ? "Historia nauki"
+                    : "Baza pytań"
+                  : (topicTitle ?? "Wybierz temat")}
           </h1>
         </div>
       </div>

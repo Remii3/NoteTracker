@@ -1,5 +1,20 @@
 export type ActiveView =
-  "home" | "chapters" | "gallery" | "questions" | "statistics" | "notes";
+  "chapters" | "gallery" | "questions" | "statistics" | "notes";
+
+export type ModuleRouteView =
+  | "chapters"
+  | "chapter"
+  | "gallery"
+  | "statistics"
+  | "questions"
+  | "question-history"
+  | "study-session";
+
+export type ModuleRouteHandle = {
+  moduleView: ModuleRouteView;
+  activeView: ActiveView;
+  showHeader: boolean;
+};
 
 export type SortMode = "manual" | "az" | "za" | "completed" | "incomplete";
 

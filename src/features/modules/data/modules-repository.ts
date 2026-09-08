@@ -3,6 +3,9 @@ export type Module = {
   name: string;
   position: number;
   chaptersCount: number;
+  completedChaptersCount: number;
+  topicsCount: number;
+  completedTopicsCount: number;
 };
 
 export interface ModulesRepository {

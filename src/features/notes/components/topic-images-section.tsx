@@ -34,7 +34,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { TopicImagesService } from "../data/topic-images-service";
 import { useTopicImages } from "../hooks/use-topic-images";
-import type { TopicImage } from "../model/topic-image";
+import type { TopicImage } from "../types/topic-image";
 import { ImagePreviewDialog } from "./image-preview-dialog";
 
 type Props = {

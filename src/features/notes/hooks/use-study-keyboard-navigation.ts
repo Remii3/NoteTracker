@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import type { TopicNavigationItem } from "../model/types";
+import type { TopicNavigationItem } from "../types/model";
 
 type Options = {
   enabled: boolean;

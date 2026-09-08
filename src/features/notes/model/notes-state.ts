@@ -1,4 +1,4 @@
-import type { Chapter, Topic } from "./types";
+import type { Chapter, Topic } from "../types/model";
 
 type StoredChapter = Omit<Chapter, "topics">;
 

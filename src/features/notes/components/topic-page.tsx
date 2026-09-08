@@ -3,7 +3,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { TopicImagesService } from "../data/topic-images-service";
-import type { Chapter, NoteContent, Topic } from "../model/types";
+import type { Chapter, NoteContent, Topic } from "../types/model";
 import { TopicImagesSection } from "./topic-images-section";
 import { TopicQuestionsSection } from "@/features/questions/components/topic-questions-section";
 import type { QuestionsRepository } from "@/features/questions/data/questions-repository";

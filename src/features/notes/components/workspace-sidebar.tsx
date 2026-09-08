@@ -15,7 +15,6 @@ import {
   BookOpen,
   LibraryBig,
   Layers3,
-  Home,
   Images,
   LogOut,
   Search,
@@ -48,8 +47,8 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { SidebarChapter } from "./sidebar-chapter";
-import type { Chapter } from "../model/types";
-import type { ManagedItem, SortMode } from "../model/workspace-types";
+import type { Chapter } from "../types/model";
+import type { ManagedItem, SortMode } from "../types/workspace-types";
 
 type Props = {
   chapters: Chapter[];
@@ -57,7 +56,6 @@ type Props = {
   expandedChapters: Set<string>;
   chapterId: string;
   topicId: string;
-  isHome: boolean;
   isChapters: boolean;
   isGallery: boolean;
   isQuestions: boolean;
@@ -69,7 +67,6 @@ type Props = {
   sensors: ReturnType<typeof useSensors>;
   onSearchChange: (value: string) => void;
   onSortModeChange: (value: SortMode) => void;
-  onOpenHome: () => void;
   onOpenChapters: () => void;
   onOpenGallery: () => void;
   onOpenQuestions: () => void;
@@ -94,6 +91,8 @@ type Props = {
   onDragEnd: (event: DragEndEvent) => void;
   userEmail?: string;
   moduleName?: string;
+  moduleNameLoading?: boolean;
+  isLoading?: boolean;
   onOpenModules?: () => void;
   userName?: string;
   onSignOut?: () => void;
@@ -107,7 +106,6 @@ export function WorkspaceSidebar({
   expandedChapters,
   chapterId,
   topicId,
-  isHome,
   isChapters,
   isGallery,
   isQuestions,
@@ -119,7 +117,6 @@ export function WorkspaceSidebar({
   sensors,
   onSearchChange,
   onSortModeChange,
-  onOpenHome,
   onOpenChapters,
   onOpenGallery,
   onOpenQuestions,
@@ -140,6 +137,8 @@ export function WorkspaceSidebar({
   onDragEnd,
   userEmail,
   moduleName,
+  moduleNameLoading,
+  isLoading,
   onOpenModules,
   userName,
   onSignOut,
@@ -168,16 +167,20 @@ export function WorkspaceSidebar({
       <SidebarHeader className="border-b p-3">
         <div className="flex items-center gap-3 px-1 py-1">
           <Button
-            onClick={onOpenHome}
+            onClick={onOpenChapters}
             className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"
           >
             <BookOpen className="size-5" />
           </Button>
           <div>
             <button type="button" className="text-left" onClick={onOpenModules}>
-              <p className="font-semibold leading-tight">
-                {moduleName ?? "NoteTracker"}
-              </p>
+              {moduleNameLoading ? (
+                <Skeleton className="h-4 w-28" />
+              ) : (
+                <p className="font-semibold leading-tight">
+                  {moduleName ?? "NoteTracker"}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">Zmień moduł</p>
             </button>
           </div>
@@ -187,6 +190,7 @@ export function WorkspaceSidebar({
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
+              disabled={isLoading}
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder="Szukaj rozdziałów"
               className="pr-8 pl-8"
@@ -211,6 +215,7 @@ export function WorkspaceSidebar({
                   variant={sortMode === "manual" ? "outline" : "secondary"}
                   size="icon"
                   aria-label="Sortuj rozdziały"
+                  disabled={isLoading}
                 />
               }
             >
@@ -249,9 +254,9 @@ export function WorkspaceSidebar({
         <SidebarGroup className="pb-0">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton isActive={isHome} onClick={onOpenHome}>
-                <Home />
-                <span>Strona główna</span>
+              <SidebarMenuButton isActive={isChapters} onClick={onOpenChapters}>
+                <LibraryBig />
+                <span>Wszystkie rozdziały</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -261,12 +266,6 @@ export function WorkspaceSidebar({
               >
                 <BarChart3 />
                 <span>Statystyki</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton isActive={isChapters} onClick={onOpenChapters}>
-                <LibraryBig />
-                <span>Wszystkie rozdziały</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -317,16 +316,6 @@ export function WorkspaceSidebar({
                   </Button>
                   <Button
                     type="button"
-                    variant={isHome ? "secondary" : "ghost"}
-                    size="icon-xs"
-                    title="Strona główna"
-                    aria-label="Przejdź do strony głównej"
-                    onClick={onOpenHome}
-                  >
-                    <Home />
-                  </Button>
-                  <Button
-                    type="button"
                     variant={isChapters ? "secondary" : "ghost"}
                     size="icon-xs"
                     title="Wszystkie rozdziały"
@@ -368,7 +357,7 @@ export function WorkspaceSidebar({
                 strategy={verticalListSortingStrategy}
               >
                 <SidebarMenu>
-                  {!visibleChapters.length && !isSearching && (
+                  {!visibleChapters.length && !isSearching && !isLoading && (
                     <li className="px-3 py-8 text-center">
                       {isEmpty ? (
                         <>
@@ -411,6 +400,7 @@ export function WorkspaceSidebar({
                     </li>
                   )}
                   {!isSearching &&
+                    !isLoading &&
                     visibleChapters.map((chapter) => (
                       <SidebarChapter
                         key={chapter.id}
@@ -421,7 +411,6 @@ export function WorkspaceSidebar({
                         expanded={expandedChapters.has(chapter.id)}
                         chapterId={chapterId}
                         topicId={topicId}
-                        isHome={isHome}
                         isEditing={isEditing}
                         search={search}
                         sortMode={sortMode}
@@ -458,6 +447,7 @@ export function WorkspaceSidebar({
                       ))}
                     </li>
                   )}
+                  {isLoading && <SidebarChaptersSkeleton />}
                 </SidebarMenu>
               </SortableContext>
             </DndContext>
@@ -494,5 +484,28 @@ export function WorkspaceSidebar({
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
+  );
+}
+
+function SidebarChaptersSkeleton() {
+  return (
+    <li
+      className="space-y-2 px-1 py-1"
+      role="status"
+      aria-busy="true"
+      aria-label="Ładowanie rozdziałów"
+    >
+      {Array.from({ length: 6 }, (_, index) => (
+        <div
+          key={index}
+          className="flex h-8 items-center gap-2 px-2"
+          aria-hidden="true"
+        >
+          <Skeleton className="size-4 shrink-0 rounded-sm" />
+          <Skeleton className={index % 3 === 0 ? "h-3 w-36" : "h-3 w-28"} />
+          <Skeleton className="ml-auto h-3 w-7" />
+        </div>
+      ))}
+    </li>
   );
 }

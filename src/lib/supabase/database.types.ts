@@ -180,15 +180,18 @@ export type Database = {
         Row: {
           user_id: string;
           weekly_minutes: number;
+          weekly_topics: number;
           updated_at: string;
         };
         Insert: {
           user_id: string;
           weekly_minutes?: number;
+          weekly_topics?: number;
           updated_at?: string;
         };
         Update: {
           weekly_minutes?: number;
+          weekly_topics?: number;
           updated_at?: string;
         };
         Relationships: [];
@@ -235,6 +238,7 @@ export type Database = {
         Row: {
           chapter_id: string;
           completed: boolean;
+          first_completed_at: string | null;
           content: Json;
           id: string;
           position: number;
@@ -246,6 +250,7 @@ export type Database = {
         Insert: {
           chapter_id: string;
           completed?: boolean;
+          first_completed_at?: string | null;
           content?: Json;
           id?: string;
           position: number;
@@ -257,6 +262,7 @@ export type Database = {
         Update: {
           chapter_id?: string;
           completed?: boolean;
+          first_completed_at?: string | null;
           content?: Json;
           id?: string;
           position?: number;
@@ -298,6 +304,26 @@ export type Database = {
     };
     Views: Record<never, never>;
     Functions: {
+      get_module_summaries: {
+        Args: { target_module_id?: string | null };
+        Returns: {
+          id: string;
+          name: string;
+          module_position: number;
+          chapters_count: number;
+          completed_chapters_count: number;
+          topics_count: number;
+          completed_topics_count: number;
+        }[];
+      };
+      get_progress_statistics: {
+        Args: {
+          target_module_id?: string | null;
+          range_days?: number;
+          timezone_name?: string;
+        };
+        Returns: Json;
+      };
       move_to_trash: {
         Args: { target_type: string; target_id: string };
         Returns: string;

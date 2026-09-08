@@ -5,7 +5,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import { TextStyleKit } from "@tiptap/extension-text-style";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import type { NoteContent } from "../model/types";
+import type { NoteContent } from "../types/model";
 import { EditorToolbar } from "./editor-toolbar";
 
 const baseExtensions = [

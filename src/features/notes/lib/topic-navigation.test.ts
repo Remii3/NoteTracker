@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { TopicNavigationItem } from "../model/types";
+import type { TopicNavigationItem } from "../types/model";
 import { createTopicNavigation } from "./topic-navigation";
 
 const topics: TopicNavigationItem[] = ["1", "2"].map((id) => ({

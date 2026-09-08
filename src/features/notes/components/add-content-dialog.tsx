@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { normalizeTitle } from "../lib/title-utils";
-import type { Chapter } from "../model/types";
+import type { Chapter } from "../types/model";
 
 type AddMode = "chapter" | "topics";
 type ChapterOption = {

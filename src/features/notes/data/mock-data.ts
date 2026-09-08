@@ -1,4 +1,4 @@
-import type { Chapter, NoteContent } from "../model/types";
+import type { Chapter, NoteContent } from "../types/model";
 
 function textDocument(text: string): NoteContent {
   return {

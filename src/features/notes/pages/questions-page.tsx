@@ -1,0 +1,24 @@
+import { QuestionsPage as Questions } from "@/features/questions/components/questions-page";
+import { useModuleContext } from "../components/module-context";
+
+export function QuestionsPage() {
+  const {
+    orderedChapters,
+    questionsRepository,
+    loadChapterTopics,
+    navigateStudySession,
+    navigateQuestionHistory,
+  } = useModuleContext();
+
+  if (!questionsRepository) return null;
+
+  return (
+    <Questions
+      chapters={orderedChapters}
+      repository={questionsRepository}
+      loadTopics={loadChapterTopics}
+      onOpenSession={navigateStudySession}
+      onOpenHistory={navigateQuestionHistory}
+    />
+  );
+}

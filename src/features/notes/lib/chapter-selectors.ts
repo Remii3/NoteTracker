@@ -1,5 +1,5 @@
-import type { Chapter } from "../model/types";
-import type { SortMode } from "../model/workspace-types";
+import type { Chapter } from "../types/model";
+import type { SortMode } from "../types/workspace-types";
 
 const naturalPolishCollator = new Intl.Collator("pl", {
   numeric: true,

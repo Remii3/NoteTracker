@@ -7,8 +7,24 @@ import {
 } from "./module-validation";
 
 const modules = [
-  { id: "a", name: "Matematyka", position: 1000, chaptersCount: 2 },
-  { id: "b", name: "Fizyka", position: 2000, chaptersCount: 0 },
+  {
+    id: "a",
+    name: "Matematyka",
+    position: 1000,
+    chaptersCount: 2,
+    completedChaptersCount: 1,
+    topicsCount: 10,
+    completedTopicsCount: 5,
+  },
+  {
+    id: "b",
+    name: "Fizyka",
+    position: 2000,
+    chaptersCount: 0,
+    completedChaptersCount: 0,
+    topicsCount: 0,
+    completedTopicsCount: 0,
+  },
 ];
 
 describe("module validation", () => {

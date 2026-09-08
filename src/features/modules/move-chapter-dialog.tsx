@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Chapter } from "@/features/notes/model/types";
+import type { Chapter } from "@/features/notes/types/model";
 import type { Module, ModulesRepository } from "./data/modules-repository";
 
 export function MoveChapterDialog({

@@ -32,3 +32,21 @@ it("exposes loading, error and retry states", async () => {
   await waitFor(() => expect(hook.result.current.value).toBe("module"));
   expect(hook.result.current.failed).toBe(false);
 });
+
+it("serves a cached value while refreshing it in the background", async () => {
+  let resolve!: (value: string) => void;
+  const load = () =>
+    new Promise<string>((next) => {
+      resolve = next;
+    });
+  const hook = renderHook(() =>
+    useAsyncResource(load, { initialValue: "cached module" }),
+  );
+  expect(hook.result.current.value).toBe("cached module");
+  expect(hook.result.current.loading).toBe(false);
+  expect(hook.result.current.refreshing).toBe(true);
+  await act(async () => {});
+  await act(async () => resolve("fresh module"));
+  expect(hook.result.current.value).toBe("fresh module");
+  expect(hook.result.current.refreshing).toBe(false);
+});

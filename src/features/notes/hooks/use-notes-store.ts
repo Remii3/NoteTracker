@@ -23,13 +23,20 @@ import type {
   NoteContent,
   Topic,
   TopicNavigation,
-} from "../model/types";
-import type { ManagedItem } from "../model/workspace-types";
+} from "../types/model";
+import type { ManagedItem } from "../types/workspace-types";
+import { readMemoryCache, writeMemoryCache } from "@/lib/memory-cache";
 
 type Options = {
   repository?: NotesRepository;
   initialChapters?: Chapter[];
   loadOnMount?: boolean;
+  cacheKey?: string;
+};
+
+type NotesCacheSnapshot = {
+  chapters: Chapter[];
+  learningSummary: LearningSummary | null;
 };
 
 const CHAPTER_TOPICS_CACHE_LIMIT = 20;
@@ -43,13 +50,20 @@ export function useNotesStore({
   repository = memoryNotesRepository,
   initialChapters = memoryNotesRepository.getSnapshot(),
   loadOnMount = false,
+  cacheKey,
 }: Options = {}) {
+  const cachedSnapshot = useMemo(
+    () =>
+      cacheKey ? readMemoryCache<NotesCacheSnapshot>(cacheKey) : undefined,
+    [cacheKey],
+  );
   const initialState = useMemo(
-    () => normalizeChapters(initialChapters),
-    [initialChapters],
+    () => normalizeChapters(cachedSnapshot?.chapters ?? initialChapters),
+    [cachedSnapshot, initialChapters],
   );
   const [state, setState] = useState<NotesState>(initialState);
   const stateRef = useRef(state);
+  const cacheReadyRef = useRef(Boolean(cachedSnapshot));
   const operationLockRef = useRef(false);
   const chapterRequestsRef = useRef(new Map<string, Promise<Topic[] | null>>());
   const chapterCacheOrderRef = useRef(new Map<string, number>());
@@ -57,11 +71,11 @@ export function useNotesStore({
   const cacheSequenceRef = useRef(0);
   const searchRequestRef = useRef(0);
   const navigationRequestRef = useRef(0);
-  const [isLoading, setIsLoading] = useState(loadOnMount);
+  const [isLoading, setIsLoading] = useState(loadOnMount && !cachedSnapshot);
   const [searchResults, setSearchResults] = useState<Chapter[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [learningSummary, setLearningSummary] =
-    useState<LearningSummary | null>(null);
+    useState<LearningSummary | null>(cachedSnapshot?.learningSummary ?? null);
   const [topicNavigation, setTopicNavigation] =
     useState<TopicNavigation | null>(null);
   const [pendingOperations, setPendingOperations] = useState(0);
@@ -73,6 +87,14 @@ export function useNotesStore({
   const [error, setError] = useState<string | null>(null);
   const chapters = useMemo(() => materializeChapters(state), [state]);
   const clearError = useCallback(() => setError(null), []);
+
+  useEffect(() => {
+    if (!cacheKey || !cacheReadyRef.current) return;
+    writeMemoryCache<NotesCacheSnapshot>(cacheKey, {
+      chapters,
+      learningSummary,
+    });
+  }, [cacheKey, chapters, learningSummary]);
 
   const applyState = useCallback((next: NotesState) => {
     stateRef.current = next;
@@ -151,7 +173,7 @@ export function useNotesStore({
   );
 
   const load = useCallback(async () => {
-    setIsLoading(true);
+    setIsLoading(!cacheReadyRef.current);
     setLoadFailed(false);
     setError(null);
     try {
@@ -159,14 +181,32 @@ export function useNotesStore({
         repository.listChapters(),
         repository.getLearningSummary(),
       ]);
-      applyChapters(page);
+      const currentById = new Map(
+        materializeChapters(stateRef.current).map((chapter) => [
+          chapter.id,
+          chapter,
+        ]),
+      );
+      applyChapters(
+        page.map((chapter) => {
+          const current = currentById.get(chapter.id);
+          return current?.topicsStatus === "loaded"
+            ? {
+                ...chapter,
+                topics: current.topics,
+                topicsStatus: "loaded",
+              }
+            : chapter;
+        }),
+      );
       setLearningSummary(summary);
+      cacheReadyRef.current = true;
       return true;
     } catch (caughtError) {
       setError(
         getErrorMessage(caughtError, "Nie udało się pobrać danych aplikacji."),
       );
-      setLoadFailed(true);
+      setLoadFailed(!cacheReadyRef.current);
       return false;
     } finally {
       setIsLoading(false);

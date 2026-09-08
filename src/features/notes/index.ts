@@ -1,2 +1,1 @@
-export { NoteWorkspace } from "./note-workspace";
-export { SupabaseNoteWorkspace } from "./supabase-note-workspace";
+export { ModulePage } from "./pages/module-page";

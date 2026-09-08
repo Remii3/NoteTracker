@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import type { Chapter, Topic } from "@/features/notes/model/types";
+import type { Chapter, Topic } from "@/features/notes/types/model";
 import type { QuestionsRepository } from "../data/questions-repository";
 import type { Question, QuestionOption } from "../model/types";
 

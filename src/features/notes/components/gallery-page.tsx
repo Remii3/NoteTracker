@@ -16,8 +16,8 @@ import type {
   GalleryChapterSection,
   TopicImagesService,
 } from "../data/topic-images-service";
-import type { GalleryImage, TopicImage } from "../model/topic-image";
-import type { SortMode } from "../model/workspace-types";
+import type { GalleryImage, TopicImage } from "../types/topic-image";
+import type { SortMode } from "../types/workspace-types";
 import { ImagePreviewDialog } from "./image-preview-dialog";
 
 const SECTION_PAGE_SIZE = 4;

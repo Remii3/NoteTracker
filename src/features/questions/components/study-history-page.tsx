@@ -235,10 +235,6 @@ function SessionCard({
                 : `${session.successfulCount}/${session.totalCount} (${percentage}%)`}
             </span>
           </div>
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Clock3 className="size-3.5" />
-            {formatDuration(session.startedAt, session.completedAt)}
-          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {inProgress && (
@@ -389,19 +385,4 @@ function formatDate(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
-}
-
-function formatDuration(startedAt: string, completedAt: string | null) {
-  if (!completedAt) return "Sesja nadal trwa";
-  const durationMinutes = Math.max(
-    1,
-    Math.round(
-      (new Date(completedAt).getTime() - new Date(startedAt).getTime()) /
-        60_000,
-    ),
-  );
-  if (durationMinutes < 60) return `${durationMinutes} min`;
-  const hours = Math.floor(durationMinutes / 60);
-  const minutes = durationMinutes % 60;
-  return minutes ? `${hours} godz. ${minutes} min` : `${hours} godz.`;
 }

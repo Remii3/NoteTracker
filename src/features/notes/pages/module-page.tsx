@@ -3,63 +3,89 @@ import { toast } from "sonner";
 
 import { AccountDialog, getUserDisplayName, useAuth } from "@/features/auth";
 import { supabase } from "@/lib/supabase/client";
-import { R2TopicImagesService } from "./data/r2-topic-images-service";
-import { SupabaseNotesRepository } from "./data/supabase-notes-repository";
-import { NoteWorkspace } from "./note-workspace";
+import { R2TopicImagesService } from "../data/r2-topic-images-service";
+import { SupabaseNotesRepository } from "../data/supabase-notes-repository";
 import { SupabaseQuestionsRepository } from "@/features/questions/data/supabase-questions-repository";
-import { useLocation, useNavigate, useParams } from "react-router";
-import { ModulePicker } from "@/features/modules/module-picker";
+import { useNavigate, useParams } from "react-router";
+import type { Module } from "@/features/modules/data/modules-repository";
 import { useAsyncResource } from "@/hooks/use-async-resource";
 import { LoadError } from "@/components/load-error";
 import { SupabaseModulesRepository } from "@/features/modules/data/supabase-modules-repository";
-import { AppLoading } from "@/components/app-loading";
 import { SupabaseStatisticsRepository } from "@/features/statistics/data/supabase-statistics-repository";
-import { StatisticsPage } from "@/features/statistics/components/statistics-page";
+import { ModuleProvider } from "../components/module-provider";
+import {
+  clearUserMemoryCache,
+  readMemoryCache,
+  writeMemoryCache,
+} from "@/lib/memory-cache";
 
-export function SupabaseNoteWorkspace() {
+export function ModulePage() {
   const { user, signOut } = useAuth();
+  const userId = user?.id;
   const navigate = useNavigate();
-  const location = useLocation();
   const { moduleId } = useParams<{ moduleId: string }>();
   const [accountOpen, setAccountOpen] = useState(false);
+  const modulesCacheKey = `modules:${userId ?? "anonymous"}`;
+  const cachedModule = moduleId
+    ? readMemoryCache<Module[]>(modulesCacheKey)?.find(
+        (module) => module.id === moduleId,
+      )
+    : undefined;
   const modulesRepository = useMemo(
-    () => new SupabaseModulesRepository(supabase, user?.id ?? ""),
-    [user?.id],
+    () => new SupabaseModulesRepository(supabase, userId ?? ""),
+    [userId],
   );
   const statisticsRepository = useMemo(
-    () => new SupabaseStatisticsRepository(supabase, user?.id ?? ""),
-    [user?.id],
+    () => new SupabaseStatisticsRepository(supabase, userId ?? ""),
+    [userId],
   );
-  const loadModule = useCallback(
-    () => (moduleId ? modulesRepository.get(moduleId) : Promise.resolve(null)),
-    [moduleId, modulesRepository],
-  );
-  const moduleResource = useAsyncResource(loadModule);
+  const loadModule = useCallback(async () => {
+    if (!moduleId) return null;
+    const loadedModule = await modulesRepository.get(moduleId);
+    if (loadedModule) {
+      const cached = readMemoryCache<Module[]>(modulesCacheKey) ?? [];
+      writeMemoryCache(
+        modulesCacheKey,
+        cached.some((module) => module.id === loadedModule.id)
+          ? cached.map((module) =>
+              module.id === loadedModule.id ? loadedModule : module,
+            )
+          : [...cached, loadedModule],
+      );
+    } else {
+      const cached = readMemoryCache<Module[]>(modulesCacheKey);
+      if (cached) {
+        writeMemoryCache(
+          modulesCacheKey,
+          cached.filter((module) => module.id !== moduleId),
+        );
+      }
+    }
+    return loadedModule;
+  }, [moduleId, modulesCacheKey, modulesRepository]);
+  const moduleResource = useAsyncResource(loadModule, {
+    initialValue: cachedModule,
+  });
   const selectedModule = moduleResource.value;
   const handleSignOut = useCallback(() => {
     void signOut()
-      .then(() => navigate("/"))
+      .then(() => {
+        if (userId) clearUserMemoryCache(userId);
+        navigate("/");
+      })
       .catch(() => {
         toast.error("Nie udało się wylogować. Spróbuj ponownie.");
       });
-  }, [signOut, navigate]);
+  }, [signOut, navigate, userId]);
+
   const repository = useMemo(
-    () =>
-      new SupabaseNotesRepository(
-        supabase,
-        user?.id ?? "",
-        selectedModule?.id ?? "",
-      ),
-    [selectedModule?.id, user?.id],
+    () => new SupabaseNotesRepository(supabase, userId ?? "", moduleId ?? ""),
+    [moduleId, userId],
   );
   const questionsRepository = useMemo(
     () =>
-      new SupabaseQuestionsRepository(
-        supabase,
-        user?.id ?? "",
-        selectedModule?.id ?? "",
-      ),
-    [selectedModule?.id, user?.id],
+      new SupabaseQuestionsRepository(supabase, userId ?? "", moduleId ?? ""),
+    [moduleId, userId],
   );
   const imagesApiUrl = import.meta.env.VITE_R2_IMAGES_API_URL as
     string | undefined;
@@ -71,29 +97,8 @@ export function SupabaseNoteWorkspace() {
     [imagesApiUrl],
   );
 
-  if (!user) return null;
-  if (location.pathname === "/statistics") {
-    return (
-      <StatisticsPage
-        repository={statisticsRepository}
-        moduleId={null}
-        onBack={() => navigate("/modules")}
-      />
-    );
-  }
-  if (!moduleId) {
-    return (
-      <ModulePicker
-        repository={modulesRepository}
-        onSelect={(module) => navigate(`/modules/${module.id}`)}
-        onOpenTrash={() => navigate("/trash")}
-        onOpenStatistics={() => navigate("/statistics")}
-        onSignOut={handleSignOut}
-      />
-    );
-  }
-  if (moduleResource.loading) return <AppLoading />;
-  if (moduleResource.failed || !selectedModule)
+  if (!user || !moduleId) return null;
+  if (moduleResource.failed || (!moduleResource.loading && !selectedModule))
     return (
       <LoadError
         message={
@@ -108,7 +113,7 @@ export function SupabaseNoteWorkspace() {
 
   return (
     <>
-      <NoteWorkspace
+      <ModuleProvider
         key={`${user.id}:${moduleId}`}
         draftScope={`${user.id}:${moduleId}`}
         repository={repository}
@@ -116,11 +121,13 @@ export function SupabaseNoteWorkspace() {
         questionsRepository={questionsRepository}
         modulesRepository={modulesRepository}
         statisticsRepository={statisticsRepository}
+        statisticsCacheScope={user.id}
         initialChapters={[]}
         loadOnMount
         userName={getUserDisplayName(user)}
         userEmail={user.email}
-        moduleName={selectedModule.name}
+        moduleName={selectedModule?.name}
+        moduleNameLoading={moduleResource.loading}
         onOpenModules={() => navigate("/modules")}
         onOpenAccount={() => setAccountOpen(true)}
         onSignOut={handleSignOut}

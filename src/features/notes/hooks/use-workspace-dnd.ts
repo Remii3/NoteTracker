@@ -17,8 +17,8 @@ import {
   reorderTopic,
 } from "../domain/chapter-operations";
 import { titlesAreEqual } from "../lib/title-utils";
-import type { Chapter } from "../model/types";
-import type { SortMode } from "../model/workspace-types";
+import type { Chapter } from "../types/model";
+import type { SortMode } from "../types/workspace-types";
 
 type NavigateToChapter = (
   chapterId: string,

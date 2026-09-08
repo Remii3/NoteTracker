@@ -2,7 +2,6 @@ import {
   ArrowLeft,
   BarChart3,
   CalendarDays,
-  Clock3,
   Flame,
   History,
   Medal,
@@ -22,7 +21,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  clearMemoryCacheByPrefix,
+  readMemoryCache,
+  writeMemoryCache,
+} from "@/lib/memory-cache";
 import type { StatisticsRepository } from "../data/statistics-repository";
+import { MaterialProgressDashboard } from "./material-progress-dashboard";
 import {
   areaStatus,
   type DailyStatistics,
@@ -31,7 +36,7 @@ import {
   type StudyStatistics,
 } from "../model/types";
 
-type Metric = "answers" | "sessions" | "duration";
+type Metric = "completed" | "answers" | "sessions";
 
 type Props = {
   repository: StatisticsRepository;
@@ -39,6 +44,7 @@ type Props = {
   moduleName?: string;
   onBack: () => void;
   onOpenHistory?: () => void;
+  cacheScope?: string;
 };
 
 const RANGE_LABELS: Record<StatisticsRange, string> = {
@@ -54,51 +60,77 @@ export function StatisticsPage({
   moduleName,
   onBack,
   onOpenHistory,
+  cacheScope,
 }: Props) {
   const [range, setRange] = useState<StatisticsRange>(30);
   const [mode, setMode] = useState<StatisticsMode>("all");
-  const [data, setData] = useState<StudyStatistics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [metric, setMetric] = useState<Metric>("answers");
-  const [goal, setGoal] = useState("150");
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const requestKey = `v4:${moduleId ?? "all"}:${range}:${mode}:${timezone}`;
+  const cacheKey = cacheScope
+    ? `statistics:${cacheScope}:${requestKey}`
+    : undefined;
+  const cachedData = cacheKey
+    ? readMemoryCache<StudyStatistics>(cacheKey)
+    : undefined;
+  const [result, setResult] = useState<{
+    key: string;
+    value: StudyStatistics;
+  } | null>(null);
+  const data = result?.key === requestKey ? result.value : cachedData;
+  const [goalDraft, setGoalDraft] = useState<{
+    key: string;
+    value: string;
+  } | null>(null);
+  const goal =
+    goalDraft?.key === requestKey
+      ? goalDraft.value
+      : String(data?.progress.weeklyGoal.topics ?? 5);
+  const [metric, setMetric] = useState<Metric>("completed");
   const [savingGoal, setSavingGoal] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const next = await repository.get({
         moduleId,
         range,
         mode,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+        timezone,
       });
-      setData(next);
-      setGoal(String(next.weeklyGoal.minutes));
+      setResult({ key: requestKey, value: next });
+      if (cacheKey) writeMemoryCache(cacheKey, next);
     } catch {
       toast.error("Nie udało się pobrać statystyk.");
-    } finally {
-      setLoading(false);
     }
-  }, [mode, moduleId, range, repository]);
+  }, [cacheKey, mode, moduleId, range, repository, requestKey, timezone]);
 
   useEffect(() => {
     queueMicrotask(() => void load());
   }, [load]);
 
   async function saveGoal() {
-    const minutes = Number(goal);
-    if (!Number.isInteger(minutes) || minutes < 15 || minutes > 10_080) {
-      toast.error("Cel musi wynosić od 15 do 10 080 minut.");
+    const topics = Number(goal);
+    if (!Number.isInteger(topics) || topics < 1 || topics > 1000) {
+      toast.error("Cel musi wynosić od 1 do 1000 tematów.");
       return;
     }
     setSavingGoal(true);
     try {
-      await repository.saveWeeklyGoal(minutes);
-      setData((current) =>
-        current
-          ? { ...current, weeklyGoal: { ...current.weeklyGoal, minutes } }
-          : current,
-      );
+      await repository.saveWeeklyGoal(topics);
+      if (data) {
+        const next = {
+          ...data,
+          progress: {
+            ...data.progress,
+            weeklyGoal: { ...data.progress.weeklyGoal, topics },
+          },
+        };
+        setResult({ key: requestKey, value: next });
+        setGoalDraft(null);
+        if (cacheScope) {
+          clearMemoryCacheByPrefix(`statistics:${cacheScope}:`);
+          if (cacheKey) writeMemoryCache(cacheKey, next);
+        }
+      }
       toast.success("Cel tygodniowy został zapisany.");
     } catch {
       toast.error("Nie udało się zapisać celu.");
@@ -106,11 +138,6 @@ export function StatisticsPage({
       setSavingGoal(false);
     }
   }
-
-  const accuracyChange =
-    data?.summary.previousAccuracy == null
-      ? null
-      : data.summary.accuracy - data.summary.previousAccuracy;
 
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
@@ -152,14 +179,14 @@ export function StatisticsPage({
               <SelectTrigger>
                 <SelectValue>
                   {mode === "all"
-                    ? "Wszystkie tryby"
+                    ? "Wszystkie powtórki"
                     : mode === "test"
                       ? "Testy"
                       : "Fiszki"}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent align="end">
-                <SelectItem value="all">Wszystkie tryby</SelectItem>
+                <SelectItem value="all">Wszystkie powtórki</SelectItem>
                 <SelectItem value="test">Testy</SelectItem>
                 <SelectItem value="flashcards">Fiszki</SelectItem>
               </SelectContent>
@@ -172,40 +199,38 @@ export function StatisticsPage({
           </div>
         </header>
 
-        {loading || !data ? (
+        {!data ? (
           <LoadingState />
         ) : (
           <>
             <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <SummaryCard
                 icon={<Target />}
-                label="Skuteczność"
-                value={`${data.summary.accuracy}%`}
-                note={
-                  accuracyChange == null
-                    ? "Brak poprzedniego okresu"
-                    : `${accuracyChange >= 0 ? "+" : ""}${accuracyChange} pp vs wcześniej`
-                }
+                label="Ukończone tematy"
+                value={`${data.progress.summary.completedTopics}/${data.progress.summary.totalTopics}`}
+                note={`${data.progress.summary.remainingTopics} tematów pozostało`}
               />
               <SummaryCard
                 icon={<BarChart3 />}
-                label="Odpowiedzi"
-                value={data.summary.answers}
-                note={`${data.summary.completedSessions} ukończonych sesji`}
+                label="Ukończone rozdziały"
+                value={`${data.progress.summary.completedChapters}/${data.progress.summary.totalChapters}`}
+                note="Rozdział zalicza się po ukończeniu wszystkich tematów"
               />
               <SummaryCard
-                icon={<Clock3 />}
-                label="Czas nauki"
-                value={formatDuration(data.summary.durationSeconds)}
-                note={`${data.summary.activeDays} aktywnych dni`}
+                icon={<Medal />}
+                label="Ukończone moduły"
+                value={`${data.progress.summary.completedModules}/${data.progress.summary.totalModules}`}
+                note="Moduł zalicza się po ukończeniu całego materiału"
               />
               <SummaryCard
                 icon={<Flame />}
-                label="Bieżąca seria"
-                value={`${data.summary.currentStreak} dni`}
-                note={`Rekord: ${data.summary.longestStreak} dni`}
+                label="Seria zaliczeń"
+                value={`${data.progress.summary.currentStreak} dni`}
+                note={`Rekord: ${data.progress.summary.longestStreak} dni`}
               />
             </section>
+
+            <MaterialProgressDashboard data={data} moduleId={moduleId} />
 
             <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
               <div className="rounded-2xl border p-5 sm:p-6">
@@ -217,7 +242,7 @@ export function StatisticsPage({
                     </p>
                   </div>
                   <div className="flex rounded-lg bg-muted p-1">
-                    {(["answers", "sessions", "duration"] as const).map(
+                    {(["completed", "answers", "sessions"] as const).map(
                       (value) => (
                         <Button
                           key={value}
@@ -225,23 +250,27 @@ export function StatisticsPage({
                           variant={metric === value ? "secondary" : "ghost"}
                           onClick={() => setMetric(value)}
                         >
-                          {value === "answers"
-                            ? "Odpowiedzi"
-                            : value === "sessions"
-                              ? "Sesje"
-                              : "Czas"}
+                          {value === "completed"
+                            ? "Zaliczenia"
+                            : value === "answers"
+                              ? "Odpowiedzi"
+                              : "Powtórki"}
                         </Button>
                       ),
                     )}
                   </div>
                 </div>
-                <ActivityChart daily={data.daily} metric={metric} />
+                <ActivityChart
+                  daily={data.daily}
+                  progressDaily={data.progress.daily}
+                  metric={metric}
+                />
               </div>
               <WeeklyGoal
                 data={data}
                 goal={goal}
                 saving={savingGoal}
-                onChange={setGoal}
+                onChange={(value) => setGoalDraft({ key: requestKey, value })}
                 onSave={() => void saveGoal()}
               />
             </section>
@@ -250,14 +279,16 @@ export function StatisticsPage({
               <div className="rounded-2xl border p-5 sm:p-6">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="size-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Trend wyników</h2>
+                  <h2 className="text-lg font-semibold">
+                    Trend wyników powtórek
+                  </h2>
                 </div>
                 <SessionTrendChart sessions={data.sessionTrend} />
               </div>
               <div className="rounded-2xl border p-5 sm:p-6">
                 <div className="flex items-center gap-2">
                   <Medal className="size-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Rekordy</h2>
+                  <h2 className="text-lg font-semibold">Rekordy powtórek</h2>
                 </div>
                 <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
                   <Record
@@ -287,7 +318,7 @@ export function StatisticsPage({
             )}
 
             <section className="rounded-2xl border p-5 sm:p-6">
-              <h2 className="text-lg font-semibold">Ostatnie sesje</h2>
+              <h2 className="text-lg font-semibold">Ostatnie sesje powtórek</h2>
               <div className="mt-4 divide-y">
                 {data.recentSessions.length ? (
                   data.recentSessions.map((session) => (
@@ -301,8 +332,7 @@ export function StatisticsPage({
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {!moduleId && `${session.moduleName} · `}
-                          {formatDateTime(session.startedAt)} ·{" "}
-                          {formatDuration(session.durationSeconds)}
+                          {formatDateTime(session.startedAt)}
                         </p>
                       </div>
                       <div className="text-right">
@@ -350,27 +380,40 @@ function SummaryCard({
 
 function ActivityChart({
   daily,
+  progressDaily,
   metric,
 }: {
   daily: DailyStatistics[];
+  progressDaily: StudyStatistics["progress"]["daily"];
   metric: Metric;
 }) {
-  const values = daily.map((item) =>
-    metric === "answers"
-      ? item.answers
-      : metric === "sessions"
-        ? item.sessions
-        : Math.round(item.durationSeconds / 60),
+  const studyByDate = new Map(daily.map((item) => [item.date, item]));
+  const progressByDate = new Map(
+    progressDaily.map((item) => [item.date, item.completedTopics]),
   );
+  const rows = [...new Set([...studyByDate.keys(), ...progressByDate.keys()])]
+    .sort()
+    .map((date) => ({
+      date,
+      study: studyByDate.get(date),
+      completedTopics: progressByDate.get(date) ?? 0,
+    }));
+  const getValue = (item: (typeof rows)[number]) =>
+    metric === "completed"
+      ? item.completedTopics
+      : metric === "answers"
+        ? (item.study?.answers ?? 0)
+        : (item.study?.sessions ?? 0);
+  const values = rows.map(getValue);
   const max = Math.max(1, ...values);
   const visible =
-    daily.length > 45
-      ? daily.filter(
+    rows.length > 45
+      ? rows.filter(
           (_, index) =>
-            index % Math.ceil(daily.length / 45) === 0 ||
-            index === daily.length - 1,
+            index % Math.ceil(rows.length / 45) === 0 ||
+            index === rows.length - 1,
         )
-      : daily;
+      : rows;
   return (
     <div className="mt-6">
       <div
@@ -379,12 +422,7 @@ function ActivityChart({
         aria-label="Wykres aktywności"
       >
         {visible.map((item) => {
-          const value =
-            metric === "answers"
-              ? item.answers
-              : metric === "sessions"
-                ? item.sessions
-                : Math.round(item.durationSeconds / 60);
+          const value = getValue(item);
           return (
             <div key={item.date} className="group relative min-w-0 flex-1">
               <div
@@ -396,15 +434,14 @@ function ActivityChart({
               />
               <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-xs text-background group-hover:block">
                 {formatShortDate(item.date)}: {value}
-                {metric === "duration" ? " min" : ""}
               </span>
             </div>
           );
         })}
       </div>
       <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-        <span>{daily[0] ? formatShortDate(daily[0].date) : ""}</span>
-        <span>{daily.at(-1) ? formatShortDate(daily.at(-1)!.date) : ""}</span>
+        <span>{rows[0] ? formatShortDate(rows[0].date) : ""}</span>
+        <span>{rows.at(-1) ? formatShortDate(rows.at(-1)!.date) : ""}</span>
       </div>
     </div>
   );
@@ -423,10 +460,10 @@ function WeeklyGoal({
   onChange: (value: string) => void;
   onSave: () => void;
 }) {
-  const completedMinutes = Math.round(data.weeklyGoal.completedSeconds / 60);
+  const completedTopics = data.progress.weeklyGoal.completedTopics;
   const progress = Math.min(
     100,
-    (completedMinutes * 100) / data.weeklyGoal.minutes,
+    (completedTopics * 100) / data.progress.weeklyGoal.topics,
   );
   return (
     <div className="rounded-2xl border p-5 sm:p-6">
@@ -435,23 +472,27 @@ function WeeklyGoal({
         <h2 className="text-lg font-semibold">Cel tygodniowy</h2>
       </div>
       <p className="mt-5 text-3xl font-semibold">
-        {completedMinutes}{" "}
+        {completedTopics}{" "}
         <span className="text-base font-normal text-muted-foreground">
-          / {data.weeklyGoal.minutes} min
+          / {data.progress.weeklyGoal.topics} tematów
         </span>
       </p>
       <Progress className="mt-3" value={progress} />
+      <p className="mt-3 text-sm text-muted-foreground">
+        Najlepszy tydzień: {data.progress.weeklyGoal.bestCompletedTopics}{" "}
+        ukończonych tematów
+      </p>
       <div className="mt-5 flex gap-2">
         <Input
           type="number"
-          min={15}
-          max={10080}
+          min={1}
+          max={1000}
           value={goal}
           onChange={(event) => onChange(event.target.value)}
-          aria-label="Cel tygodniowy w minutach"
+          aria-label="Tygodniowy cel ukończonych tematów"
         />
         <Button
-          disabled={saving || goal === String(data.weeklyGoal.minutes)}
+          disabled={saving || goal === String(data.progress.weeklyGoal.topics)}
           onClick={onSave}
         >
           {saving ? "Zapisuję…" : "Zapisz"}
@@ -488,7 +529,7 @@ function AreasTable({ data }: { data: StudyStatistics }) {
   return (
     <section className="overflow-hidden rounded-2xl border">
       <div className="p-5 sm:p-6">
-        <h2 className="text-lg font-semibold">Mocne i słabe obszary</h2>
+        <h2 className="text-lg font-semibold">Wyniki powtórek według tematu</h2>
         <p className="text-sm text-muted-foreground">
           Najpierw pokazujemy materiał wymagający uwagi.
         </p>
@@ -553,7 +594,7 @@ function ModulesTable({ data }: { data: StudyStatistics }) {
   return (
     <section className="overflow-hidden rounded-2xl border">
       <div className="p-5 sm:p-6">
-        <h2 className="text-lg font-semibold">Moduły</h2>
+        <h2 className="text-lg font-semibold">Wyniki powtórek według modułu</h2>
         <p className="text-sm text-muted-foreground">
           Porównanie wszystkich obszarów nauki.
         </p>
@@ -612,13 +653,6 @@ function LoadingState() {
       <Skeleton className="h-64 rounded-2xl" />
     </div>
   );
-}
-function formatDuration(seconds: number) {
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return rest ? `${hours} godz. ${rest} min` : `${hours} godz.`;
 }
 function formatShortDate(value: string) {
   const date = new Date(value);

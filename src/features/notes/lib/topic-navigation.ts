@@ -1,4 +1,4 @@
-import type { TopicNavigation, TopicNavigationItem } from "../model/types";
+import type { TopicNavigation, TopicNavigationItem } from "../types/model";
 
 export function createTopicNavigation(
   topics: TopicNavigationItem[],

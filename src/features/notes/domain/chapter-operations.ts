@@ -1,8 +1,8 @@
 import { arrayMove } from "@dnd-kit/sortable";
 
 import { createUniqueSlug } from "../lib/slug-utils";
-import type { Chapter, NoteContent, Topic } from "../model/types";
-import type { ManagedItem } from "../model/workspace-types";
+import type { Chapter, NoteContent, Topic } from "../types/model";
+import type { ManagedItem } from "../types/workspace-types";
 
 export function withPositions<T extends { position: number }>(items: T[]): T[] {
   return items.map((item, index) => ({

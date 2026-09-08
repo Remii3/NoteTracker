@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/supabase/database.types";
 import { prepareImage } from "../lib/prepare-image";
-import type { GalleryImage, TopicImage } from "../model/topic-image";
+import type { GalleryImage, TopicImage } from "../types/topic-image";
 import type {
   TopicImagesService,
   TopicImagesUploadResult,
@@ -69,7 +69,7 @@ export class R2TopicImagesService implements TopicImagesService {
 
   async listGallerySections(
     moduleId: string,
-    sortMode: import("../model/workspace-types").SortMode,
+    sortMode: import("../types/workspace-types").SortMode,
     perChapterLimit: number,
     chapterOffset: number,
     chapterLimit: number,

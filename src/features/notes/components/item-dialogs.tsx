@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { titlesAreEqual } from "../lib/title-utils";
-import type { ManagedItem } from "../model/workspace-types";
+import type { ManagedItem } from "../types/workspace-types";
 
 type RenameProps = {
   item: ManagedItem;

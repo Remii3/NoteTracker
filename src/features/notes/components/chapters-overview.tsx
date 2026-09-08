@@ -1,4 +1,10 @@
-import { ArrowLeft, ArrowRight, ArrowUpDown, Search } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpDown,
+  CheckCircle2,
+  Search,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -11,8 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { compareChapterTitles, getProgress } from "../lib/chapter-selectors";
-import type { Chapter } from "../model/types";
+import {
+  compareChapterTitles,
+  getProgress,
+  selectDashboardSummary,
+} from "../lib/chapter-selectors";
+import type { Chapter, LearningSummary } from "../types/model";
 
 const CHAPTERS_PER_PAGE = 20;
 type OverviewSortMode =
@@ -28,13 +38,26 @@ const SORT_LABELS: Record<OverviewSortMode, string> = {
 
 type Props = {
   chapters: Chapter[];
+  moduleName?: string;
+  summary?: LearningSummary | null;
   onOpenChapter: (chapterId: string, topicId: string) => void;
 };
 
-export function ChaptersOverview({ chapters, onOpenChapter }: Props) {
+export function ChaptersOverview({
+  chapters,
+  moduleName,
+  summary,
+  onOpenChapter,
+}: Props) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [sortMode, setSortMode] = useState<OverviewSortMode>("manual");
+  const localSummary = selectDashboardSummary(chapters);
+  const completedTopics =
+    summary?.completedTopics ?? localSummary.completedTopics;
+  const totalTopics = summary?.totalTopics ?? localSummary.totalTopics;
+  const nextTopic = summary ? summary.nextTopic : localSummary.nextTopic;
+  const moduleProgress = getProgress(completedTopics, totalTopics);
   const filteredChapters = useMemo(() => {
     const phrase = query.trim().toLocaleLowerCase("pl");
     const filtered = phrase
@@ -126,6 +149,45 @@ export function ChaptersOverview({ chapters, onOpenChapter }: Props) {
             </Select>
           </div>
         </div>
+
+        <section className="mt-6 rounded-xl border bg-muted/20 p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">
+                    Postęp modułu{moduleName ? ` „${moduleName}”` : ""}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {totalTopics
+                      ? `${completedTopics} z ${totalTopics} tematów ukończonych`
+                      : "Dodaj pierwszy temat, aby rozpocząć naukę."}
+                  </p>
+                </div>
+                <span className="shrink-0 text-lg font-semibold text-primary">
+                  {moduleProgress}%
+                </span>
+              </div>
+              <Progress
+                className="mt-3"
+                value={moduleProgress}
+                aria-label="Postęp modułu"
+              />
+            </div>
+            {nextTopic ? (
+              <Button
+                className="shrink-0"
+                onClick={() => onOpenChapter(nextTopic.chapterId, nextTopic.id)}
+              >
+                Kontynuuj naukę <ArrowRight />
+              </Button>
+            ) : totalTopics ? (
+              <div className="flex shrink-0 items-center gap-2 text-sm font-medium text-primary">
+                <CheckCircle2 className="size-5" /> Moduł ukończony
+              </div>
+            ) : null}
+          </div>
+        </section>
 
         {visibleChapters.length ? (
           <div className="mt-8 grid gap-4 md:grid-cols-2">

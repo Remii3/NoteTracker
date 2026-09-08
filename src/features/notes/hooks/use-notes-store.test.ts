@@ -1,10 +1,14 @@
 // @vitest-environment jsdom
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { useNotesStore } from "./use-notes-store";
 import { memoryNotesRepository } from "../data/memory-notes-repository";
 import { initialChapters } from "../data/mock-data";
-afterEach(cleanup);
+import { clearMemoryCacheByPrefix, readMemoryCache } from "@/lib/memory-cache";
+afterEach(() => {
+  cleanup();
+  clearMemoryCacheByPrefix("notes:test:");
+});
 
 it("retains a committed deletion when refreshing summaries fails", async () => {
   const repository = Object.create(memoryNotesRepository);
@@ -76,4 +80,32 @@ it("deduplicates content requests and allows an explicit retry after failure", a
   });
   expect(result.current.contentErrors[topic.id]).toBeUndefined();
   expect(result.current.chapters[0].topics[0].contentLoaded).toBe(true);
+});
+
+it("restores a workspace from cache and revalidates without a loading state", async () => {
+  const cacheKey = "notes:test:module";
+  const first = renderHook(() =>
+    useNotesStore({
+      repository: memoryNotesRepository,
+      initialChapters,
+      cacheKey,
+    }),
+  );
+  await act(async () => {
+    await first.result.current.load();
+  });
+  await waitFor(() => expect(readMemoryCache(cacheKey)).not.toBeUndefined());
+  first.unmount();
+
+  const second = renderHook(() =>
+    useNotesStore({
+      repository: memoryNotesRepository,
+      initialChapters: [],
+      loadOnMount: true,
+      cacheKey,
+    }),
+  );
+  expect(second.result.current.isLoading).toBe(false);
+  expect(second.result.current.chapters).toHaveLength(initialChapters.length);
+  expect(second.result.current.chapters[0].topicsStatus).toBe("loaded");
 });

@@ -63,6 +63,51 @@ select pg_temp.assert_true(
   (public.get_study_statistics('10000001-0000-4000-8000-000000000000', 30, null, 'UTC')->'weeklyGoal'->>'minutes')::integer = 180,
   'statistics RPC: returns the synchronized weekly goal'
 );
+update public.topics set completed = true
+where id = '10000003-0000-4000-8000-000000000000';
+select pg_temp.assert_true(
+  (select first_completed_at is not null from public.topics where id = '10000003-0000-4000-8000-000000000000'),
+  'topic completion: records the completion date'
+);
+do $$ declare first_completion timestamptz; begin
+ select first_completed_at into first_completion from public.topics
+ where id = '10000003-0000-4000-8000-000000000000';
+ update public.topics set completed = false
+ where id = '10000003-0000-4000-8000-000000000000';
+ perform pg_temp.assert_true(
+   (select first_completed_at = first_completion from public.topics
+    where id = '10000003-0000-4000-8000-000000000000'),
+   'topic completion: unchecking preserves the first completion date'
+ );
+ update public.topics set completed = true
+ where id = '10000003-0000-4000-8000-000000000000';
+ perform pg_temp.assert_true(
+   (select first_completed_at = first_completion from public.topics
+    where id = '10000003-0000-4000-8000-000000000000'),
+   'topic completion: rechecking does not create another completion'
+ );
+end; $$;
+select pg_temp.assert_true(
+  (public.get_progress_statistics('10000001-0000-4000-8000-000000000000', 30, 'UTC')->'summary'->>'completedTopics')::integer = 1,
+  'progress statistics RPC: aggregates completed topics'
+);
+select pg_temp.assert_true(
+  jsonb_array_length(public.get_progress_statistics(null, 30, 'UTC')->'modules') = 1,
+  'progress statistics RPC: global response contains only the current user modules'
+);
+select pg_temp.assert_true(
+  (select count(*) = 1 and min(completed_topics_count) = 1
+   from public.get_module_summaries()),
+  'module summaries RPC: returns progress only for the current user modules'
+);
+select pg_temp.assert_true(
+  (public.get_progress_statistics(null, 30, 'UTC')->'weeklyGoal'->>'topics')::integer = 5,
+  'progress statistics RPC: returns the weekly topic goal'
+);
+select pg_temp.assert_true(
+  (public.get_progress_statistics(null, 30, 'UTC')->'weeklyGoal'->>'bestCompletedTopics')::integer = 1,
+  'progress statistics RPC: returns the best unique weekly completion count'
+);
 do $$ declare affected integer; begin
  update public.study_goals set weekly_minutes = 300 where user_id = '20000000-0000-4000-8000-000000000000';
  get diagnostics affected = row_count;
@@ -74,6 +119,14 @@ do $$ begin
   raise exception 'Cross-owner statistics RPC was accepted';
  exception when raise_exception then
   if SQLERRM <> 'Nieprawidłowe filtry statystyk.' then raise; end if;
+ end;
+end; $$;
+do $$ begin
+ begin
+  perform public.get_progress_statistics('20000001-0000-4000-8000-000000000000', 30, 'UTC');
+  raise exception 'Cross-owner progress statistics RPC was accepted';
+ exception when raise_exception then
+  if SQLERRM <> 'Nieprawidłowe filtry statystyk postępu.' then raise; end if;
  end;
 end; $$;
 select pg_temp.assert_true((select count(*) = 1 and bool_and(user_id = '10000000-0000-4000-8000-000000000000') from public.modules), 'modules: user 1 sees only own rows');

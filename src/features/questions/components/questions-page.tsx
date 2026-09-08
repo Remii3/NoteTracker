@@ -28,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Chapter, Topic } from "@/features/notes/model/types";
+import type { Chapter, Topic } from "@/features/notes/types/model";
 import type { QuestionsRepository } from "../data/questions-repository";
 import type { Question, StudyMode, StudyScope } from "../model/types";
 import { QuestionDialog } from "./question-dialog";

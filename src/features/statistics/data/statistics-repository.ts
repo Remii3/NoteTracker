@@ -11,5 +11,5 @@ export interface StatisticsRepository {
     mode: StatisticsMode;
     timezone: string;
   }): Promise<StudyStatistics>;
-  saveWeeklyGoal(minutes: number): Promise<void>;
+  saveWeeklyGoal(topics: number): Promise<void>;
 }

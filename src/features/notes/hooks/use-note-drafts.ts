@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { NoteContent, Topic } from "../model/types";
+import type { NoteContent, Topic } from "../types/model";
 
 type Draft = { content: NoteContent; base: NoteContent };
 type Drafts = Record<string, Draft>;

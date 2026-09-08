@@ -1,14 +1,8 @@
 import { useCallback, useEffect } from "react";
-import {
-  matchPath,
-  useBlocker,
-  useLocation,
-  useNavigate,
-  useParams,
-} from "react-router";
+import { useBlocker, useMatches, useNavigate, useParams } from "react-router";
 
-import type { Chapter } from "../model/types";
-import type { ActiveView } from "../model/workspace-types";
+import type { Chapter } from "../types/model";
+import type { ModuleRouteHandle } from "../types/workspace-types";
 
 type Options = {
   chapters: Chapter[];
@@ -25,33 +19,15 @@ export function useWorkspaceRoute({
   loadFailed = false,
   resolveChapterTopics,
 }: Options) {
-  const location = useLocation();
+  const matches = useMatches();
   const navigate = useNavigate();
   const { moduleId = "" } = useParams<{ moduleId: string }>();
   const basePath = `/modules/${moduleId}`;
-  const topicRoute = matchPath(
-    "/modules/:moduleId/chapters/:chapterSlug/:topicSlug",
-    location.pathname,
-  );
-  const chapterRoute = matchPath(
-    "/modules/:moduleId/chapters/:chapterSlug",
-    location.pathname,
-  );
-  const chapterSlug =
-    topicRoute?.params.chapterSlug ?? chapterRoute?.params.chapterSlug ?? "";
-  const topicSlug = topicRoute?.params.topicSlug ?? "";
-  const activeView: ActiveView = chapterSlug
-    ? "notes"
-    : location.pathname.startsWith(`${basePath}/questions`) ||
-        location.pathname.startsWith(`${basePath}/study/`)
-      ? "questions"
-      : location.pathname === `${basePath}/statistics`
-        ? "statistics"
-        : location.pathname === `${basePath}/gallery`
-          ? "gallery"
-          : location.pathname === `${basePath}/chapters`
-            ? "chapters"
-            : "home";
+  const leafMatch = matches.at(-1);
+  const routeHandle = leafMatch?.handle as ModuleRouteHandle | undefined;
+  const activeView = routeHandle?.activeView ?? "chapters";
+  const chapterSlug = leafMatch?.params.chapterSlug ?? "";
+  const topicSlug = leafMatch?.params.topicSlug ?? "";
   const chapter = chapters.find(
     (item) => item.slug === chapterSlug || item.id === chapterSlug,
   );
@@ -81,7 +57,7 @@ export function useWorkspaceRoute({
     [basePath, navigate],
   );
   const navigateChapters = useCallback(
-    () => navigate(`${basePath}/chapters`),
+    () => navigate(basePath),
     [basePath, navigate],
   );
   const navigateGallery = useCallback(
@@ -168,7 +144,7 @@ export function useWorkspaceRoute({
     navigationBlocker,
     topic,
     topicId,
-    isQuestionHistory: location.pathname === `${basePath}/questions/history`,
-    isStatistics: location.pathname === `${basePath}/statistics`,
+    isQuestionHistory: routeHandle?.moduleView === "question-history",
+    showHeader: routeHandle?.showHeader ?? true,
   };
 }

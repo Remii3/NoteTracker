@@ -2,8 +2,8 @@ import { toast } from "sonner";
 
 import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
 import { createUniqueSlug } from "../lib/slug-utils";
-import type { Chapter, NoteContent, Topic } from "../model/types";
-import type { ManagedItem } from "../model/workspace-types";
+import type { Chapter, NoteContent, Topic } from "../types/model";
+import type { ManagedItem } from "../types/workspace-types";
 
 type Options = {
   chapters: Chapter[];
@@ -65,12 +65,49 @@ export function useWorkspaceActions({
 }: Options) {
   async function toggleChapter(id: string, completed: boolean) {
     if (isSaving) return false;
-    return commands.toggleChapter(id, completed);
+    const chapter = chapters.find((item) => item.id === id);
+    const saved = await commands.toggleChapter(id, completed);
+    if (!saved || !completed || !chapter?.topicsCount) return saved;
+
+    const completedBefore = chapters.reduce(
+      (sum, item) => sum + item.completedTopicsCount,
+      0,
+    );
+    const total = chapters.reduce((sum, item) => sum + item.topicsCount, 0);
+    const completedAfter =
+      completedBefore + chapter.topicsCount - chapter.completedTopicsCount;
+    toast.success(
+      completedAfter === total
+        ? "Moduł ukończony."
+        : `Rozdział „${chapter.title}” ukończony.`,
+    );
+    return saved;
   }
 
   async function toggleTopic(parentId: string, id: string, completed: boolean) {
     if (isSaving) return false;
-    return commands.toggleTopic(parentId, id, completed);
+    const chapter = chapters.find((item) => item.id === parentId);
+    const currentTopic = chapter?.topics.find((item) => item.id === id);
+    const isNewCompletion = completed && currentTopic?.completed === false;
+    const saved = await commands.toggleTopic(parentId, id, completed);
+    if (!saved || !isNewCompletion || !chapter) return saved;
+
+    const completedBefore = chapters.reduce(
+      (sum, item) => sum + item.completedTopicsCount,
+      0,
+    );
+    const total = chapters.reduce((sum, item) => sum + item.topicsCount, 0);
+    const completedAfter = completedBefore + 1;
+    if (completedAfter === total) {
+      toast.success("Moduł ukończony.");
+    } else if (chapter.completedTopicsCount + 1 === chapter.topicsCount) {
+      toast.success(`Rozdział „${chapter.title}” ukończony.`);
+    } else {
+      toast.success(
+        `Temat ukończony — do końca modułu: ${total - completedAfter}.`,
+      );
+    }
+    return saved;
   }
 
   async function saveContent() {

@@ -2,7 +2,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import type { Chapter, Topic } from "@/features/notes/model/types";
+import type { Chapter, Topic } from "@/features/notes/types/model";
 import type { QuestionsRepository } from "../data/questions-repository";
 import type { Question } from "../model/types";
 import { QuestionDialog } from "./question-dialog";

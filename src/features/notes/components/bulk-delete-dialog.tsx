@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Chapter, Topic } from "../model/types";
+import type { Chapter, Topic } from "../types/model";
 
 type Props = {
   chapters: Chapter[];

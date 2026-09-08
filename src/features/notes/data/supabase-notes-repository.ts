@@ -12,14 +12,20 @@ import type {
   NoteContent,
   Topic,
   TopicNavigation,
-} from "../model/types";
+} from "../types/model";
 import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
 import { throwIfPostgrestError } from "./supabase-error";
+import { clearMemoryCacheByPrefix } from "@/lib/memory-cache";
 
 export class SupabaseNotesRepository implements NotesRepository {
   private readonly client: SupabaseClient<Database>;
   private readonly userId: string;
   private readonly moduleId: string;
+
+  private clearStatisticsCache() {
+    clearMemoryCacheByPrefix(`statistics:${this.userId}:`);
+    clearMemoryCacheByPrefix(`modules:${this.userId}`);
+  }
 
   constructor(
     client: SupabaseClient<Database>,
@@ -112,7 +118,7 @@ export class SupabaseNotesRepository implements NotesRepository {
     throwIfPostgrestError(chapterResult.error);
     throwIfPostgrestError(topicResult.error);
 
-    const chapters = new Map<string, import("../model/types").Chapter>();
+    const chapters = new Map<string, import("../types/model").Chapter>();
     for (const chapter of chapterResult.data ?? []) {
       chapters.set(chapter.id, {
         ...chapter,
@@ -179,6 +185,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       })),
     );
     throwIfPostgrestError(error);
+    this.clearStatisticsCache();
   }
 
   async updateChapter(chapterId: string, update: ChapterUpdate) {
@@ -198,6 +205,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       target_id: chapterId,
     });
     throwIfPostgrestError(error);
+    this.clearStatisticsCache();
   }
 
   async createTopics(chapterId: string, topics: Topic[]) {
@@ -214,6 +222,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       })),
     );
     throwIfPostgrestError(error);
+    this.clearStatisticsCache();
   }
 
   async updateTopic(chapterId: string, topicId: string, update: TopicUpdate) {
@@ -226,6 +235,9 @@ export class SupabaseNotesRepository implements NotesRepository {
       .select("id")
       .single();
     throwIfPostgrestError(error);
+    if ("completed" in update) {
+      this.clearStatisticsCache();
+    }
   }
 
   async updateTopicContent(
@@ -254,6 +266,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       target_id: topicId,
     });
     throwIfPostgrestError(error);
+    this.clearStatisticsCache();
   }
 
   async deleteItems(chapterIds: string[], topicIds: string[]) {
@@ -262,6 +275,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       topic_ids: topicIds,
     });
     throwIfPostgrestError(error);
+    this.clearStatisticsCache();
   }
 
   async setChapterCompleted(chapterId: string, completed: boolean) {
@@ -271,6 +285,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       .eq("chapter_id", chapterId)
       .eq("user_id", this.userId);
     throwIfPostgrestError(error);
+    this.clearStatisticsCache();
   }
 
   async reorderChapters(chapterIds: string[]) {
@@ -305,5 +320,6 @@ export class SupabaseNotesRepository implements NotesRepository {
       target_topic_ids: targetTopicIds,
     });
     throwIfPostgrestError(error);
+    this.clearStatisticsCache();
   }
 }

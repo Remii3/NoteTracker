@@ -1,7 +1,7 @@
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { TopicNavigationItem } from "../model/types";
+import type { TopicNavigationItem } from "../types/model";
 
 type Props = {
   previousTopic: TopicNavigationItem | null;

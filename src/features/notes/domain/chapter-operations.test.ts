@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Chapter, Topic } from "../model/types";
+import type { Chapter, Topic } from "../types/model";
 import {
   addTopicsToChapter,
   deleteManagedItems,

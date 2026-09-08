@@ -9,7 +9,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -28,6 +28,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { readMemoryCache, writeMemoryCache } from "@/lib/memory-cache";
 import type { Module, ModulesRepository } from "./data/modules-repository";
 import {
   MODULE_NAME_MAX_LENGTH,
@@ -42,6 +45,7 @@ type Props = {
   onSignOut: () => void;
   onOpenTrash?: () => void;
   onOpenStatistics?: () => void;
+  cacheKey?: string;
 };
 
 export function ModulePicker({
@@ -50,21 +54,35 @@ export function ModulePicker({
   onSignOut,
   onOpenTrash,
   onOpenStatistics,
+  cacheKey,
 }: Props) {
-  const [modules, setModules] = useState<Module[]>([]);
+  const cachedModules = cacheKey
+    ? readMemoryCache<Module[]>(cacheKey)
+    : undefined;
+  const [modules, setModules] = useState<Module[]>(cachedModules ?? []);
   const [name, setName] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!cachedModules);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [renamedModule, setRenamedModule] = useState<Module | null>(null);
   const [deletedModule, setDeletedModule] = useState<Module | null>(null);
+  const updateModules = useCallback(
+    (update: Module[] | ((current: Module[]) => Module[])) => {
+      setModules((current) => {
+        const next = typeof update === "function" ? update(current) : update;
+        if (cacheKey) writeMemoryCache(cacheKey, next);
+        return next;
+      });
+    },
+    [cacheKey],
+  );
 
   async function loadModules() {
     setIsLoading(true);
     setError(null);
     try {
-      setModules(await repository.list());
+      updateModules(await repository.list());
     } catch {
       setError("Nie udało się pobrać modułów.");
     } finally {
@@ -76,7 +94,7 @@ export function ModulePicker({
     void repository
       .list()
       .then((items) => {
-        if (active) setModules(items);
+        if (active) updateModules(items);
       })
       .catch(() => {
         if (active) setError("Nie udało się pobrać modułów.");
@@ -87,7 +105,7 @@ export function ModulePicker({
     return () => {
       active = false;
     };
-  }, [repository]);
+  }, [repository, updateModules]);
 
   async function createModule() {
     const validationError = validateModuleName(name, modules);
@@ -100,7 +118,7 @@ export function ModulePicker({
         normalizeModuleName(name),
         (modules.at(-1)?.position ?? 0) + 1000,
       );
-      setModules((current) => [...current, created]);
+      updateModules((current) => [...current, created]);
       setName("");
       onSelect(created);
     } catch {
@@ -114,11 +132,11 @@ export function ModulePicker({
     const previous = modules;
     const next = moveModule(previous, id, direction);
     if (next === previous) return;
-    setModules(next);
+    updateModules(next);
     try {
       await repository.reorder(next.map((module) => module.id));
     } catch {
-      setModules(previous);
+      updateModules(previous);
       setError("Nie udało się zmienić kolejności modułów.");
     }
   }
@@ -194,8 +212,28 @@ export function ModulePicker({
           </div>
         )}
         {isLoading ? (
-          <div className="mt-12 flex justify-center">
-            <LoaderCircle className="animate-spin text-muted-foreground" />
+          <div
+            className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            role="status"
+            aria-busy="true"
+            aria-label="Ładowanie modułów"
+          >
+            {Array.from({ length: 6 }, (_, index) => (
+              <div
+                key={index}
+                className="rounded-xl border bg-background p-5"
+                aria-hidden="true"
+              >
+                <Skeleton className="size-5 rounded-md" />
+                <Skeleton className="mt-4 h-5 w-3/4" />
+                <Skeleton className="mt-2 h-4 w-24" />
+                <div className="mt-4 flex gap-2 border-t pt-3">
+                  {Array.from({ length: 4 }, (_, actionIndex) => (
+                    <Skeleton key={actionIndex} className="size-8 rounded-md" />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         ) : modules.length ? (
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -218,6 +256,28 @@ export function ModulePicker({
                       ? "1 rozdział"
                       : `${module.chaptersCount} rozdziałów`}
                   </span>
+                  {module.topicsCount ? (
+                    <span className="mt-4 block">
+                      <span className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                        <span>
+                          {module.completedTopicsCount}/{module.topicsCount}{" "}
+                          tematów
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {getModuleProgress(module)}%
+                        </span>
+                      </span>
+                      <Progress
+                        className="mt-2"
+                        value={getModuleProgress(module)}
+                        aria-label={`Postęp modułu ${module.name}`}
+                      />
+                    </span>
+                  ) : (
+                    <span className="mt-4 block text-xs text-muted-foreground">
+                      Brak tematów
+                    </span>
+                  )}
                 </button>
                 <div className="mt-4 flex gap-1 border-t pt-3">
                   <Button
@@ -271,7 +331,7 @@ export function ModulePicker({
           onClose={() => setRenamedModule(null)}
           onRename={async (nextName) => {
             await repository.rename(renamedModule.id, nextName);
-            setModules((current) =>
+            updateModules((current) =>
               current.map((item) =>
                 item.id === renamedModule.id
                   ? { ...item, name: nextName }
@@ -287,7 +347,7 @@ export function ModulePicker({
           onClose={() => setDeletedModule(null)}
           onDelete={async () => {
             await repository.remove(deletedModule.id);
-            setModules((current) =>
+            updateModules((current) =>
               current.filter((item) => item.id !== deletedModule.id),
             );
           }}
@@ -295,6 +355,12 @@ export function ModulePicker({
       )}
     </main>
   );
+}
+
+function getModuleProgress(module: Module) {
+  return module.topicsCount
+    ? Math.round((module.completedTopicsCount * 100) / module.topicsCount)
+    : 0;
 }
 
 function DeleteModuleDialog({

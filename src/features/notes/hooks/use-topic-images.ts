@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { TopicImagesService } from "../data/topic-images-service";
-import type { TopicImage } from "../model/topic-image";
+import type { TopicImage } from "../types/topic-image";
 
 export function useTopicImages(
   service: TopicImagesService | undefined,

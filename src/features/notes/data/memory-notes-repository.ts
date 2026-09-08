@@ -11,7 +11,7 @@ import type {
   NoteContent,
   Topic,
   TopicNavigation,
-} from "../model/types";
+} from "../types/model";
 import { createTopicNavigation } from "../lib/topic-navigation";
 
 function clone<T>(value: T): T {
