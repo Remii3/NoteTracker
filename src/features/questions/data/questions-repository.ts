@@ -50,6 +50,7 @@ export interface QuestionsRepository {
     id: string,
     result: StudyResult,
     selectedOptionId?: string,
+    activeDurationSeconds?: number,
   ): Promise<void>;
   completeSession(id: string): Promise<void>;
   abandonSession(id: string): Promise<void>;

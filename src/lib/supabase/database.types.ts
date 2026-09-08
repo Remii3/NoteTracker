@@ -147,6 +147,11 @@ export type Database = {
           selected_option_id: string | null;
           result: "remembered" | "forgotten" | "correct" | "incorrect" | null;
           answered_at: string | null;
+          chapter_id_snapshot: string | null;
+          topic_id_snapshot: string | null;
+          chapter_title_snapshot: string | null;
+          topic_title_snapshot: string | null;
+          active_duration_seconds: number;
         };
         Insert: {
           id?: string;
@@ -157,11 +162,34 @@ export type Database = {
           question_snapshot: string;
           options_snapshot: Json;
           explanation_snapshot?: string | null;
+          chapter_id_snapshot?: string | null;
+          topic_id_snapshot?: string | null;
+          chapter_title_snapshot?: string | null;
+          topic_title_snapshot?: string | null;
+          active_duration_seconds?: number;
         };
         Update: {
           selected_option_id?: string | null;
           result?: "remembered" | "forgotten" | "correct" | "incorrect" | null;
           answered_at?: string | null;
+          active_duration_seconds?: number;
+        };
+        Relationships: [];
+      };
+      study_goals: {
+        Row: {
+          user_id: string;
+          weekly_minutes: number;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          weekly_minutes?: number;
+          updated_at?: string;
+        };
+        Update: {
+          weekly_minutes?: number;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -391,6 +419,15 @@ export type Database = {
       };
       get_learning_summary: {
         Args: { target_module_id: string };
+        Returns: Json;
+      };
+      get_study_statistics: {
+        Args: {
+          target_module_id?: string | null;
+          range_days?: number;
+          study_mode?: string | null;
+          timezone_name?: string;
+        };
         Returns: Json;
       };
       get_topic_navigation: {

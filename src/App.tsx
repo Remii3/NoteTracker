@@ -23,6 +23,11 @@ function getRouter() {
   router ??= createBrowserRouter([
     { path: "/", element: <Navigate to="/modules" replace /> },
     { path: "/modules", lazy: loadNoteWorkspace, HydrateFallback: AppLoading },
+    {
+      path: "/statistics",
+      lazy: loadNoteWorkspace,
+      HydrateFallback: AppLoading,
+    },
     { path: "/trash", lazy: loadTrash, HydrateFallback: AppLoading },
     {
       path: "/modules/:moduleId",
@@ -36,6 +41,11 @@ function getRouter() {
     },
     {
       path: "/modules/:moduleId/gallery",
+      lazy: loadNoteWorkspace,
+      HydrateFallback: AppLoading,
+    },
+    {
+      path: "/modules/:moduleId/statistics",
       lazy: loadNoteWorkspace,
       HydrateFallback: AppLoading,
     },

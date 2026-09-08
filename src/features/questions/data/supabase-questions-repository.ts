@@ -202,7 +202,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
       this.client
         .from("study_session_items")
         .select(
-          "id,position,question_snapshot,options_snapshot,explanation_snapshot,selected_option_id,result",
+          "id,position,question_snapshot,options_snapshot,explanation_snapshot,selected_option_id,result,active_duration_seconds",
         )
         .eq("session_id", id)
         .eq("user_id", this.userId)
@@ -226,17 +226,27 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
         explanation: item.explanation_snapshot,
         selectedOptionId: item.selected_option_id,
         result: item.result,
+        activeDurationSeconds: item.active_duration_seconds,
       })),
     };
   }
 
-  async answerItem(id: string, result: StudyResult, selectedOptionId?: string) {
+  async answerItem(
+    id: string,
+    result: StudyResult,
+    selectedOptionId?: string,
+    activeDurationSeconds = 0,
+  ) {
     const { error } = await this.client
       .from("study_session_items")
       .update({
         result,
         selected_option_id: selectedOptionId ?? null,
         answered_at: new Date().toISOString(),
+        active_duration_seconds: Math.min(
+          86_400,
+          Math.max(0, Math.round(activeDurationSeconds)),
+        ),
       })
       .eq("id", id)
       .eq("user_id", this.userId)

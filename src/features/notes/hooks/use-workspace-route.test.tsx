@@ -13,6 +13,23 @@ import { useNotesStore } from "./use-notes-store";
 import { initialChapters } from "../data/mock-data";
 import { memoryNotesRepository } from "../data/memory-notes-repository";
 afterEach(cleanup);
+it("recognizes the module statistics route", () => {
+  function Workspace() {
+    const route = useWorkspaceRoute({
+      chapters: [],
+      isTopicDirty: () => false,
+      resolveChapterTopics: vi.fn(),
+    });
+    return <span>{route.activeView}</span>;
+  }
+  const router = createMemoryRouter(
+    [{ path: "/modules/:moduleId/*", element: <Workspace /> }],
+    { initialEntries: ["/modules/m/statistics"] },
+  );
+  render(<RouterProvider router={router} />);
+  expect(screen.getByText("statistics")).toBeTruthy();
+});
+
 it("keeps a deep link unchanged when the initial chapter load failed", () => {
   function Workspace() {
     useWorkspaceRoute({

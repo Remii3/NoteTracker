@@ -18,6 +18,7 @@ insert into public.study_session_items(id,user_id,session_id,question_id,positio
 insert into public.topic_images(id,user_id,topic_id,storage_key,original_filename,format,width,height,bytes,position)
  values ('10000009-0000-4000-8000-000000000000','10000000-0000-4000-8000-000000000000','10000003-0000-4000-8000-000000000000','1/image.webp','image.webp','webp',1,1,1,1000);
 insert into public.trash_items(id,user_id,item_type,item_id,title) values ('10000008-0000-4000-8000-000000000000','10000000-0000-4000-8000-000000000000','topic','10000010-0000-4000-8000-000000000000','Deleted');
+insert into public.study_goals(user_id,weekly_minutes) values ('10000000-0000-4000-8000-000000000000',180);
 
 insert into auth.users(id) values ('20000000-0000-4000-8000-000000000000');
 insert into public.modules(id,user_id,name,position) values ('20000001-0000-4000-8000-000000000000','20000000-0000-4000-8000-000000000000','Module 2',1000);
@@ -31,6 +32,7 @@ insert into public.study_session_items(id,user_id,session_id,question_id,positio
 insert into public.topic_images(id,user_id,topic_id,storage_key,original_filename,format,width,height,bytes,position)
  values ('20000009-0000-4000-8000-000000000000','20000000-0000-4000-8000-000000000000','20000003-0000-4000-8000-000000000000','2/image.webp','image.webp','webp',1,1,1,1000);
 insert into public.trash_items(id,user_id,item_type,item_id,title) values ('20000008-0000-4000-8000-000000000000','20000000-0000-4000-8000-000000000000','topic','20000010-0000-4000-8000-000000000000','Deleted');
+insert into public.study_goals(user_id,weekly_minutes) values ('20000000-0000-4000-8000-000000000000',240);
 
 select pg_temp.assert_true(not exists (
  select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -52,6 +54,28 @@ set local role authenticated;
 set local request.jwt.claim.role = 'authenticated';
 
 set local request.jwt.claim.sub = '10000000-0000-4000-8000-000000000000';
+select pg_temp.assert_true((select count(*) = 1 and min(weekly_minutes) = 180 from public.study_goals), 'study_goals: user 1 sees only own goal');
+select pg_temp.assert_true(
+  jsonb_array_length(public.get_study_statistics(null, 30, null, 'UTC')->'modules') = 1,
+  'statistics RPC: global response contains only the current user modules'
+);
+select pg_temp.assert_true(
+  (public.get_study_statistics('10000001-0000-4000-8000-000000000000', 30, null, 'UTC')->'weeklyGoal'->>'minutes')::integer = 180,
+  'statistics RPC: returns the synchronized weekly goal'
+);
+do $$ declare affected integer; begin
+ update public.study_goals set weekly_minutes = 300 where user_id = '20000000-0000-4000-8000-000000000000';
+ get diagnostics affected = row_count;
+ perform pg_temp.assert_true(affected = 0, 'study_goals: cannot update another user goal');
+end; $$;
+do $$ begin
+ begin
+  perform public.get_study_statistics('20000001-0000-4000-8000-000000000000', 30, null, 'UTC');
+  raise exception 'Cross-owner statistics RPC was accepted';
+ exception when raise_exception then
+  if SQLERRM <> 'Nieprawidłowe filtry statystyk.' then raise; end if;
+ end;
+end; $$;
 select pg_temp.assert_true((select count(*) = 1 and bool_and(user_id = '10000000-0000-4000-8000-000000000000') from public.modules), 'modules: user 1 sees only own rows');
 do $$ declare affected integer; begin
  delete from public.modules where user_id = '20000000-0000-4000-8000-000000000000';

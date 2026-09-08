@@ -50,12 +50,19 @@ auth.users
 
 auth.users
 └── study_sessions
-    └── study_session_items
+│   └── study_session_items
+└── study_goals
 ```
 
 Każda tabela aplikacyjna posiada `user_id`. Kolejność rozdziałów, tematów,
 zdjęć i elementów sesji jest zapisywana w kolumnie `position`. Treść notatki
 jest dokumentem JSON zgodnym z modelem TipTap.
+
+Element sesji przechowuje snapshot rozdziału i tematu, dzięki czemu historyczne
+statystyki pozostają poprawne po przeniesieniu lub usunięciu pytania. Nowe
+odpowiedzi zapisują aktywny czas pracy; starsze sesje korzystają z ograniczonego
+czasu pomiędzy rozpoczęciem i zakończeniem sesji. Agregaty statystyk są liczone
+przez `get_study_statistics` po stronie Postgresa i respektują RLS wywołującego.
 
 ## Warstwy frontendu
 

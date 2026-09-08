@@ -11,6 +11,7 @@ import {
 } from "@dnd-kit/sortable";
 import {
   ArrowUpDown,
+  BarChart3,
   BookOpen,
   LibraryBig,
   Layers3,
@@ -60,6 +61,7 @@ type Props = {
   isChapters: boolean;
   isGallery: boolean;
   isQuestions: boolean;
+  isStatistics: boolean;
   isEditing: boolean;
   search: string;
   sortMode: SortMode;
@@ -71,6 +73,7 @@ type Props = {
   onOpenChapters: () => void;
   onOpenGallery: () => void;
   onOpenQuestions: () => void;
+  onOpenStatistics: () => void;
   onOpenAddDialog: () => void;
   onSelectChapter: (chapter: Chapter) => void;
   onSelectTopic: (chapterId: string, topicId: string) => void;
@@ -108,6 +111,7 @@ export function WorkspaceSidebar({
   isChapters,
   isGallery,
   isQuestions,
+  isStatistics,
   isEditing,
   search,
   sortMode,
@@ -119,6 +123,7 @@ export function WorkspaceSidebar({
   onOpenChapters,
   onOpenGallery,
   onOpenQuestions,
+  onOpenStatistics,
   onOpenAddDialog,
   onSelectChapter,
   onSelectTopic,
@@ -250,6 +255,15 @@ export function WorkspaceSidebar({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={isStatistics}
+                onClick={onOpenStatistics}
+              >
+                <BarChart3 />
+                <span>Statystyki</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
               <SidebarMenuButton isActive={isChapters} onClick={onOpenChapters}>
                 <LibraryBig />
                 <span>Wszystkie rozdziały</span>
@@ -281,6 +295,16 @@ export function WorkspaceSidebar({
               </span>
               {!primaryNavigationVisible && (
                 <>
+                  <Button
+                    type="button"
+                    variant={isStatistics ? "secondary" : "ghost"}
+                    size="icon-xs"
+                    title="Statystyki"
+                    aria-label="Przejdź do statystyk"
+                    onClick={onOpenStatistics}
+                  >
+                    <BarChart3 />
+                  </Button>
                   <Button
                     type="button"
                     variant={isGallery ? "secondary" : "ghost"}

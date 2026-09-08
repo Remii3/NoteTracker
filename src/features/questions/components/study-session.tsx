@@ -1,5 +1,5 @@
 import { Eye, ThumbsDown, ThumbsUp } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useAsyncResource } from "@/hooks/use-async-resource";
@@ -70,6 +70,34 @@ function LoadedStudySession({
   );
   const [revealed, setRevealed] = useState(false);
   const [saving, setSaving] = useState(false);
+  const timer = useRef({ itemId: "", elapsedMs: 0, startedAt: 0 });
+  const currentItemId = session.items[index]?.id ?? "";
+
+  useEffect(() => {
+    timer.current = {
+      itemId: currentItemId,
+      elapsedMs: 0,
+      startedAt: document.visibilityState === "visible" ? performance.now() : 0,
+    };
+    const handleVisibility = () => {
+      const current = timer.current;
+      if (document.visibilityState === "hidden" && current.startedAt) {
+        current.elapsedMs += performance.now() - current.startedAt;
+        current.startedAt = 0;
+      } else if (document.visibilityState === "visible" && !current.startedAt) {
+        current.startedAt = performance.now();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
+  }, [currentItemId]);
+
+  function activeSeconds() {
+    const current = timer.current;
+    const live = current.startedAt ? performance.now() - current.startedAt : 0;
+    return Math.max(1, Math.round((current.elapsedMs + live) / 1000));
+  }
   async function finish() {
     if (saving) return;
     setSaving(true);
@@ -88,7 +116,12 @@ function LoadedStudySession({
       const item = session.items[index];
       setSaving(true);
       try {
-        await repository.answerItem(item.id, result, selectedOptionId);
+        await repository.answerItem(
+          item.id,
+          result,
+          selectedOptionId,
+          activeSeconds(),
+        );
         const items = session.items.map((entry) =>
           entry.id === item.id
             ? { ...entry, result, selectedOptionId: selectedOptionId ?? null }
@@ -185,7 +218,7 @@ function LoadedStudySession({
     );
 
     try {
-      await repository.answerItem(item.id, result, optionId);
+      await repository.answerItem(item.id, result, optionId, activeSeconds());
     } catch {
       setRevealed(false);
       setSession((current) =>

@@ -25,6 +25,7 @@ export type StudyItem = {
   explanation: string | null;
   selectedOptionId: string | null;
   result: StudyResult | null;
+  activeDurationSeconds: number;
 };
 export type StudySession = {
   id: string;

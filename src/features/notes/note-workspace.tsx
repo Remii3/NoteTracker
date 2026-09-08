@@ -39,6 +39,8 @@ import { StudyHistoryPage } from "@/features/questions/components/study-history-
 import type { QuestionsRepository } from "@/features/questions/data/questions-repository";
 import type { ModulesRepository } from "@/features/modules/data/modules-repository";
 import { MoveChapterDialog } from "@/features/modules/move-chapter-dialog";
+import { StatisticsPage } from "@/features/statistics/components/statistics-page";
+import type { StatisticsRepository } from "@/features/statistics/data/statistics-repository";
 
 const AddContentDialog = lazy(() =>
   import("./components/add-content-dialog").then((module) => ({
@@ -71,6 +73,7 @@ type Props = {
   imagesService?: TopicImagesService;
   questionsRepository?: QuestionsRepository;
   modulesRepository?: ModulesRepository;
+  statisticsRepository?: StatisticsRepository;
   initialChapters?: Chapter[];
   loadOnMount?: boolean;
   userName?: string;
@@ -87,6 +90,7 @@ export function NoteWorkspace({
   imagesService,
   questionsRepository,
   modulesRepository,
+  statisticsRepository,
   initialChapters,
   loadOnMount,
   userName,
@@ -143,6 +147,7 @@ export function NoteWorkspace({
     navigateChapters,
     navigateGallery,
     navigateQuestions,
+    navigateStatistics,
     navigateQuestionHistory,
     navigateStudySession,
     navigateToChapter,
@@ -376,6 +381,11 @@ export function NoteWorkspace({
     navigateGallery();
   }
 
+  function openStatistics() {
+    if (activeView === "statistics") return;
+    navigateStatistics();
+  }
+
   async function openChapter(nextChapterId: string, nextTopicId: string) {
     await loadChapterTopics(nextChapterId);
     navigateToChapter(nextChapterId, nextTopicId);
@@ -420,6 +430,7 @@ export function NoteWorkspace({
           isChapters={activeView === "chapters"}
           isGallery={activeView === "gallery"}
           isQuestions={activeView === "questions"}
+          isStatistics={activeView === "statistics"}
           isEditing={isEditing}
           search={search}
           sortMode={sortMode}
@@ -431,6 +442,7 @@ export function NoteWorkspace({
           onOpenChapters={openChapters}
           onOpenGallery={openGallery}
           onOpenQuestions={openQuestions}
+          onOpenStatistics={openStatistics}
           onOpenAddDialog={() => setAddDialogOpen(true)}
           onSelectChapter={selectChapter}
           onSelectTopic={requestTopicSelection}
@@ -467,20 +479,22 @@ export function NoteWorkspace({
         />
 
         <SidebarInset className="h-dvh max-h-dvh min-w-0 overflow-hidden">
-          <WorkspaceHeader
-            isHome={activeView === "home"}
-            isChapters={activeView === "chapters"}
-            isGallery={activeView === "gallery"}
-            isQuestions={activeView === "questions"}
-            isQuestionHistory={isQuestionHistory}
-            chapterTitle={chapter?.title}
-            topicTitle={topic?.title}
-            isEditing={isEditing}
-            onChangeEditingMode={changeEditingMode}
-            onPreloadEditor={preloadRichTextEditor}
-            onOpenAddDialog={() => setAddDialogOpen(true)}
-            onOpenBulkDelete={() => setBulkDeleteOpen(true)}
-          />
+          {activeView !== "statistics" && (
+            <WorkspaceHeader
+              isHome={activeView === "home"}
+              isChapters={activeView === "chapters"}
+              isGallery={activeView === "gallery"}
+              isQuestions={activeView === "questions"}
+              isQuestionHistory={isQuestionHistory}
+              chapterTitle={chapter?.title}
+              topicTitle={topic?.title}
+              isEditing={isEditing}
+              onChangeEditingMode={changeEditingMode}
+              onPreloadEditor={preloadRichTextEditor}
+              onOpenAddDialog={() => setAddDialogOpen(true)}
+              onOpenBulkDelete={() => setBulkDeleteOpen(true)}
+            />
+          )}
 
           {editorDirty && !isEditing && (
             <div
@@ -536,6 +550,14 @@ export function NoteWorkspace({
               sortMode={sortMode}
               service={imagesService}
               onOpenTopic={openChapter}
+            />
+          ) : activeView === "statistics" && statisticsRepository ? (
+            <StatisticsPage
+              repository={statisticsRepository}
+              moduleId={moduleId}
+              moduleName={moduleName}
+              onBack={navigateHome}
+              onOpenHistory={navigateQuestionHistory}
             />
           ) : activeView === "questions" && questionsRepository ? (
             sessionId ? (

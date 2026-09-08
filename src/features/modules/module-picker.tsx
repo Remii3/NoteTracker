@@ -1,6 +1,7 @@
 import {
   ArrowDown,
   ArrowUp,
+  BarChart3,
   BookOpen,
   LoaderCircle,
   LogOut,
@@ -40,6 +41,7 @@ type Props = {
   onSelect: (module: Module) => void;
   onSignOut: () => void;
   onOpenTrash?: () => void;
+  onOpenStatistics?: () => void;
 };
 
 export function ModulePicker({
@@ -47,6 +49,7 @@ export function ModulePicker({
   onSelect,
   onSignOut,
   onOpenTrash,
+  onOpenStatistics,
 }: Props) {
   const [modules, setModules] = useState<Module[]>([]);
   const [name, setName] = useState("");
@@ -132,6 +135,9 @@ export function ModulePicker({
             </p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={onOpenStatistics}>
+              <BarChart3 /> Statystyki
+            </Button>
             <Button variant="outline" onClick={onOpenTrash}>
               <Trash2 /> Usunięte
             </Button>

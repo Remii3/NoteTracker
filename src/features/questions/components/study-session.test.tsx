@@ -33,6 +33,7 @@ function session(answered = false): Session {
         ],
         result: answered ? "correct" : null,
         selectedOptionId: answered ? "yes" : null,
+        activeDurationSeconds: 0,
       },
     ],
   };
@@ -115,6 +116,7 @@ it("retains the final answer when session completion fails", async () => {
     "item",
     "correct",
     "yes",
+    expect.any(Number),
   );
   expect(screen.queryByText("Pytanie?")).toBeNull();
 });

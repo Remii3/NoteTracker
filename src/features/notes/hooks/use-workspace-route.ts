@@ -45,11 +45,13 @@ export function useWorkspaceRoute({
     : location.pathname.startsWith(`${basePath}/questions`) ||
         location.pathname.startsWith(`${basePath}/study/`)
       ? "questions"
-      : location.pathname === `${basePath}/gallery`
-        ? "gallery"
-        : location.pathname === `${basePath}/chapters`
-          ? "chapters"
-          : "home";
+      : location.pathname === `${basePath}/statistics`
+        ? "statistics"
+        : location.pathname === `${basePath}/gallery`
+          ? "gallery"
+          : location.pathname === `${basePath}/chapters`
+            ? "chapters"
+            : "home";
   const chapter = chapters.find(
     (item) => item.slug === chapterSlug || item.id === chapterSlug,
   );
@@ -88,6 +90,10 @@ export function useWorkspaceRoute({
   );
   const navigateQuestions = useCallback(
     () => navigate(`${basePath}/questions`),
+    [basePath, navigate],
+  );
+  const navigateStatistics = useCallback(
+    () => navigate(`${basePath}/statistics`),
     [basePath, navigate],
   );
   const navigateQuestionHistory = useCallback(
@@ -155,6 +161,7 @@ export function useWorkspaceRoute({
     navigateChapters,
     navigateGallery,
     navigateQuestions,
+    navigateStatistics,
     navigateQuestionHistory,
     navigateStudySession,
     navigateToChapter,
@@ -162,5 +169,6 @@ export function useWorkspaceRoute({
     topic,
     topicId,
     isQuestionHistory: location.pathname === `${basePath}/questions/history`,
+    isStatistics: location.pathname === `${basePath}/statistics`,
   };
 }

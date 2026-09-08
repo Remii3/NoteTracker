@@ -1,5 +1,5 @@
 export type ActiveView =
-  "home" | "chapters" | "gallery" | "questions" | "notes";
+  "home" | "chapters" | "gallery" | "questions" | "statistics" | "notes";
 
 export type SortMode = "manual" | "az" | "za" | "completed" | "incomplete";
 

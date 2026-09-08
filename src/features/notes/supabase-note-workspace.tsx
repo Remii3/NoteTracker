@@ -7,20 +7,27 @@ import { R2TopicImagesService } from "./data/r2-topic-images-service";
 import { SupabaseNotesRepository } from "./data/supabase-notes-repository";
 import { NoteWorkspace } from "./note-workspace";
 import { SupabaseQuestionsRepository } from "@/features/questions/data/supabase-questions-repository";
-import { useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 import { ModulePicker } from "@/features/modules/module-picker";
 import { useAsyncResource } from "@/hooks/use-async-resource";
 import { LoadError } from "@/components/load-error";
 import { SupabaseModulesRepository } from "@/features/modules/data/supabase-modules-repository";
 import { AppLoading } from "@/components/app-loading";
+import { SupabaseStatisticsRepository } from "@/features/statistics/data/supabase-statistics-repository";
+import { StatisticsPage } from "@/features/statistics/components/statistics-page";
 
 export function SupabaseNoteWorkspace() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { moduleId } = useParams<{ moduleId: string }>();
   const [accountOpen, setAccountOpen] = useState(false);
   const modulesRepository = useMemo(
     () => new SupabaseModulesRepository(supabase, user?.id ?? ""),
+    [user?.id],
+  );
+  const statisticsRepository = useMemo(
+    () => new SupabaseStatisticsRepository(supabase, user?.id ?? ""),
     [user?.id],
   );
   const loadModule = useCallback(
@@ -65,12 +72,22 @@ export function SupabaseNoteWorkspace() {
   );
 
   if (!user) return null;
+  if (location.pathname === "/statistics") {
+    return (
+      <StatisticsPage
+        repository={statisticsRepository}
+        moduleId={null}
+        onBack={() => navigate("/modules")}
+      />
+    );
+  }
   if (!moduleId) {
     return (
       <ModulePicker
         repository={modulesRepository}
         onSelect={(module) => navigate(`/modules/${module.id}`)}
         onOpenTrash={() => navigate("/trash")}
+        onOpenStatistics={() => navigate("/statistics")}
         onSignOut={handleSignOut}
       />
     );
@@ -98,6 +115,7 @@ export function SupabaseNoteWorkspace() {
         imagesService={imagesService}
         questionsRepository={questionsRepository}
         modulesRepository={modulesRepository}
+        statisticsRepository={statisticsRepository}
         initialChapters={[]}
         loadOnMount
         userName={getUserDisplayName(user)}
