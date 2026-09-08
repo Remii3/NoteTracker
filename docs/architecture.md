@@ -65,6 +65,19 @@ jest dokumentem JSON zgodnym z modelem TipTap.
 - `src/features/*/components` — widoki i interakcje;
 - `src/lib` — współdzielone integracje Supabase i Sentry.
 
-Testy obejmują przede wszystkim czystą logikę. Integracje z Supabase, R2 i
-przeglądarką wymagają osobnych testów integracyjnych lub smoke testów po
-wdrożeniu.
+`npm test` obejmuje logikę, interakcje React w jsdom i obsługę awarii API
+zdjęć z podstawionymi usługami zewnętrznymi. `npm run test:db` odtwarza schemat
+na pustym Postgresie i sprawdza RLS dla dwóch użytkowników. Logowanie przez
+Supabase Auth i operacje na prawdziwym R2 wymagają smoke testów środowiska.
+
+Treść notatki staje się zapisaną wersją dopiero po potwierdzeniu serwera.
+Szkic dopisany podczas zapisu pozostaje niezapisany i blokuje opuszczenie
+notatki. Wylogowanie z niezapisanymi zmianami wymaga ich jawnego odrzucenia.
+Szkice są przechowywane w sessionStorage, z kluczem konta i modułu. Wracają po
+odświeżeniu lub przywróceniu sesji karty; każda karta ma oddzielny magazyn.
+Nie jest to synchronizacja offline ani autosave na serwerze. Brak miejsca lub
+niedostępny magazyn powoduje widoczny komunikat. Jawne odrzucenie usuwa szkic.
+Szkic zachowuje oryginalną treść jako bazę zapisu. UPDATE porównuje ją atomowo
+z treścią na serwerze; brak pasującego rekordu zatrzymuje zapis i zachowuje szkic.
+Kolejność rozdziałów jest zapisywana pojedynczym RPC reorder_chapters.
+Błąd odświeżenia podsumowania po zapisie nie cofa zatwierdzonej operacji w UI.

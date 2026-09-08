@@ -490,15 +490,15 @@ export default {
       return json(request, env, { error: "Image is too large" }, 413);
     }
 
-    const authKey = request.headers.get("CF-Connecting-IP") ?? "unknown";
-    const authLimit = await env.AUTH_RATE_LIMITER.limit({ key: authKey });
-    if (!authLimit.success) {
-      return json(request, env, { error: "Too many requests" }, 429);
-    }
-    const user = await authenticate(request, env);
-    if (!user) return json(request, env, { error: "Unauthorized" }, 401);
-
     try {
+      const authKey = request.headers.get("CF-Connecting-IP") ?? "unknown";
+      const authLimit = await env.AUTH_RATE_LIMITER.limit({ key: authKey });
+      if (!authLimit.success) {
+        return json(request, env, { error: "Too many requests" }, 429);
+      }
+      const user = await authenticate(request, env);
+      if (!user) return json(request, env, { error: "Unauthorized" }, 401);
+
       if (request.method !== "GET") {
         const writeLimit = await env.WRITE_RATE_LIMITER.limit({ key: user.id });
         if (!writeLimit.success) {
@@ -506,22 +506,22 @@ export default {
         }
       }
       if (galleryMatch) {
-        return listGalleryImages(request, env, url);
+        return await listGalleryImages(request, env, url);
       }
       if (trashMatch && request.method === "DELETE") {
-        return purgeTrash(request, env, resourceId);
+        return await purgeTrash(request, env, resourceId);
       }
       if (topicMatch && request.method === "GET") {
-        return listImages(request, env, resourceId);
+        return await listImages(request, env, resourceId);
       }
       if (topicMatch && request.method === "POST") {
-        return uploadImage(request, env, user, resourceId);
+        return await uploadImage(request, env, user, resourceId);
       }
       if (imageMatch && request.method === "GET") {
-        return serveImage(request, env, resourceId);
+        return await serveImage(request, env, resourceId);
       }
       if (imageMatch && request.method === "DELETE") {
-        return deleteImage(request, env, resourceId);
+        return await deleteImage(request, env, resourceId);
       }
       return json(request, env, { error: "Not found" }, 404);
     } catch (error) {

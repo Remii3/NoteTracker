@@ -37,7 +37,7 @@ Wymagane są Node.js 22+ i npm. Zainstaluj zależności Workera przez `npm ci`.
    `ALLOWED_ORIGINS` powinno mieć wartość:
 
    ```text
-   http://localhost:5173,https://note-tracker-orcin.vercel.app
+   http://localhost:5173,http://127.0.0.1:5173,https://note-tracker-orcin.vercel.app
    ```
 
 4. Wdróż Worker:

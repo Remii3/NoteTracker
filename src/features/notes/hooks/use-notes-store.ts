@@ -65,6 +65,11 @@ export function useNotesStore({
   const [topicNavigation, setTopicNavigation] =
     useState<TopicNavigation | null>(null);
   const [pendingOperations, setPendingOperations] = useState(0);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [contentErrors, setContentErrors] = useState<Record<string, string>>(
+    {},
+  );
+  const contentRequests = useRef(new Map<string, Promise<boolean>>());
   const [error, setError] = useState<string | null>(null);
   const chapters = useMemo(() => materializeChapters(state), [state]);
   const clearError = useCallback(() => setError(null), []);
@@ -105,6 +110,16 @@ export function useNotesStore({
     setLearningSummary(summary);
   }, [applyChapters, repository]);
 
+  const refreshAfterWrite = useCallback(async () => {
+    try {
+      await refreshSummaries();
+    } catch {
+      setError(
+        "Zmiana została zapisana, ale nie udało się odświeżyć podsumowania. Odśwież stronę.",
+      );
+    }
+  }, [refreshSummaries]);
+
   const runOptimistic = useCallback(
     async (
       updater: (chapters: Chapter[]) => Chapter[],
@@ -121,7 +136,7 @@ export function useNotesStore({
       setPendingOperations((count) => count + 1);
       try {
         await persist(next);
-        if (refreshChapterData) await refreshSummaries();
+        if (refreshChapterData) await refreshAfterWrite();
         return true;
       } catch (caughtError) {
         applyChapters(previous);
@@ -132,11 +147,12 @@ export function useNotesStore({
         setPendingOperations((count) => Math.max(0, count - 1));
       }
     },
-    [applyChapters, refreshSummaries],
+    [applyChapters, refreshAfterWrite],
   );
 
   const load = useCallback(async () => {
     setIsLoading(true);
+    setLoadFailed(false);
     setError(null);
     try {
       const [page, summary] = await Promise.all([
@@ -150,6 +166,7 @@ export function useNotesStore({
       setError(
         getErrorMessage(caughtError, "Nie udało się pobrać danych aplikacji."),
       );
+      setLoadFailed(true);
       return false;
     } finally {
       setIsLoading(false);
@@ -249,27 +266,44 @@ export function useNotesStore({
   );
 
   const loadTopicContent = useCallback(
-    async (chapterId: string, topicId: string) => {
-      const current = materializeChapters(stateRef.current);
-      const currentTopic = current
-        .find((chapter) => chapter.id === chapterId)
-        ?.topics.find((topic) => topic.id === topicId);
-      if (!currentTopic || currentTopic.contentLoaded) return true;
-      try {
-        const content = await repository.getTopicContent(chapterId, topicId);
-        const latest = materializeChapters(stateRef.current);
-        applyChapters(
-          updateTopic(latest, chapterId, topicId, (topic) => ({
-            ...topic,
-            content,
-            contentLoaded: true,
-          })),
-        );
-        return true;
-      } catch (caughtError) {
-        setError(getErrorMessage(caughtError, "Nie udało się pobrać notatki."));
-        return false;
-      }
+    (chapterId: string, topicId: string): Promise<boolean> => {
+      const pending = contentRequests.current.get(topicId);
+      if (pending) return pending;
+      const request = (async () => {
+        const current = materializeChapters(stateRef.current);
+        const currentTopic = current
+          .find((chapter) => chapter.id === chapterId)
+          ?.topics.find((topic) => topic.id === topicId);
+        if (!currentTopic || currentTopic.contentLoaded) return true;
+        setContentErrors((current) => {
+          const next = { ...current };
+          delete next[topicId];
+          return next;
+        });
+        try {
+          const content = await repository.getTopicContent(chapterId, topicId);
+          const latest = materializeChapters(stateRef.current);
+          applyChapters(
+            updateTopic(latest, chapterId, topicId, (topic) => ({
+              ...topic,
+              content,
+              contentLoaded: true,
+            })),
+          );
+          return true;
+        } catch (caughtError) {
+          setContentErrors((current) => ({
+            ...current,
+            [topicId]: getErrorMessage(
+              caughtError,
+              "Nie udało się pobrać notatki.",
+            ),
+          }));
+          return false;
+        }
+      })().finally(() => contentRequests.current.delete(topicId));
+      contentRequests.current.set(topicId, request);
+      return request;
     },
     [applyChapters, repository],
   );
@@ -361,7 +395,7 @@ export function useNotesStore({
             );
           }
         }
-        await refreshSummaries();
+        await refreshAfterWrite();
         return true;
       } catch (caughtError) {
         applyChapters(previous);
@@ -377,7 +411,7 @@ export function useNotesStore({
         setPendingOperations((count) => Math.max(0, count - 1));
       }
     },
-    [applyChapters, refreshSummaries, repository],
+    [applyChapters, refreshAfterWrite, repository],
   );
 
   const addChapters = useCallback(
@@ -436,13 +470,33 @@ export function useNotesStore({
     [repository, runOptimistic],
   );
   const saveContent = useCallback(
-    (chapterId: string, topicId: string, content: NoteContent) =>
+    (
+      chapterId: string,
+      topicId: string,
+      content: NoteContent,
+      expectedContent: NoteContent,
+    ) =>
       runOptimistic(
-        (current) => saveTopicContent(current, chapterId, topicId, content),
-        () => repository.updateTopicContent(chapterId, topicId, content),
+        (current) => current,
+        async () => {
+          await repository.updateTopicContent(
+            chapterId,
+            topicId,
+            content,
+            expectedContent,
+          );
+          applyChapters(
+            saveTopicContent(
+              materializeChapters(stateRef.current),
+              chapterId,
+              topicId,
+              content,
+            ),
+          );
+        },
         "Nie udało się zapisać notatki.",
       ),
-    [repository, runOptimistic],
+    [applyChapters, repository, runOptimistic],
   );
   const toggleChapter = useCallback(
     (chapterId: string, completed: boolean) =>
@@ -477,6 +531,8 @@ export function useNotesStore({
     commitDrag,
     error,
     isLoading,
+    loadFailed,
+    contentErrors,
     isSearching,
     isSaving: pendingOperations > 0,
     load,

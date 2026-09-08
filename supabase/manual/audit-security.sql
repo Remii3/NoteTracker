@@ -10,7 +10,7 @@ from pg_class as relation
 join pg_namespace as namespace on namespace.oid = relation.relnamespace
 where namespace.nspname = 'public'
   and relation.relkind = 'r'
-  and relation.relname in ('chapters', 'topics')
+  and relation.relname in ('modules', 'chapters', 'topics', 'topic_images', 'questions', 'question_options', 'study_sessions', 'study_session_items', 'trash_items')
 order by relation.relname;
 
 -- 2. Every operation must restrict rows to the signed-in owner.
@@ -24,7 +24,7 @@ select
   with_check as with_check_expression
 from pg_policies
 where schemaname = 'public'
-  and tablename in ('chapters', 'topics')
+  and tablename in ('modules', 'chapters', 'topics', 'topic_images', 'questions', 'question_options', 'study_sessions', 'study_session_items', 'trash_items')
 order by tablename, cmd, policyname;
 
 -- 3. Check which API roles have table privileges.
@@ -35,7 +35,7 @@ select
   string_agg(privilege_type, ', ' order by privilege_type) as privileges
 from information_schema.role_table_grants
 where table_schema = 'public'
-  and table_name in ('chapters', 'topics', 'topic_images')
+  and table_name in ('modules', 'chapters', 'topics', 'topic_images', 'questions', 'question_options', 'study_sessions', 'study_session_items', 'trash_items')
   and grantee in ('anon', 'authenticated')
 group by table_schema, table_name, grantee
 order by table_name, grantee;
@@ -50,13 +50,7 @@ select
 from pg_proc as procedure
 join pg_namespace as namespace on namespace.oid = procedure.pronamespace
 where namespace.nspname = 'public'
-  and procedure.proname in (
-    'get_learning_summary',
-    'move_topic',
-    'reorder_chapters',
-    'reorder_topic_images',
-    'reorder_topics'
-  )
+
 order by procedure.proname;
 
 -- 5. Ownership columns used by RLS should be indexed.
@@ -66,5 +60,5 @@ select
   indexdef
 from pg_indexes
 where schemaname = 'public'
-  and tablename in ('chapters', 'topics', 'topic_images')
+  and tablename in ('modules', 'chapters', 'topics', 'topic_images', 'questions', 'question_options', 'study_sessions', 'study_session_items', 'trash_items')
 order by tablename, indexname;

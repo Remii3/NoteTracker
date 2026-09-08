@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AccountDialog, getUserDisplayName, useAuth } from "@/features/auth";
@@ -9,7 +9,8 @@ import { NoteWorkspace } from "./note-workspace";
 import { SupabaseQuestionsRepository } from "@/features/questions/data/supabase-questions-repository";
 import { useNavigate, useParams } from "react-router";
 import { ModulePicker } from "@/features/modules/module-picker";
-import type { Module } from "@/features/modules/data/modules-repository";
+import { useAsyncResource } from "@/hooks/use-async-resource";
+import { LoadError } from "@/components/load-error";
 import { SupabaseModulesRepository } from "@/features/modules/data/supabase-modules-repository";
 import { AppLoading } from "@/components/app-loading";
 
@@ -18,19 +19,23 @@ export function SupabaseNoteWorkspace() {
   const navigate = useNavigate();
   const { moduleId } = useParams<{ moduleId: string }>();
   const [accountOpen, setAccountOpen] = useState(false);
-  const [loadedModule, setLoadedModule] = useState<Module | null>(null);
   const modulesRepository = useMemo(
     () => new SupabaseModulesRepository(supabase, user?.id ?? ""),
     [user?.id],
   );
-  useEffect(() => {
-    if (!moduleId) return;
-    void modulesRepository.get(moduleId).then((module) => {
-      if (!module) navigate("/modules", { replace: true });
-      setLoadedModule(module);
-    });
-  }, [moduleId, modulesRepository, navigate]);
-  const selectedModule = loadedModule?.id === moduleId ? loadedModule : null;
+  const loadModule = useCallback(
+    () => (moduleId ? modulesRepository.get(moduleId) : Promise.resolve(null)),
+    [moduleId, modulesRepository],
+  );
+  const moduleResource = useAsyncResource(loadModule);
+  const selectedModule = moduleResource.value;
+  const handleSignOut = useCallback(() => {
+    void signOut()
+      .then(() => navigate("/"))
+      .catch(() => {
+        toast.error("Nie udało się wylogować. Spróbuj ponownie.");
+      });
+  }, [signOut, navigate]);
   const repository = useMemo(
     () =>
       new SupabaseNotesRepository(
@@ -66,16 +71,29 @@ export function SupabaseNoteWorkspace() {
         repository={modulesRepository}
         onSelect={(module) => navigate(`/modules/${module.id}`)}
         onOpenTrash={() => navigate("/trash")}
-        onSignOut={() => void signOut()}
+        onSignOut={handleSignOut}
       />
     );
   }
-  if (!selectedModule) return <AppLoading />;
+  if (moduleResource.loading) return <AppLoading />;
+  if (moduleResource.failed || !selectedModule)
+    return (
+      <LoadError
+        message={
+          moduleResource.failed
+            ? "Nie udało się pobrać modułu."
+            : "Moduł nie istnieje lub jest niedostępny."
+        }
+        onRetry={moduleResource.retry}
+        onBack={() => navigate("/modules")}
+      />
+    );
 
   return (
     <>
       <NoteWorkspace
         key={`${user.id}:${moduleId}`}
+        draftScope={`${user.id}:${moduleId}`}
         repository={repository}
         imagesService={imagesService}
         questionsRepository={questionsRepository}
@@ -87,17 +105,7 @@ export function SupabaseNoteWorkspace() {
         moduleName={selectedModule.name}
         onOpenModules={() => navigate("/modules")}
         onOpenAccount={() => setAccountOpen(true)}
-        onSignOut={() => {
-          void signOut()
-            .then(() => navigate("/"))
-            .catch((error: unknown) => {
-              toast.error(
-                error instanceof Error
-                  ? error.message
-                  : "Nie udało się wylogować.",
-              );
-            });
-        }}
+        onSignOut={handleSignOut}
       />
       {accountOpen && <AccountDialog onClose={() => setAccountOpen(false)} />}
     </>

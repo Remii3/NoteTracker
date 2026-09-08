@@ -24,6 +24,7 @@ type Options = {
       chapterId: string,
       topicId: string,
       content: NoteContent,
+      expectedContent: NoteContent,
     ) => Promise<boolean>;
     toggleChapter: (chapterId: string, completed: boolean) => Promise<boolean>;
     toggleTopic: (
@@ -34,6 +35,8 @@ type Options = {
   };
   expandChapter: (chapterId: string) => void;
   clearDraft: (topicId: string) => void;
+  acknowledgeSave: (topicId: string, content: NoteContent) => boolean;
+  getDraftBase?: (topic: Topic) => NoteContent;
   getDraftContent: (topic: Topic) => Topic["content"];
   navigateToChapter: (
     chapterId: string,
@@ -54,7 +57,9 @@ export function useWorkspaceActions({
   commands,
   expandChapter,
   clearDraft,
+  acknowledgeSave,
   getDraftContent,
+  getDraftBase,
   navigateToChapter,
   navigateHome,
 }: Options) {
@@ -69,17 +74,23 @@ export function useWorkspaceActions({
   }
 
   async function saveContent() {
-    if (!isEditing || isSaving || !topic || !editorDirty) return false;
+    if (isSaving || !topic || topic.contentLoaded === false || !editorDirty)
+      return false;
     const contentToSave = getDraftContent(topic);
     const saved = await commands.saveContent(
       chapterId,
       topic.id,
       contentToSave,
+      getDraftBase?.(topic) ?? topic.content,
     );
     if (!saved) return false;
-    clearDraft(topic.id);
-    toast.success("Notatka została zapisana.");
-    return true;
+    const fullySaved = acknowledgeSave(topic.id, contentToSave);
+    toast.success(
+      fullySaved
+        ? "Notatka została zapisana."
+        : "Zapisano wcześniejszą wersję. Masz jeszcze niezapisane zmiany.",
+    );
+    return fullySaved;
   }
 
   async function addChapters(titles: string[]) {

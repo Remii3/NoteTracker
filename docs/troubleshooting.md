@@ -28,7 +28,7 @@ Dodaj dokładny origin, bez końcowego ukośnika i ścieżki, do sekretu
 deploy Workera.
 
 ```text
-http://localhost:5173,https://twoja-domena.example
+http://localhost:5173,http://127.0.0.1:5173,https://twoja-domena.example
 ```
 
 Nie używaj `*`, ponieważ endpointy przyjmują uwierzytelnione żądania.

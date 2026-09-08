@@ -11,6 +11,7 @@ import { useParams } from "react-router";
 
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { LoadError } from "@/components/load-error";
 import { AppLoading } from "@/components/app-loading";
 import { LearningDashboard } from "./components/learning-dashboard";
 import { ChaptersOverview } from "./components/chapters-overview";
@@ -65,6 +66,7 @@ const BulkDeleteDialog = lazy(() =>
   })),
 );
 type Props = {
+  draftScope?: string;
   repository?: NotesRepository;
   imagesService?: TopicImagesService;
   questionsRepository?: QuestionsRepository;
@@ -80,6 +82,7 @@ type Props = {
 };
 
 export function NoteWorkspace({
+  draftScope,
   repository,
   imagesService,
   questionsRepository,
@@ -117,13 +120,20 @@ export function NoteWorkspace({
     searchChapters,
     searchResults,
   } = notesStore;
+  const [signOutPending, setSignOutPending] = useState(false);
   const {
+    acknowledgeSave,
     clearDraft,
+    clearAllDrafts,
+    flushDrafts,
+    getBaseContent: getDraftBase,
+    storageError,
     getContent: getDraftContent,
+    reconcileDraft,
     hasDirtyDrafts,
     isTopicDirty,
     updateDraft,
-  } = useNoteDrafts();
+  } = useNoteDrafts(draftScope);
   const {
     activeView,
     chapter,
@@ -144,6 +154,7 @@ export function NoteWorkspace({
     chapters,
     isTopicDirty,
     isLoading: notesStore.isLoading,
+    loadFailed: notesStore.loadFailed,
     resolveChapterTopics: loadChapterTopics,
   });
   const { richTextModule, preloadRichTextEditor } = useRichTextModule(
@@ -218,7 +229,9 @@ export function NoteWorkspace({
     commands: notesStore,
     expandChapter,
     clearDraft,
+    acknowledgeSave,
     getDraftContent,
+    getDraftBase,
     navigateToChapter,
     navigateHome,
   });
@@ -234,12 +247,13 @@ export function NoteWorkspace({
   useEffect(() => {
     if (!hasDirtyDrafts) return;
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      flushDrafts();
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", warnBeforeUnload);
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
-  }, [hasDirtyDrafts]);
+  }, [flushDrafts, hasDirtyDrafts]);
 
   useEffect(() => {
     if (!notesError) return;
@@ -248,9 +262,20 @@ export function NoteWorkspace({
   }, [clearNotesError, notesError]);
 
   useEffect(() => {
-    if (!chapter || !topic || topic.contentLoaded !== false) return;
+    if (
+      !chapter ||
+      !topic ||
+      topic.contentLoaded !== false ||
+      notesStore.contentErrors[topic.id]
+    )
+      return;
     void loadTopicContent(chapter.id, topic.id);
-  }, [chapter, loadTopicContent, topic]);
+  }, [chapter, loadTopicContent, topic, notesStore.contentErrors]);
+
+  useEffect(() => {
+    if (!topic || topic.contentLoaded === false) return;
+    reconcileDraft(topic);
+  }, [reconcileDraft, topic]);
 
   useEffect(() => {
     if (!topicId) return;
@@ -371,6 +396,15 @@ export function NoteWorkspace({
     return <AppLoading />;
   }
 
+  if (notesStore.loadFailed)
+    return (
+      <LoadError
+        message="Nie udało się pobrać notatek."
+        onRetry={() => void notesStore.load()}
+        onBack={onOpenModules ?? navigateHome}
+      />
+    );
+
   return (
     <TooltipProvider>
       <SidebarProvider
@@ -420,7 +454,14 @@ export function NoteWorkspace({
           moduleName={moduleName}
           onOpenModules={onOpenModules}
           userName={userName}
-          onSignOut={onSignOut}
+          onSignOut={() => {
+            if (notesStore.isSaving) {
+              toast.info("Poczekaj na zakończenie zapisywania.");
+              return;
+            }
+            if (hasDirtyDrafts) setSignOutPending(true);
+            else onSignOut?.();
+          }}
           onOpenAccount={onOpenAccount}
           isSearching={isSearchPending || notesStore.isSearching}
         />
@@ -441,7 +482,44 @@ export function NoteWorkspace({
             onOpenBulkDelete={() => setBulkDeleteOpen(true)}
           />
 
-          {activeView === "home" ? (
+          {editorDirty && !isEditing && (
+            <div
+              role="status"
+              className="flex items-center justify-between gap-3 border-b p-4 text-sm"
+            >
+              <p>Odzyskano niezapisany szkic tej notatki.</p>
+              <button
+                className="font-medium underline"
+                onClick={() => changeEditingMode(true)}
+              >
+                Kontynuuj edycję
+              </button>
+            </div>
+          )}
+          {storageError && (
+            <p role="alert" className="p-4 text-sm text-destructive">
+              {storageError}
+            </p>
+          )}
+          {activeView === "notes" && chapter?.topicsStatus === "error" ? (
+            <LoadError
+              message="Nie udało się pobrać tematów."
+              onRetry={() => void loadChapterTopics(chapter.id)}
+              onBack={navigateHome}
+            />
+          ) : activeView === "notes" &&
+            chapter &&
+            chapter.topicsStatus !== "loaded" ? (
+            <AppLoading />
+          ) : activeView === "notes" &&
+            topic &&
+            notesStore.contentErrors[topic.id] ? (
+            <LoadError
+              message={notesStore.contentErrors[topic.id]}
+              onRetry={() => void loadTopicContent(chapterId, topic.id)}
+              onBack={navigateHome}
+            />
+          ) : activeView === "home" ? (
             <LearningDashboard
               chapters={chapters}
               userName={userName}
@@ -462,6 +540,7 @@ export function NoteWorkspace({
           ) : activeView === "questions" && questionsRepository ? (
             sessionId ? (
               <StudySession
+                key={sessionId}
                 sessionId={sessionId}
                 repository={questionsRepository}
                 onClose={navigateQuestions}
@@ -556,6 +635,18 @@ export function NoteWorkspace({
               onCancel={navigationBlocker.reset}
               onDiscard={discardDraftAndContinueNavigation}
               onSave={saveDraftAndContinueNavigation}
+            />
+          )}
+          {signOutPending && (
+            <UnsavedChangesDialog
+              description="Wylogowanie odrzuci niezapisane zmiany w notatkach."
+              discardLabel="Odrzuć i wyloguj"
+              onCancel={() => setSignOutPending(false)}
+              onDiscard={() => {
+                setSignOutPending(false);
+                clearAllDrafts();
+                onSignOut?.();
+              }}
             />
           )}
           {previewPending && (

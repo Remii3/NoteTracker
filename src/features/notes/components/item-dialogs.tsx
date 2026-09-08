@@ -164,8 +164,11 @@ export function UnsavedChangesDialog({
   async function handleSave() {
     if (!onSave) return;
     setIsSaving(true);
-    await onSave();
-    setIsSaving(false);
+    try {
+      await onSave();
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -187,9 +190,9 @@ export function UnsavedChangesDialog({
             {discardLabel}
           </AlertDialogAction>
           {onSave && (
-            <AlertDialogAction disabled={isSaving} onClick={handleSave}>
+            <Button disabled={isSaving} onClick={handleSave}>
               {isSaving ? "Zapisywanie…" : "Zapisz i przejdź dalej"}
-            </AlertDialogAction>
+            </Button>
           )}
         </AlertDialogFooter>
       </AlertDialogContent>

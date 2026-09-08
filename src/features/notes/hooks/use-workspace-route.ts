@@ -14,6 +14,7 @@ type Options = {
   chapters: Chapter[];
   isTopicDirty: (topicId: string) => boolean;
   isLoading?: boolean;
+  loadFailed?: boolean;
   resolveChapterTopics: (chapterId: string) => Promise<unknown>;
 };
 
@@ -21,6 +22,7 @@ export function useWorkspaceRoute({
   chapters,
   isTopicDirty,
   isLoading = false,
+  loadFailed = false,
   resolveChapterTopics,
 }: Options) {
   const location = useLocation();
@@ -98,25 +100,22 @@ export function useWorkspaceRoute({
   );
 
   const navigationBlocker = useBlocker(
-    ({ nextLocation }) =>
-      editorDirty &&
-      matchPath(
-        "/modules/:moduleId/chapters/:chapterSlug/:topicSlug",
-        nextLocation.pathname,
-      )?.params.topicSlug !== topic?.slug,
+    ({ currentLocation, nextLocation }) =>
+      editorDirty && currentLocation.pathname !== nextLocation.pathname,
   );
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || loadFailed) return;
     if (activeView !== "notes") return;
     if (!chapter) {
       navigate(basePath, { replace: true });
       return;
     }
-    if (chapter.topicsStatus !== "loaded") {
+    if (chapter.topicsStatus === "idle") {
       void resolveChapterTopics(chapter.id);
       return;
     }
+    if (chapter.topicsStatus !== "loaded") return;
     if (topic) {
       if (chapterSlug !== chapter.slug || topicSlug !== topic.slug) {
         navigate(`${basePath}/chapters/${chapter.slug}/${topic.slug}`, {
@@ -140,6 +139,7 @@ export function useWorkspaceRoute({
     chapter,
     chapterSlug,
     isLoading,
+    loadFailed,
     navigate,
     resolveChapterTopics,
     topic,

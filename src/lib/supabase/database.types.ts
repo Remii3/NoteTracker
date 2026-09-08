@@ -386,16 +386,25 @@ export type Database = {
         Returns: string;
       };
       get_chapter_summaries: {
-        Args: Record<never, never>;
+        Args: { target_module_id: string };
         Returns: Json;
       };
       get_learning_summary: {
-        Args: Record<never, never>;
+        Args: { target_module_id: string };
         Returns: Json;
       };
       get_topic_navigation: {
-        Args: { current_topic_id: string };
+        Args: { target_module_id: string; current_topic_id: string };
         Returns: Json;
+      };
+      save_topic_content: {
+        Args: {
+          target_chapter_id: string;
+          target_topic_id: string;
+          new_content: Json;
+          expected_content: Json;
+        };
+        Returns: boolean;
       };
       move_topic: {
         Args: {

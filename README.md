@@ -50,7 +50,8 @@ Workera w [`workers/topic-images/README.md`](workers/topic-images/README.md).
 | `npm run dev`          | uruchamia frontend deweloperski                   |
 | `npm run build`        | sprawdza TypeScript i buduje produkcyjny frontend |
 | `npm run preview`      | uruchamia lokalny podgląd buildu                  |
-| `npm test`             | wykonuje testy logiki jeden raz                   |
+| `npm test`             | wykonuje testy logiki, interakcji i błędów API    |
+| `npm run test:db`      | odtwarza bazę i testuje RLS w kontenerze Docker   |
 | `npm run test:watch`   | uruchamia testy w trybie obserwowania             |
 | `npm run lint`         | uruchamia ESLint                                  |
 | `npm run format:check` | sprawdza formatowanie Prettierem                  |
@@ -91,10 +92,19 @@ pliku `worker-configuration.d.ts`.
 ```text
 src/features/              funkcje biznesowe frontendu
 src/lib/                   klienci usług i monitoring
-supabase/manual/           ręczne skrypty SQL
+supabase/migrations/       pełny, wersjonowany schemat bazy
+supabase/tests/            testy odtwarzania i izolacji danych
+supabase/manual/           archiwalne skrypty SQL
 workers/topic-images/      Worker obsługujący prywatne zdjęcia R2
 docs/                      dokumentacja operacyjna
 ```
 
 Notatki nie mają autosave. Zmiany w edytorze są utrwalane po użyciu akcji
-zapisu.
+zapisu. Szkice są zachowywane lokalnie osobno dla konta, modułu i karty
+przeglądarki; wracają po odświeżeniu lub przywróceniu tej karty. Nie są
+synchronizowane pomiędzy urządzeniami. Zapis odrzuca nadpisanie treści
+zmienionej w innej karcie i zachowuje szkic użytkownika.
+
+Po zmianie schematu uruchom również `npm run test:db` (wymaga Dockera).
+Testy `npm test` obejmują m.in. zapis podczas dalszej edycji, ochronę szkiców
+przy wylogowaniu, wznawianie sesji i awarie API zdjęć.

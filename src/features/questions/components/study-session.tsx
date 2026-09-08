@@ -1,7 +1,9 @@
 import { Eye, ThumbsDown, ThumbsUp } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useAsyncResource } from "@/hooks/use-async-resource";
+import { LoadError } from "@/components/load-error";
 import { Progress } from "@/components/ui/progress";
 import type { QuestionsRepository } from "../data/questions-repository";
 import type { StudyResult, StudySession as Session } from "../model/types";
@@ -12,20 +14,74 @@ type Props = {
   onClose: () => void;
 };
 export function StudySession({ sessionId, repository, onClose }: Props) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [index, setIndex] = useState(0);
+  const load = useCallback(
+    () => repository.getSession(sessionId),
+    [repository, sessionId],
+  );
+  const resource = useAsyncResource(load);
+  if (resource.failed)
+    return (
+      <LoadError
+        message="Nie udało się pobrać sesji."
+        onRetry={resource.retry}
+        onBack={onClose}
+      />
+    );
+  if (resource.loading || !resource.value)
+    return (
+      <main className="grid flex-1 place-items-center">Ładowanie sesji…</main>
+    );
+  const data = resource.value;
+  if (
+    !data.items.length ||
+    data.items.some((item) => !item.options.some((option) => option.isCorrect))
+  ) {
+    return (
+      <LoadError
+        message="Sesja nie zawiera poprawnych pytań."
+        onBack={onClose}
+      />
+    );
+  }
+  return (
+    <LoadedStudySession
+      key={sessionId}
+      initialSession={data}
+      repository={repository}
+      onClose={onClose}
+    />
+  );
+}
+
+function LoadedStudySession({
+  initialSession,
+  repository,
+  onClose,
+}: Omit<Props, "sessionId"> & { initialSession: Session }) {
+  const [session, setSession] = useState(initialSession);
+  const [index, setIndex] = useState(() =>
+    Math.max(
+      0,
+      initialSession.items.findIndex((item) => !item.result),
+    ),
+  );
+  const [readyToFinish, setReadyToFinish] = useState(() =>
+    initialSession.items.every((item) => item.result !== null),
+  );
   const [revealed, setRevealed] = useState(false);
   const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    void repository
-      .getSession(sessionId)
-      .then((data) => {
-        setSession(data);
-        const next = data.items.findIndex((item) => !item.result);
-        setIndex(next < 0 ? 0 : next);
-      })
-      .catch(() => toast.error("Nie udało się pobrać sesji."));
-  }, [repository, sessionId]);
+  async function finish() {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await repository.completeSession(session.id);
+      setSession((current) => ({ ...current, status: "completed" }));
+    } catch {
+      toast.error("Nie udało się zakończyć sesji. Spróbuj ponownie.");
+    } finally {
+      setSaving(false);
+    }
+  }
   const record = useCallback(
     async (result: StudyResult, selectedOptionId?: string) => {
       if (!session || saving) return;
@@ -38,15 +94,11 @@ export function StudySession({ sessionId, repository, onClose }: Props) {
             ? { ...entry, result, selectedOptionId: selectedOptionId ?? null }
             : entry,
         );
-        const last = index === items.length - 1;
-        if (last) await repository.completeSession(session.id);
-        setSession({
-          ...session,
-          status: last ? "completed" : session.status,
-          items,
-        });
-        if (!last) {
-          setIndex(index + 1);
+        setSession({ ...session, items });
+        const next = items.findIndex((entry) => entry.result === null);
+        if (next < 0) setReadyToFinish(true);
+        else {
+          setIndex(next);
           setRevealed(false);
         }
       } catch {
@@ -57,12 +109,6 @@ export function StudySession({ sessionId, repository, onClose }: Props) {
     },
     [index, repository, saving, session],
   );
-  if (!session)
-    return (
-      <main className="grid flex-1 place-items-center text-sm text-muted-foreground">
-        Ładowanie sesji…
-      </main>
-    );
   const successful = session.items.filter(
     (item) => item.result === "remembered" || item.result === "correct",
   ).length;
@@ -92,6 +138,25 @@ export function StudySession({ sessionId, repository, onClose }: Props) {
             </div>
           </div>
           <Button className="mt-6" onClick={onClose}>
+            Wróć do bazy pytań
+          </Button>
+        </div>
+      </main>
+    );
+  if (session.status === "abandoned")
+    return <LoadError message="Ta sesja została przerwana." onBack={onClose} />;
+  if (readyToFinish)
+    return (
+      <main className="grid flex-1 place-items-center p-8">
+        <div className="space-y-4 text-center">
+          <h1 className="text-2xl font-semibold">
+            Wszystkie odpowiedzi zapisane
+          </h1>
+          <p>Zakończ sesję, aby zobaczyć podsumowanie.</p>
+          <Button disabled={saving} onClick={() => void finish()}>
+            {saving ? "Zapisywanie…" : "Zakończ sesję"}
+          </Button>
+          <Button variant="outline" disabled={saving} onClick={onClose}>
             Wróć do bazy pytań
           </Button>
         </div>
@@ -141,27 +206,16 @@ export function StudySession({ sessionId, repository, onClose }: Props) {
     }
   }
 
-  async function advanceTest() {
-    if (!session || !item.result || saving) return;
-    const currentSession = session;
-    const last = index === currentSession.items.length - 1;
-
-    if (!last) {
-      setIndex(index + 1);
+  function advanceTest() {
+    if (!item.result || saving) return;
+    const next = session.items.findIndex((entry) => entry.result === null);
+    if (next < 0) setReadyToFinish(true);
+    else {
+      setIndex(next);
       setRevealed(false);
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await repository.completeSession(currentSession.id);
-      setSession({ ...currentSession, status: "completed" });
-    } catch {
-      toast.error("Nie udało się zakończyć sesji.");
-    } finally {
-      setSaving(false);
     }
   }
+
   return (
     <main className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-8">
       <div className="mx-auto max-w-3xl">
@@ -189,7 +243,7 @@ export function StudySession({ sessionId, repository, onClose }: Props) {
                 return (
                   <button
                     key={option.id}
-                    disabled={revealed}
+                    disabled={revealed || saving}
                     className={`w-full rounded-xl border p-4 text-left ${state}`}
                     onClick={() => void choose(option.id)}
                   >

@@ -1,5 +1,5 @@
 import { ArrowUpDown, ArrowUpRight, Images, LoaderCircle } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -178,19 +178,21 @@ export function GalleryPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gallerySort, moduleId, service]);
 
+  const loadObservedSections = useEffectEvent(() => {
+    void loadSections();
+  });
+
   useEffect(() => {
     const sentinel = loadMoreSentinelRef.current;
     if (!sentinel || !hasMoreChapters || !service) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) void loadSections();
+        if (entry.isIntersecting) loadObservedSections();
       },
       { rootMargin: "300px 0px" },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-    // Kolejne strony korzystają z aktualnej wartości sectionsRef.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasMoreChapters, service]);
 
   useEffect(
@@ -377,7 +379,15 @@ export function GalleryPage({
         )}
         {error && (
           <div className="mt-6 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-            {error}
+            <p role="alert">{error}</p>
+            <Button
+              className="mt-3"
+              variant="outline"
+              disabled={isLoading}
+              onClick={() => void loadSections()}
+            >
+              Spróbuj ponownie
+            </Button>
           </div>
         )}
         {hasMoreChapters && (

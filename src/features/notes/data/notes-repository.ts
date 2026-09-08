@@ -34,6 +34,7 @@ export interface NotesRepository {
     chapterId: string,
     topicId: string,
     content: NoteContent,
+    expectedContent: NoteContent,
   ): Promise<void>;
   deleteTopic(chapterId: string, topicId: string): Promise<void>;
   deleteItems(chapterIds: string[], topicIds: string[]): Promise<void>;
