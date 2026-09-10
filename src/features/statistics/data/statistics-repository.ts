@@ -1,5 +1,6 @@
 import type {
   ProgressTopicCursor,
+  ProgressTopicFilter,
   ProgressTopicsPage,
   ProgressTopicSort,
   StatisticsMode,
@@ -17,6 +18,7 @@ export interface StatisticsRepository {
   getTopicsPage(options: {
     moduleId: string;
     sort: ProgressTopicSort;
+    filter: ProgressTopicFilter;
     cursor: ProgressTopicCursor | null;
     pageSize?: number;
   }): Promise<ProgressTopicsPage>;

@@ -341,6 +341,7 @@ export type Database = {
           after_chapter_position?: number;
           after_topic_position?: number;
           after_topic_id?: string;
+          completion_filter?: string;
         };
         Returns: {
           topic_id: string;

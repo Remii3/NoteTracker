@@ -3,6 +3,7 @@ import type { StudyMode } from "@/features/questions/model/types";
 export type StatisticsRange = 0 | 7 | 30 | 90;
 export type StatisticsMode = "all" | StudyMode;
 export type ProgressTopicSort = "chapter" | "completed" | "incomplete";
+export type ProgressTopicFilter = "all" | "completed" | "incomplete";
 
 export type ProgressTopic = {
   id: string;

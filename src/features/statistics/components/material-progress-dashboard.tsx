@@ -22,6 +22,7 @@ import type { StatisticsRepository } from "../data/statistics-repository";
 import type {
   ProgressTopic,
   ProgressTopicCursor,
+  ProgressTopicFilter,
   ProgressTopicSort,
   StudyStatistics,
 } from "../model/types";
@@ -183,6 +184,7 @@ function TopicProgress({
   repository: StatisticsRepository;
 }) {
   const [sort, setSort] = useState<ProgressTopicSort>("chapter");
+  const [filter, setFilter] = useState<ProgressTopicFilter>("all");
   const [topics, setTopics] = useState<ProgressTopic[]>([]);
   const [cursor, setCursor] = useState<ProgressTopicCursor | null>(null);
   const [loading, setLoading] = useState(true);
@@ -193,7 +195,7 @@ function TopicProgress({
   useEffect(() => {
     let active = true;
     void repository
-      .getTopicsPage({ moduleId, sort, cursor: null })
+      .getTopicsPage({ moduleId, sort, filter, cursor: null })
       .then((page) => {
         if (!active) return;
         setTopics(page.items);
@@ -208,14 +210,19 @@ function TopicProgress({
     return () => {
       active = false;
     };
-  }, [moduleId, reloadToken, repository, sort]);
+  }, [filter, moduleId, reloadToken, repository, sort]);
 
   async function loadMore() {
     if (!cursor || loadingMore) return;
     setLoadingMore(true);
     setError(false);
     try {
-      const page = await repository.getTopicsPage({ moduleId, sort, cursor });
+      const page = await repository.getTopicsPage({
+        moduleId,
+        sort,
+        filter,
+        cursor,
+      });
       setTopics((current) => [...current, ...page.items]);
       setCursor(page.nextCursor);
     } catch {
@@ -237,32 +244,67 @@ function TopicProgress({
             Tematy są pobierane partiami, bez ładowania całej listy naraz.
           </p>
         </div>
-        <Select
-          value={sort}
-          onValueChange={(value) => {
-            const nextSort = value as ProgressTopicSort;
-            if (nextSort === sort) return;
-            setTopics([]);
-            setCursor(null);
-            setError(false);
-            setLoading(true);
-            setSort(nextSort);
-          }}
-        >
-          <SelectTrigger className="w-full sm:w-60">
-            <ArrowUpDown />
-            <SelectValue>{TOPIC_SORT_LABELS[sort]}</SelectValue>
-          </SelectTrigger>
-          <SelectContent align="end">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+          <div
+            className="flex w-full rounded-lg bg-muted p-1 sm:w-auto"
+            aria-label="Filtr statusu tematów"
+          >
             {(
-              Object.entries(TOPIC_SORT_LABELS) as [ProgressTopicSort, string][]
+              [
+                ["all", "Wszystkie"],
+                ["completed", "Tylko ukończone"],
+                ["incomplete", "Tylko nieukończone"],
+              ] as const
             ).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
+              <Button
+                key={value}
+                type="button"
+                size="sm"
+                variant={filter === value ? "secondary" : "ghost"}
+                aria-pressed={filter === value}
+                onClick={() => {
+                  if (value === filter) return;
+                  setTopics([]);
+                  setCursor(null);
+                  setError(false);
+                  setLoading(true);
+                  setFilter(value);
+                }}
+              >
                 {label}
-              </SelectItem>
+              </Button>
             ))}
-          </SelectContent>
-        </Select>
+          </div>
+          <Select
+            value={sort}
+            onValueChange={(value) => {
+              const nextSort = value as ProgressTopicSort;
+              if (nextSort === sort) return;
+              setTopics([]);
+              setCursor(null);
+              setError(false);
+              setLoading(true);
+              setSort(nextSort);
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-60">
+              <ArrowUpDown />
+              <SelectValue>{TOPIC_SORT_LABELS[sort]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent align="end">
+              {(
+                Object.entries(TOPIC_SORT_LABELS) as [
+                  ProgressTopicSort,
+                  string,
+                ][]
+              ).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       <div className="divide-y">
         {loading ? (
@@ -292,7 +334,13 @@ function TopicProgress({
             </div>
           ))
         ) : (
-          <EmptyProgress />
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            {filter === "completed"
+              ? "Brak ukończonych tematów."
+              : filter === "incomplete"
+                ? "Brak nieukończonych tematów."
+                : "Dodaj tematy, aby zacząć budować postęp."}
+          </p>
         )}
       </div>
       {error && (

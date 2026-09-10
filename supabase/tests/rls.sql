@@ -109,6 +109,20 @@ select pg_temp.assert_true(
   'progress topic page RPC: returns only the current user topics'
 );
 select pg_temp.assert_true(
+  (select count(*) = 1 from public.get_progress_topics_page(
+    '10000001-0000-4000-8000-000000000000',
+    completion_filter => 'completed'
+  )),
+  'progress topic page RPC: returns only completed topics'
+);
+select pg_temp.assert_true(
+  (select count(*) = 0 from public.get_progress_topics_page(
+    '10000001-0000-4000-8000-000000000000',
+    completion_filter => 'incomplete'
+  )),
+  'progress topic page RPC: excludes completed topics from incomplete results'
+);
+select pg_temp.assert_true(
   (select count(*) = 0 from public.get_progress_topics_page(
     '20000001-0000-4000-8000-000000000000', 'chapter', 30
   )),

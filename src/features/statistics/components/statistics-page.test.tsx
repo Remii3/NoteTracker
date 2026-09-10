@@ -144,6 +144,17 @@ it("loads the complete summary and saves a weekly goal", async () => {
     expect(repository.getTopicsPage).toHaveBeenCalledWith({
       moduleId: "module",
       sort: "chapter",
+      filter: "all",
+      cursor: null,
+    }),
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Tylko nieukończone" }));
+  await waitFor(() =>
+    expect(repository.getTopicsPage).toHaveBeenCalledWith({
+      moduleId: "module",
+      sort: "chapter",
+      filter: "incomplete",
       cursor: null,
     }),
   );

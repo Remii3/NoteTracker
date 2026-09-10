@@ -19,6 +19,7 @@ it("returns one topic page and builds the cursor from the last visible row", asy
   const page = await repository.getTopicsPage({
     moduleId: "module",
     sort: "chapter",
+    filter: "incomplete",
     cursor: null,
     pageSize: 2,
   });
@@ -35,6 +36,7 @@ it("returns one topic page and builds the cursor from the last visible row", asy
     expect.objectContaining({
       target_module_id: "module",
       sort_mode: "chapter",
+      completion_filter: "incomplete",
       page_size: 2,
     }),
   );

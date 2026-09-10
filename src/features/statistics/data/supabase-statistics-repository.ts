@@ -52,6 +52,7 @@ export class SupabaseStatisticsRepository implements StatisticsRepository {
       after_chapter_position: cursor?.chapterPosition,
       after_topic_position: cursor?.topicPosition,
       after_topic_id: cursor?.topicId,
+      completion_filter: options.filter,
     });
     throwIfPostgrestError(error);
     const rows = data ?? [];
