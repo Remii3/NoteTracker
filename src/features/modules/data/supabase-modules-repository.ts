@@ -20,6 +20,7 @@ export class SupabaseModulesRepository implements ModulesRepository {
 
   private map(row: {
     id: string;
+    slug: string;
     name: string;
     module_position: number;
     chapters_count: number;
@@ -29,6 +30,7 @@ export class SupabaseModulesRepository implements ModulesRepository {
   }): Module {
     return {
       id: row.id,
+      slug: row.slug,
       name: row.name,
       position: row.module_position,
       chaptersCount: row.chapters_count,
@@ -52,11 +54,19 @@ export class SupabaseModulesRepository implements ModulesRepository {
     return data?.[0] ? this.map(data[0]) : null;
   }
 
+  async getBySlug(slug: string) {
+    const { data, error } = await this.client.rpc("get_module_summaries", {
+      target_module_slug: slug,
+    });
+    throwIfPostgrestError(error);
+    return data?.[0] ? this.map(data[0]) : null;
+  }
+
   async create(name: string, position: number) {
     const { data, error } = await this.client
       .from("modules")
       .insert({ user_id: this.userId, name, position })
-      .select("id,name,position")
+      .select("id,name,slug,position")
       .single();
     throwIfPostgrestError(error);
     if (!data) throw new Error("Nie udało się utworzyć modułu.");

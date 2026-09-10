@@ -87,7 +87,7 @@ function getRouter() {
       HydrateFallback: AppLoading,
     },
     {
-      path: "/modules/:moduleId",
+      path: "/modules/:moduleSlug",
       lazy: loadModulePage,
       HydrateFallback: AppLoading,
       children: [

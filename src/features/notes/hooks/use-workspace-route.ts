@@ -21,8 +21,8 @@ export function useWorkspaceRoute({
 }: Options) {
   const matches = useMatches();
   const navigate = useNavigate();
-  const { moduleId = "" } = useParams<{ moduleId: string }>();
-  const basePath = `/modules/${moduleId}`;
+  const { moduleSlug = "" } = useParams<{ moduleSlug: string }>();
+  const basePath = `/modules/${moduleSlug}`;
   const leafMatch = matches.at(-1);
   const routeHandle = leafMatch?.handle as ModuleRouteHandle | undefined;
   const activeView = routeHandle?.activeView ?? "chapters";

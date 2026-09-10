@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useParams } from "react-router";
 import { useWorkspaceActions } from "../hooks/use-workspace-actions";
 import { useNoteDrafts } from "../hooks/use-note-drafts";
 import { useNotesStore } from "../hooks/use-notes-store";
@@ -19,6 +18,7 @@ import { ModuleContext, type ModuleContextValue } from "./module-context";
 import { ModuleLayout } from "./module-layout";
 import type { WorkspaceDialogsProps } from "./workspace-dialogs";
 type Props = {
+  moduleId: string;
   draftScope?: string;
   repository?: NotesRepository;
   imagesService?: TopicImagesService;
@@ -38,6 +38,7 @@ type Props = {
 };
 
 export function ModuleProvider({
+  moduleId,
   draftScope,
   repository,
   imagesService,
@@ -55,7 +56,6 @@ export function ModuleProvider({
   onSignOut,
   onOpenAccount,
 }: Props) {
-  const { moduleId = "" } = useParams<{ moduleId: string }>();
   const [isSearchPending, setIsSearchPending] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [movedChapter, setMovedChapter] = useState<Chapter | null>(null);

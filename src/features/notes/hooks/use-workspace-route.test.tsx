@@ -44,7 +44,7 @@ it("recognizes the module statistics route", () => {
   const router = createMemoryRouter(
     [
       {
-        path: "/modules/:moduleId/*",
+        path: "/modules/:moduleSlug/*",
         element: <Workspace />,
         handle: routeHandle.statistics,
       },
@@ -72,7 +72,7 @@ it("keeps route state in a parent layout while rendering a child page", () => {
   const router = createMemoryRouter(
     [
       {
-        path: "/modules/:moduleId",
+        path: "/modules/:moduleSlug",
         element: <Layout />,
         children: [
           {
@@ -104,7 +104,7 @@ it("keeps a deep link unchanged when the initial chapter load failed", () => {
   const router = createMemoryRouter(
     [
       {
-        path: "/modules/:moduleId/chapters/:chapterSlug/:topicSlug",
+        path: "/modules/:moduleSlug/chapters/:chapterSlug/:topicSlug",
         element: <Workspace />,
         handle: routeHandle.chapter,
       },
@@ -145,7 +145,7 @@ it("stops after a failed chapter request until the user retries", async () => {
   const router = createMemoryRouter(
     [
       {
-        path: "/modules/:moduleId/chapters/:chapterSlug",
+        path: "/modules/:moduleSlug/chapters/:chapterSlug",
         element: <Workspace />,
         handle: routeHandle.chapter,
       },

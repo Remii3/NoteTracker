@@ -54,6 +54,18 @@ set local role authenticated;
 set local request.jwt.claim.role = 'authenticated';
 
 set local request.jwt.claim.sub = '10000000-0000-4000-8000-000000000000';
+select pg_temp.assert_true(
+  (select slug = 'module-1' from public.modules
+   where id = '10000001-0000-4000-8000-000000000000'),
+  'module slug: generated from the module name'
+);
+select pg_temp.assert_true(
+  (select count(*) = 1 and bool_and(
+     id = '10000001-0000-4000-8000-000000000000'
+   )
+   from public.get_module_summaries(target_module_slug => 'module-1')),
+  'module summaries RPC: resolves the current user module by slug'
+);
 select pg_temp.assert_true((select count(*) = 1 and min(weekly_minutes) = 180 from public.study_goals), 'study_goals: user 1 sees only own goal');
 select pg_temp.assert_true(
   jsonb_array_length(public.get_study_statistics(null, 30, null, 'UTC')->'modules') = 1,

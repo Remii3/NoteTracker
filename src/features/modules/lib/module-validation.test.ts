@@ -9,6 +9,7 @@ import {
 const modules = [
   {
     id: "a",
+    slug: "matematyka",
     name: "Matematyka",
     position: 1000,
     chaptersCount: 2,
@@ -18,6 +19,7 @@ const modules = [
   },
   {
     id: "b",
+    slug: "fizyka",
     name: "Fizyka",
     position: 2000,
     chaptersCount: 0,

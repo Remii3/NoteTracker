@@ -13,6 +13,7 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
+          slug: string;
           name: string;
           position: number;
           created_at: string;
@@ -21,12 +22,18 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
+          slug?: string;
           name: string;
           position: number;
           created_at?: string;
           trash_id?: string | null;
         };
-        Update: { name?: string; position?: number; trash_id?: string | null };
+        Update: {
+          slug?: string;
+          name?: string;
+          position?: number;
+          trash_id?: string | null;
+        };
         Relationships: [];
       };
       questions: {
@@ -305,9 +312,13 @@ export type Database = {
     Views: Record<never, never>;
     Functions: {
       get_module_summaries: {
-        Args: { target_module_id?: string | null };
+        Args: {
+          target_module_id?: string | null;
+          target_module_slug?: string | null;
+        };
         Returns: {
           id: string;
+          slug: string;
           name: string;
           module_position: number;
           chapters_count: number;

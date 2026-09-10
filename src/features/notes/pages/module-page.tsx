@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AccountDialog, getUserDisplayName, useAuth } from "@/features/auth";
@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase/client";
 import { R2TopicImagesService } from "../data/r2-topic-images-service";
 import { SupabaseNotesRepository } from "../data/supabase-notes-repository";
 import { SupabaseQuestionsRepository } from "@/features/questions/data/supabase-questions-repository";
-import { useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 import type { Module } from "@/features/modules/data/modules-repository";
 import { useAsyncResource } from "@/hooks/use-async-resource";
 import { LoadError } from "@/components/load-error";
@@ -18,17 +18,30 @@ import {
   readMemoryCache,
   writeMemoryCache,
 } from "@/lib/memory-cache";
+import { AppLoading } from "@/components/app-loading";
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function ModulePage() {
   const { user, signOut } = useAuth();
   const userId = user?.id;
   const navigate = useNavigate();
-  const { moduleId } = useParams<{ moduleId: string }>();
+  const location = useLocation();
+  const { moduleSlug } = useParams<{ moduleSlug: string }>();
+  const navigationState = location.state as { moduleId?: unknown } | null;
+  const routedModuleId =
+    typeof navigationState?.moduleId === "string"
+      ? navigationState.moduleId
+      : undefined;
   const [accountOpen, setAccountOpen] = useState(false);
   const modulesCacheKey = `modules:${userId ?? "anonymous"}`;
-  const cachedModule = moduleId
+  const cachedModule = moduleSlug
     ? readMemoryCache<Module[]>(modulesCacheKey)?.find(
-        (module) => module.id === moduleId,
+        (module) =>
+          module.id === routedModuleId ||
+          module.slug === moduleSlug ||
+          module.id === moduleSlug,
       )
     : undefined;
   const modulesRepository = useMemo(
@@ -40,8 +53,12 @@ export function ModulePage() {
     [userId],
   );
   const loadModule = useCallback(async () => {
-    if (!moduleId) return null;
-    const loadedModule = await modulesRepository.get(moduleId);
+    if (!moduleSlug) return null;
+    const loadedModule = routedModuleId
+      ? await modulesRepository.get(routedModuleId)
+      : UUID_PATTERN.test(moduleSlug)
+        ? await modulesRepository.get(moduleSlug)
+        : await modulesRepository.getBySlug(moduleSlug);
     if (loadedModule) {
       const cached = readMemoryCache<Module[]>(modulesCacheKey) ?? [];
       writeMemoryCache(
@@ -52,21 +69,36 @@ export function ModulePage() {
             )
           : [...cached, loadedModule],
       );
-    } else {
-      const cached = readMemoryCache<Module[]>(modulesCacheKey);
-      if (cached) {
-        writeMemoryCache(
-          modulesCacheKey,
-          cached.filter((module) => module.id !== moduleId),
-        );
-      }
     }
     return loadedModule;
-  }, [moduleId, modulesCacheKey, modulesRepository]);
+  }, [moduleSlug, modulesCacheKey, modulesRepository, routedModuleId]);
   const moduleResource = useAsyncResource(loadModule, {
     initialValue: cachedModule,
   });
   const selectedModule = moduleResource.value;
+  const moduleId = selectedModule?.id;
+
+  useEffect(() => {
+    if (!selectedModule || selectedModule.slug === moduleSlug) return;
+    navigate(
+      {
+        pathname: location.pathname.replace(
+          /^\/modules\/[^/]+/,
+          `/modules/${selectedModule.slug}`,
+        ),
+        search: location.search,
+        hash: location.hash,
+      },
+      { replace: true, state: { moduleId: selectedModule.id } },
+    );
+  }, [
+    location.hash,
+    location.pathname,
+    location.search,
+    moduleSlug,
+    navigate,
+    selectedModule,
+  ]);
   const handleSignOut = useCallback(() => {
     void signOut()
       .then(() => {
@@ -97,7 +129,8 @@ export function ModulePage() {
     [imagesApiUrl],
   );
 
-  if (!user || !moduleId) return null;
+  if (!user || !moduleSlug) return null;
+  if (moduleResource.loading && !selectedModule) return <AppLoading />;
   if (moduleResource.failed || (!moduleResource.loading && !selectedModule))
     return (
       <LoadError
@@ -114,6 +147,7 @@ export function ModulePage() {
   return (
     <>
       <ModuleProvider
+        moduleId={moduleId ?? ""}
         key={`${user.id}:${moduleId}`}
         draftScope={`${user.id}:${moduleId}`}
         repository={repository}

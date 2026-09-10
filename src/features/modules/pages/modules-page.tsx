@@ -33,7 +33,11 @@ export function ModulesPage() {
     <ModulePicker
       repository={repository}
       cacheKey={`modules:${user.id}`}
-      onSelect={(module) => navigate(`/modules/${module.id}`)}
+      onSelect={(module) =>
+        navigate(`/modules/${module.slug}`, {
+          state: { moduleId: module.id },
+        })
+      }
       onOpenTrash={() => navigate("/trash")}
       onOpenStatistics={() => navigate("/statistics")}
       onSignOut={handleSignOut}
