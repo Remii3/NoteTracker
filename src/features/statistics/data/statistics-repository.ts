@@ -1,4 +1,7 @@
 import type {
+  ProgressTopicCursor,
+  ProgressTopicsPage,
+  ProgressTopicSort,
   StatisticsMode,
   StatisticsRange,
   StudyStatistics,
@@ -11,5 +14,11 @@ export interface StatisticsRepository {
     mode: StatisticsMode;
     timezone: string;
   }): Promise<StudyStatistics>;
+  getTopicsPage(options: {
+    moduleId: string;
+    sort: ProgressTopicSort;
+    cursor: ProgressTopicCursor | null;
+    pageSize?: number;
+  }): Promise<ProgressTopicsPage>;
   saveWeeklyGoal(topics: number): Promise<void>;
 }

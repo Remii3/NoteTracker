@@ -37,15 +37,6 @@ const statistics: StudyStatistics = {
         completedTopics: 1,
       },
     ],
-    topics: [
-      {
-        id: "topic",
-        chapterId: "chapter",
-        title: "Serce",
-        completed: true,
-        firstCompletedAt: "2026-09-08T10:00:00Z",
-      },
-    ],
     weeklyGoal: { topics: 5, completedTopics: 1, bestCompletedTopics: 4 },
   },
   summary: {
@@ -106,6 +97,19 @@ const statistics: StudyStatistics = {
 it("loads the complete summary and saves a weekly goal", async () => {
   const repository: StatisticsRepository = {
     get: vi.fn().mockResolvedValue(statistics),
+    getTopicsPage: vi.fn().mockResolvedValue({
+      items: [
+        {
+          id: "topic",
+          chapterId: "chapter",
+          chapterTitle: "Układ krążenia",
+          title: "Serce",
+          completed: true,
+          firstCompletedAt: "2026-09-08T10:00:00Z",
+        },
+      ],
+      nextCursor: null,
+    }),
     saveWeeklyGoal: vi.fn().mockResolvedValue(undefined),
   };
   render(
@@ -123,11 +127,26 @@ it("loads the complete summary and saves a weekly goal", async () => {
   expect(screen.getByText("Postęp rozdziałów")).toBeTruthy();
   expect(screen.queryByText("Pierwszy krok")).toBeNull();
   expect(screen.queryByText("Odznaki postępu")).toBeNull();
+  expect(screen.queryByText("Ukończone moduły")).toBeNull();
+  expect(screen.getByText("Postęp modułu")).toBeTruthy();
+  expect(
+    screen.getByRole("img", { name: "Ukończono 50% materiału" }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("img", { name: "Skuteczność odpowiedzi 80%" }),
+  ).toBeTruthy();
   expect(
     screen.getByText("Najlepszy tydzień: 4 ukończonych tematów"),
   ).toBeTruthy();
   expect(screen.getByText("1 z 2 tematów ukończonych")).toBeTruthy();
   expect(screen.getAllByText("Układ krążenia").length).toBeGreaterThan(0);
+  await waitFor(() =>
+    expect(repository.getTopicsPage).toHaveBeenCalledWith({
+      moduleId: "module",
+      sort: "chapter",
+      cursor: null,
+    }),
+  );
 
   fireEvent.change(
     screen.getByLabelText("Tygodniowy cel ukończonych tematów"),

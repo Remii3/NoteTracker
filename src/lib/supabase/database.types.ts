@@ -324,6 +324,36 @@ export type Database = {
         };
         Returns: Json;
       };
+      get_progress_overview_statistics: {
+        Args: {
+          target_module_id?: string | null;
+          range_days?: number;
+          timezone_name?: string;
+        };
+        Returns: Json;
+      };
+      get_progress_topics_page: {
+        Args: {
+          target_module_id: string;
+          sort_mode?: string;
+          page_size?: number;
+          after_sort_rank?: number;
+          after_chapter_position?: number;
+          after_topic_position?: number;
+          after_topic_id?: string;
+        };
+        Returns: {
+          topic_id: string;
+          chapter_id: string;
+          chapter_title: string;
+          title: string;
+          completed: boolean;
+          first_completed_at: string | null;
+          sort_rank: number;
+          chapter_position: number;
+          topic_position: number;
+        }[];
+      };
       move_to_trash: {
         Args: { target_type: string; target_id: string };
         Returns: string;

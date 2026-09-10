@@ -2,6 +2,28 @@ import type { StudyMode } from "@/features/questions/model/types";
 
 export type StatisticsRange = 0 | 7 | 30 | 90;
 export type StatisticsMode = "all" | StudyMode;
+export type ProgressTopicSort = "chapter" | "completed" | "incomplete";
+
+export type ProgressTopic = {
+  id: string;
+  chapterId: string;
+  chapterTitle: string;
+  title: string;
+  completed: boolean;
+  firstCompletedAt: string | null;
+};
+
+export type ProgressTopicCursor = {
+  sortRank: number;
+  chapterPosition: number;
+  topicPosition: number;
+  topicId: string;
+};
+
+export type ProgressTopicsPage = {
+  items: ProgressTopic[];
+  nextCursor: ProgressTopicCursor | null;
+};
 
 export type StatisticsSummary = {
   completedSessions: number;
@@ -92,13 +114,6 @@ export type ProgressStatistics = {
     title: string;
     topics: number;
     completedTopics: number;
-  }>;
-  topics: Array<{
-    id: string;
-    chapterId: string;
-    title: string;
-    completed: boolean;
-    firstCompletedAt: string | null;
   }>;
   weeklyGoal: {
     topics: number;

@@ -96,6 +96,25 @@ select pg_temp.assert_true(
   'progress statistics RPC: global response contains only the current user modules'
 );
 select pg_temp.assert_true(
+  not (public.get_progress_overview_statistics(null, 30, 'UTC') ? 'topics'),
+  'progress overview RPC: does not return the full topic list'
+);
+select pg_temp.assert_true(
+  (select count(*) = 1 and bool_and(
+     topic_id = '10000003-0000-4000-8000-000000000000'
+   )
+   from public.get_progress_topics_page(
+     '10000001-0000-4000-8000-000000000000', 'chapter', 30
+   )),
+  'progress topic page RPC: returns only the current user topics'
+);
+select pg_temp.assert_true(
+  (select count(*) = 0 from public.get_progress_topics_page(
+    '20000001-0000-4000-8000-000000000000', 'chapter', 30
+  )),
+  'progress topic page RPC: hides another user module topics'
+);
+select pg_temp.assert_true(
   (select count(*) = 1 and min(completed_topics_count) = 1
    from public.get_module_summaries()),
   'module summaries RPC: returns progress only for the current user modules'

@@ -145,7 +145,7 @@ export function StatisticsPage({
         <header className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div>
             <Button variant="ghost" className="mb-4 -ml-3" onClick={onBack}>
-              <ArrowLeft /> {moduleId ? "Strona główna" : "Moduły"}
+              <ArrowLeft /> {moduleId ? "Wszystkie rozdziały" : "Moduły"}
             </Button>
             <p className="mb-2 text-sm font-medium text-primary">Twoja nauka</p>
             <h1 className="text-3xl font-semibold">Statystyki</h1>
@@ -216,12 +216,21 @@ export function StatisticsPage({
                 value={`${data.progress.summary.completedChapters}/${data.progress.summary.totalChapters}`}
                 note="Rozdział zalicza się po ukończeniu wszystkich tematów"
               />
-              <SummaryCard
-                icon={<Medal />}
-                label="Ukończone moduły"
-                value={`${data.progress.summary.completedModules}/${data.progress.summary.totalModules}`}
-                note="Moduł zalicza się po ukończeniu całego materiału"
-              />
+              {moduleId ? (
+                <SummaryCard
+                  icon={<Medal />}
+                  label="Postęp modułu"
+                  value={`${getPercent(data.progress.summary.completedTopics, data.progress.summary.totalTopics)}%`}
+                  note={`${data.progress.summary.remainingTopics} tematów pozostało do ukończenia`}
+                />
+              ) : (
+                <SummaryCard
+                  icon={<Medal />}
+                  label="Ukończone moduły"
+                  value={`${data.progress.summary.completedModules}/${data.progress.summary.totalModules}`}
+                  note="Moduł zalicza się po ukończeniu całego materiału"
+                />
+              )}
               <SummaryCard
                 icon={<Flame />}
                 label="Seria zaliczeń"
@@ -230,7 +239,11 @@ export function StatisticsPage({
               />
             </section>
 
-            <MaterialProgressDashboard data={data} moduleId={moduleId} />
+            <MaterialProgressDashboard
+              data={data}
+              moduleId={moduleId}
+              repository={repository}
+            />
 
             <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
               <div className="rounded-2xl border p-5 sm:p-6">
@@ -283,13 +296,14 @@ export function StatisticsPage({
                     Trend wyników powtórek
                   </h2>
                 </div>
-                <SessionTrendChart sessions={data.sessionTrend} />
+                <SessionTrendChart sessions={data.sessionTrend} mode={mode} />
               </div>
               <div className="rounded-2xl border p-5 sm:p-6">
                 <div className="flex items-center gap-2">
                   <Medal className="size-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Rekordy powtórek</h2>
+                  <h2 className="text-lg font-semibold">Jakość powtórek</h2>
                 </div>
+                <ReviewQualityChart data={data} />
                 <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
                   <Record
                     value={`${data.records.bestAccuracy}%`}
@@ -504,24 +518,139 @@ function WeeklyGoal({
 
 function SessionTrendChart({
   sessions,
+  mode,
 }: {
   sessions: StudyStatistics["sessionTrend"];
+  mode: StatisticsMode;
 }) {
   if (!sessions.length) return <EmptyState />;
+  const visible = sessions.slice(-20);
+  const points = visible.map((session, index) => ({
+    ...session,
+    x: visible.length === 1 ? 300 : 16 + (index / (visible.length - 1)) * 568,
+    y: 148 - session.accuracy * 1.35,
+  }));
   return (
-    <div className="mt-6 flex h-40 items-end gap-2">
-      {sessions.slice(-20).map((session) => (
-        <div key={session.id} className="group relative flex-1">
-          <div
-            className="min-h-1 rounded-t bg-primary/75"
-            style={{ height: `${Math.max(4, session.accuracy * 1.35)}px` }}
+    <div className="mt-5">
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        {mode !== "flashcards" && (
+          <ChartLegend color="bg-primary" label="Testy" />
+        )}
+        {mode !== "test" && <ChartLegend color="bg-amber-500" label="Fiszki" />}
+      </div>
+      <svg
+        viewBox="0 0 600 160"
+        className="mt-4 h-40 w-full overflow-visible"
+        role="img"
+        aria-label="Wykres skuteczności ostatnich sesji"
+      >
+        {[25, 50, 75].map((value) => (
+          <line
+            key={value}
+            x1="16"
+            x2="584"
+            y1={148 - value * 1.35}
+            y2={148 - value * 1.35}
+            className="stroke-border"
+            strokeWidth="0.5"
+            vectorEffect="non-scaling-stroke"
           />
-          <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-xs text-background group-hover:block">
-            {formatShortDate(session.date)} · {session.accuracy}%
-          </span>
-        </div>
-      ))}
+        ))}
+        {points.length > 1 && (
+          <polyline
+            fill="none"
+            points={points.map((point) => `${point.x},${point.y}`).join(" ")}
+            className="stroke-muted-foreground/40"
+            strokeWidth="2"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
+        {points.map((point) => (
+          <circle
+            key={point.id}
+            cx={point.x}
+            cy={point.y}
+            r="5"
+            className={
+              point.mode === "test" ? "fill-primary" : "fill-amber-500"
+            }
+            vectorEffect="non-scaling-stroke"
+          >
+            <title>
+              {point.mode === "test" ? "Test" : "Fiszki"} ·{" "}
+              {formatShortDate(point.date)} · {point.accuracy}%
+            </title>
+          </circle>
+        ))}
+      </svg>
+      <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+        <span>{formatShortDate(visible[0].date)}</span>
+        <span>{formatShortDate(visible.at(-1)!.date)}</span>
+      </div>
     </div>
+  );
+}
+
+function ReviewQualityChart({ data }: { data: StudyStatistics }) {
+  const successful = data.summary.successful;
+  const unsuccessful = Math.max(0, data.summary.answers - successful);
+  const accuracy = data.summary.answers ? data.summary.accuracy : 0;
+  return (
+    <div className="mt-5 grid items-center gap-5 sm:grid-cols-[8rem_1fr] lg:grid-cols-1 xl:grid-cols-[8rem_1fr]">
+      <div
+        className="relative mx-auto grid size-28 place-items-center rounded-full"
+        style={{
+          background: `conic-gradient(var(--primary) ${accuracy}%, color-mix(in oklch, var(--destructive) 55%, transparent) 0)`,
+        }}
+        role="img"
+        aria-label={`Skuteczność odpowiedzi ${accuracy}%`}
+      >
+        <div className="grid size-20 place-items-center rounded-full bg-background text-center">
+          <div>
+            <p className="text-xl font-semibold">{accuracy}%</p>
+            <p className="text-[10px] text-muted-foreground">skuteczności</p>
+          </div>
+        </div>
+      </div>
+      <div className="space-y-3 text-sm">
+        <QualityRow
+          color="bg-primary"
+          label="Poprawne / zapamiętane"
+          value={successful}
+        />
+        <QualityRow
+          color="bg-destructive/60"
+          label="Błędne / zapomniane"
+          value={unsuccessful}
+        />
+      </div>
+    </div>
+  );
+}
+
+function QualityRow({
+  color,
+  label,
+  value,
+}: {
+  color: string;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`size-2.5 rounded-full ${color}`} />
+      <span className="min-w-0 flex-1 text-muted-foreground">{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function ChartLegend({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={`size-2 rounded-full ${color}`} /> {label}
+    </span>
   );
 }
 
@@ -669,4 +798,8 @@ function formatDateTime(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function getPercent(completed: number, total: number) {
+  return total ? Math.round((completed * 100) / total) : 0;
 }
