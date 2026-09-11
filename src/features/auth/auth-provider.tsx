@@ -69,14 +69,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   }, []);
 
-  const updatePassword = useCallback(async (password: string) => {
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) throw error;
-  }, []);
+  const updatePassword = useCallback(
+    async (currentPassword: string, newPassword: string) => {
+      if (!user?.email) {
+        throw new Error("Nie można zweryfikować hasła dla tego konta.");
+      }
+
+      const { error: verificationError } =
+        await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: currentPassword,
+        });
+
+      if (verificationError?.code === "invalid_credentials") {
+        throw new Error("Stare hasło jest nieprawidłowe.");
+      }
+      if (verificationError) throw verificationError;
+
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      if (error) throw error;
+    },
+    [user],
+  );
 
   const completePasswordRecovery = useCallback(async (password: string) => {
     const { error } = await supabase.auth.updateUser({ password });
-    if (error) throw error;
+    if (error) {
+      throw new Error("Nie udało się ustawić nowego hasła.");
+    }
     setIsPasswordRecovery(false);
   }, []);
 

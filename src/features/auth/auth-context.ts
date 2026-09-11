@@ -16,7 +16,10 @@ export type AuthContextValue = {
   signOut: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   updateName: (name: string) => Promise<void>;
-  updatePassword: (password: string) => Promise<void>;
+  updatePassword: (
+    currentPassword: string,
+    newPassword: string,
+  ) => Promise<void>;
   completePasswordRecovery: (password: string) => Promise<void>;
 };
 

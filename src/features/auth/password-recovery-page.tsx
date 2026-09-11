@@ -1,58 +1,123 @@
-import { useState, type SubmitEvent } from "react";
-import { KeyRound } from "lucide-react";
+import * as z from "zod";
+
+import { Controller, useForm } from "react-hook-form";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "./auth-context";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const formSchema = z
+  .object({
+    password: z
+      .string()
+      .min(6, { error: "Hasło musi mieć przynajmniej 6 znaków." }),
+    passwordVerification: z
+      .string()
+      .min(6, { error: "Hasło musi mieć przynajmniej 6 znaków." }),
+  })
+  .refine((val) => val.password === val.passwordVerification, {
+    error: "Hasła muszą być identyczne",
+    path: ["passwordVerification"],
+  });
 
 export function PasswordRecoveryPage() {
   const { completePasswordRecovery } = useAuth();
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function submit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (password.length < 6 || isSubmitting) return;
-    setIsSubmitting(true);
-    setError(null);
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      password: "",
+      passwordVerification: "",
+    },
+  });
+
+  async function submit(data: z.infer<typeof formSchema>) {
+    form.clearErrors("root");
+
     try {
-      await completePasswordRecovery(password);
+      await completePasswordRecovery(data.password);
     } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Nie udało się ustawić hasła.",
-      );
-    } finally {
-      setIsSubmitting(false);
+      form.setError("root", {
+        message:
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Nie udało się ustawić nowego hasła",
+      });
     }
   }
 
   return (
     <main className="grid min-h-svh place-items-center bg-muted/30 px-5">
       <section className="w-full max-w-sm rounded-2xl border bg-background p-6 shadow-sm">
-        <KeyRound className="mb-5 size-8 text-primary" />
         <h1 className="text-2xl font-semibold">Ustaw nowe hasło</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Nowe hasło musi mieć co najmniej 6 znaków.
         </p>
-        <form className="mt-6 space-y-4" onSubmit={submit}>
-          <Input
-            type="password"
-            autoComplete="new-password"
-            autoFocus
-            minLength={6}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-          {error && <p className="text-sm text-destructive">{error}</p>}
+        <form className="mt-6 space-y-4" onSubmit={form.handleSubmit(submit)}>
+          <FieldGroup>
+            <Controller
+              name="password"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor={field.name}>Nowe hasło</FieldLabel>
+                  <Input
+                    {...field}
+                    type="password"
+                    aria-invalid={fieldState.invalid}
+                    autoComplete="new-password"
+                    autoFocus
+                    minLength={6}
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+            <Controller
+              name="passwordVerification"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor={field.name}>
+                    Powtórz nowe hasło
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    type="password"
+                    aria-invalid={fieldState.invalid}
+                    autoComplete="new-password"
+                    minLength={6}
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+          </FieldGroup>
+          {form.formState.errors.root && (
+            <FieldError errors={[form.formState.errors.root]} />
+          )}
           <Button
             type="submit"
             className="w-full"
-            disabled={password.length < 6 || isSubmitting}
+            disabled={
+              !(
+                form.formState.dirtyFields.password &&
+                form.formState.dirtyFields.passwordVerification
+              ) || form.formState.isSubmitting
+            }
           >
-            {isSubmitting ? "Zapisywanie…" : "Zapisz nowe hasło"}
+            {form.formState.isSubmitting ? "Zapisywanie…" : "Zapisz nowe hasło"}
           </Button>
         </form>
       </section>

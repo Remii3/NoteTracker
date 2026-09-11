@@ -1,7 +1,11 @@
-import { useState, type FormEvent } from "react";
-import { toast } from "sonner";
+import * as z from "zod";
 
-import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Controller, useForm } from "react-hook-form";
 import {
   Dialog,
   DialogContent,
@@ -10,32 +14,79 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+
+import { Button } from "@/components/ui/button";
+import { ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "./auth-context";
 import { getUserDisplayName } from "./user-display-name";
+import { toast } from "sonner";
+import { useAuth } from "./auth-context";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const optionalPassword = z.union([
+  z.literal(""),
+  z.string().min(6, {
+    error: "Hasło musi mieć przynajmniej 6 znaków.",
+  }),
+]);
+
+const formSchema = z
+  .object({
+    name: z.string().trim().min(1, { error: "Podaj imię." }),
+    newPassword: optionalPassword,
+    oldPassword: optionalPassword,
+  })
+  .superRefine(({ newPassword, oldPassword }, context) => {
+    if (newPassword && !oldPassword) {
+      context.addIssue({
+        code: "custom",
+        message: "Podaj stare hasło.",
+        path: ["oldPassword"],
+      });
+    }
+    if (oldPassword && !newPassword) {
+      context.addIssue({
+        code: "custom",
+        message: "Podaj nowe hasło.",
+        path: ["newPassword"],
+      });
+    }
+  });
 
 export function AccountDialog({ onClose }: { onClose: () => void }) {
   const { updateName, updatePassword, user } = useAuth();
-  const [name, setName] = useState(user ? getUserDisplayName(user) : "");
-  const [password, setPassword] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: user ? getUserDisplayName(user) : "",
+      newPassword: "",
+      oldPassword: "",
+    },
+  });
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const nextName = name.trim();
-    if (!nextName || (password && password.length < 6)) return;
-    setIsSubmitting(true);
+  async function submit(data: z.infer<typeof formSchema>) {
+    form.clearErrors();
+
     try {
-      await updateName(nextName);
-      if (password) await updatePassword(password);
+      if (data.newPassword) {
+        await updatePassword(data.oldPassword, data.newPassword);
+      }
+      await updateName(data.name);
       toast.success("Zaktualizowano konto.");
       onClose();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Nie udało się zapisać zmian.",
-      );
-    } finally {
-      setIsSubmitting(false);
+      form.setError("root", {
+        message:
+          error instanceof Error
+            ? error.message
+            : "Nie udało się aktualizować danych",
+      });
     }
   }
 
@@ -48,44 +99,92 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
             Zmień imię lub ustaw nowe hasło.
           </DialogDescription>
         </DialogHeader>
-        <form className="space-y-5" onSubmit={submit}>
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="account-name">
-              Imię
-            </label>
-            <Input
-              id="account-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
+        <form className="space-y-5" onSubmit={form.handleSubmit(submit)}>
+          <FieldGroup>
+            <Controller
+              name="name"
+              control={form.control}
+              render={({ field, fieldState, formState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor={field.name}>Imię</FieldLabel>
+                  <Input
+                    {...field}
+                    type="text"
+                    autoComplete="name"
+                    aria-invalid={fieldState.invalid}
+                    autoFocus
+                    disabled={formState.isSubmitting}
+                    placeholder="Jak mamy się do Ciebie zwracać?"
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
             />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="account-password">
-              Nowe hasło
-            </label>
-            <Input
-              id="account-password"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Pozostaw puste bez zmiany"
-            />
-            <p className="text-xs text-muted-foreground">Minimum 6 znaków.</p>
-          </div>
+            <Collapsible>
+              <CollapsibleTrigger
+                render={<Button variant="ghost" className="w-full" />}
+              >
+                Zmień hasło
+                <ChevronDown className="ml-auto group-data-panel-open/button:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="flex flex-col items-start gap-2 p-2.5 pt-0 text-sm">
+                <Controller
+                  name="newPassword"
+                  control={form.control}
+                  render={({ field, fieldState, formState }) => (
+                    <Field data-invalid={fieldState.invalid} className="mt-2">
+                      <FieldLabel htmlFor={field.name}>Nowe hasło</FieldLabel>
+                      <Input
+                        {...field}
+                        type="password"
+                        aria-invalid={fieldState.invalid}
+                        disabled={formState.isSubmitting}
+                        autoComplete="new-password"
+                        placeholder="Pozostaw puste bez zmiany"
+                      />
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
+                />
+                <Controller
+                  name="oldPassword"
+                  control={form.control}
+                  render={({ field, fieldState, formState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor={field.name}>Stare hasło</FieldLabel>
+                      <Input
+                        {...field}
+                        type="password"
+                        aria-invalid={fieldState.invalid}
+                        autoComplete="current-password"
+                        disabled={formState.isSubmitting}
+                        placeholder="Pozostaw puste bez zmiany"
+                      />
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
+                />
+              </CollapsibleContent>
+            </Collapsible>
+          </FieldGroup>
+          {form.formState.errors.root && (
+            <FieldError errors={[form.formState.errors.root]} />
+          )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Anuluj
             </Button>
             <Button
               type="submit"
-              disabled={
-                !name.trim() ||
-                Boolean(password && password.length < 6) ||
-                isSubmitting
-              }
+              disabled={!form.formState.isDirty || form.formState.isSubmitting}
             >
-              {isSubmitting ? "Zapisywanie…" : "Zapisz"}
+              {form.formState.isSubmitting ? "Zapisywanie…" : "Zapisz"}
             </Button>
           </DialogFooter>
         </form>

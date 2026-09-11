@@ -149,7 +149,6 @@ function getRouter() {
 
 export function AuthenticatedApp() {
   const { isLoading, isPasswordRecovery, user } = useAuth();
-
   if (isLoading) return <AppLoading />;
   if (isPasswordRecovery) return <PasswordRecoveryPage />;
   if (!user) return <AuthPage />;
