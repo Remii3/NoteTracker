@@ -15,17 +15,22 @@ import { useAuth } from "./auth-context";
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 
+const emailSchema = z
+  .string()
+  .trim()
+  .pipe(z.email({ error: "Podaj poprawny adres." }));
+
 const formSchema = z.discriminatedUnion("mode", [
   z.object({
     mode: z.literal("sign-in"),
-    email: z.email({ error: "Podaj poprawny adres." }),
+    email: emailSchema,
     password: z.string().min(6, {
       error: "Hasło musi mieć przynajmniej 6 znaków.",
     }),
   }),
   z.object({
     mode: z.literal("sign-up"),
-    email: z.email({ error: "Podaj poprawny adres." }),
+    email: emailSchema,
     name: z.string().trim().min(1, { error: "Podaj imię." }),
     password: z
       .string()
@@ -33,7 +38,7 @@ const formSchema = z.discriminatedUnion("mode", [
   }),
   z.object({
     mode: z.literal("reset"),
-    email: z.email(),
+    email: emailSchema,
   }),
 ]);
 
@@ -95,15 +100,14 @@ export function AuthPage() {
     setMessage(null);
     try {
       if (data.mode === "reset") {
-        await requestPasswordReset(data.email.trim());
+        await requestPasswordReset(data.email);
         setMessage("Wysłaliśmy link do ustawienia nowego hasła.");
       } else if (data.mode === "sign-in") {
-        console.log("nice");
-        await signIn(data.email.trim(), data.password);
+        await signIn(data.email, data.password);
       } else {
         const result = await signUp(
           data.name.trim(),
-          data.email.trim(),
+          data.email,
           data.password,
         );
         if (result.confirmationRequired) {
@@ -167,7 +171,7 @@ export function AuthPage() {
                       <FieldLabel htmlFor={field.name}>Imię</FieldLabel>
                       <Input
                         {...field}
-                        id="auth-name"
+                        id={field.name}
                         type="text"
                         aria-invalid={fieldState.invalid}
                         autoComplete="name"
@@ -190,7 +194,7 @@ export function AuthPage() {
                     <FieldLabel htmlFor={field.name}>Email</FieldLabel>
                     <Input
                       {...field}
-                      id="auth-email"
+                      id={field.name}
                       type="email"
                       autoComplete="email"
                       autoFocus={mode === "sign-in"}
@@ -213,7 +217,7 @@ export function AuthPage() {
                       <FieldLabel htmlFor={field.name}>Hasło</FieldLabel>
                       <Input
                         {...field}
-                        id="auth-password"
+                        id={field.name}
                         type="password"
                         autoComplete={
                           mode === "sign-in"
@@ -259,6 +263,7 @@ export function AuthPage() {
               <Button
                 variant={"link"}
                 type="button"
+                disabled={form.formState.isSubmitting}
                 onClick={() => changeMode("reset")}
               >
                 Nie pamiętasz hasła?
@@ -270,6 +275,7 @@ export function AuthPage() {
               <Button
                 variant={"link"}
                 type="button"
+                disabled={form.formState.isSubmitting}
                 onClick={() => changeMode("sign-in")}
               >
                 Wróć do logowania

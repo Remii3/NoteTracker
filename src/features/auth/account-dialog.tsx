@@ -29,69 +29,86 @@ import { toast } from "sonner";
 import { useAuth } from "./auth-context";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-const optionalPassword = z.union([
-  z.literal(""),
-  z.string().min(6, {
-    error: "Hasło musi mieć przynajmniej 6 znaków.",
-  }),
-]);
+const profileFormSchema = z.object({
+  name: z.string().trim().min(1, { error: "Podaj imię." }),
+});
 
-const formSchema = z
+const passwordFormSchema = z
   .object({
-    name: z.string().trim().min(1, { error: "Podaj imię." }),
-    newPassword: optionalPassword,
-    oldPassword: optionalPassword,
+    oldPassword: z.string().min(6, {
+      error: "Hasło musi mieć przynajmniej 6 znaków.",
+    }),
+    newPassword: z.string().min(6, {
+      error: "Hasło musi mieć przynajmniej 6 znaków.",
+    }),
+    newPasswordConfirmation: z.string().min(6, {
+      error: "Hasło musi mieć przynajmniej 6 znaków.",
+    }),
   })
-  .superRefine(({ newPassword, oldPassword }, context) => {
-    if (newPassword && !oldPassword) {
-      context.addIssue({
-        code: "custom",
-        message: "Podaj stare hasło.",
-        path: ["oldPassword"],
-      });
-    }
-    if (oldPassword && !newPassword) {
-      context.addIssue({
-        code: "custom",
-        message: "Podaj nowe hasło.",
-        path: ["newPassword"],
-      });
-    }
-  });
+  .refine(
+    ({ newPassword, newPasswordConfirmation }) =>
+      newPassword === newPasswordConfirmation,
+    {
+      error: "Hasła muszą być identyczne.",
+      path: ["newPasswordConfirmation"],
+    },
+  );
 
 export function AccountDialog({ onClose }: { onClose: () => void }) {
   const { updateName, updatePassword, user } = useAuth();
-  const form = useForm({
-    resolver: zodResolver(formSchema),
+  const profileForm = useForm<z.infer<typeof profileFormSchema>>({
+    resolver: zodResolver(profileFormSchema),
     defaultValues: {
       name: user ? getUserDisplayName(user) : "",
-      newPassword: "",
-      oldPassword: "",
     },
   });
+  const passwordForm = useForm<z.infer<typeof passwordFormSchema>>({
+    resolver: zodResolver(passwordFormSchema),
+    defaultValues: {
+      oldPassword: "",
+      newPassword: "",
+      newPasswordConfirmation: "",
+    },
+  });
+  const isSubmitting =
+    profileForm.formState.isSubmitting || passwordForm.formState.isSubmitting;
 
-  async function submit(data: z.infer<typeof formSchema>) {
-    form.clearErrors();
+  async function submitProfile(data: z.infer<typeof profileFormSchema>) {
+    profileForm.clearErrors("root");
 
     try {
-      if (data.newPassword) {
-        await updatePassword(data.oldPassword, data.newPassword);
-      }
       await updateName(data.name);
-      toast.success("Zaktualizowano konto.");
+      toast.success("Zaktualizowano imię.");
       onClose();
     } catch (error) {
-      form.setError("root", {
+      profileForm.setError("root", {
         message:
           error instanceof Error
             ? error.message
-            : "Nie udało się aktualizować danych",
+            : "Nie udało się zaktualizować imienia.",
+      });
+    }
+  }
+
+  async function submitPassword(data: z.infer<typeof passwordFormSchema>) {
+    passwordForm.clearErrors("root");
+
+    try {
+      await updatePassword(data.oldPassword, data.newPassword);
+      toast.success("Zmieniono hasło.");
+      onClose();
+    } catch (error) {
+      passwordForm.setError("root", {
+        message:
+          error instanceof Error
+            ? error.message
+            : "Nie udało się zmienić hasła.",
       });
     }
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
+    <Dialog open onOpenChange={(open) => !open && !isSubmitting && onClose()}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Ustawienia konta</DialogTitle>
@@ -99,70 +116,76 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
             Zmień imię lub ustaw nowe hasło.
           </DialogDescription>
         </DialogHeader>
-        <form className="space-y-5" onSubmit={form.handleSubmit(submit)}>
-          <FieldGroup>
-            <Controller
-              name="name"
-              control={form.control}
-              render={({ field, fieldState, formState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor={field.name}>Imię</FieldLabel>
-                  <Input
-                    {...field}
-                    type="text"
-                    autoComplete="name"
-                    aria-invalid={fieldState.invalid}
-                    autoFocus
-                    disabled={formState.isSubmitting}
-                    placeholder="Jak mamy się do Ciebie zwracać?"
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
-            <Collapsible>
-              <CollapsibleTrigger
-                render={<Button variant="ghost" className="w-full" />}
-              >
-                Zmień hasło
-                <ChevronDown className="ml-auto group-data-panel-open/button:rotate-180" />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="flex flex-col items-start gap-2 p-2.5 pt-0 text-sm">
-                <Controller
-                  name="newPassword"
-                  control={form.control}
-                  render={({ field, fieldState, formState }) => (
-                    <Field data-invalid={fieldState.invalid} className="mt-2">
-                      <FieldLabel htmlFor={field.name}>Nowe hasło</FieldLabel>
-                      <Input
-                        {...field}
-                        type="password"
-                        aria-invalid={fieldState.invalid}
-                        disabled={formState.isSubmitting}
-                        autoComplete="new-password"
-                        placeholder="Pozostaw puste bez zmiany"
-                      />
-                      {fieldState.invalid && (
-                        <FieldError errors={[fieldState.error]} />
-                      )}
-                    </Field>
-                  )}
+        <form
+          className="space-y-4"
+          onSubmit={profileForm.handleSubmit(submitProfile)}
+        >
+          <Controller
+            name="name"
+            control={profileForm.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor={field.name}>Imię</FieldLabel>
+                <Input
+                  {...field}
+                  id={field.name}
+                  type="text"
+                  autoComplete="name"
+                  aria-invalid={fieldState.invalid}
+                  autoFocus
+                  disabled={isSubmitting}
+                  placeholder="Jak mamy się do Ciebie zwracać?"
                 />
+                {fieldState.invalid && (
+                  <FieldError errors={[fieldState.error]} />
+                )}
+              </Field>
+            )}
+          />
+          {profileForm.formState.errors.root && (
+            <FieldError errors={[profileForm.formState.errors.root]} />
+          )}
+          <Button
+            type="submit"
+            disabled={!profileForm.formState.isDirty || isSubmitting}
+          >
+            {profileForm.formState.isSubmitting
+              ? "Zapisywanie…"
+              : "Zapisz imię"}
+          </Button>
+        </form>
+        <Collapsible>
+          <CollapsibleTrigger
+            render={
+              <Button
+                variant="ghost"
+                className="w-full"
+                disabled={isSubmitting}
+              />
+            }
+          >
+            Zmień hasło
+            <ChevronDown className="ml-auto group-data-panel-open/button:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="p-2.5 pt-0 text-sm">
+            <form
+              className="space-y-4"
+              onSubmit={passwordForm.handleSubmit(submitPassword)}
+            >
+              <FieldGroup>
                 <Controller
                   name="oldPassword"
-                  control={form.control}
-                  render={({ field, fieldState, formState }) => (
-                    <Field data-invalid={fieldState.invalid}>
+                  control={passwordForm.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid} className="mt-2">
                       <FieldLabel htmlFor={field.name}>Stare hasło</FieldLabel>
                       <Input
                         {...field}
+                        id={field.name}
                         type="password"
                         aria-invalid={fieldState.invalid}
                         autoComplete="current-password"
-                        disabled={formState.isSubmitting}
-                        placeholder="Pozostaw puste bez zmiany"
+                        disabled={isSubmitting}
                       />
                       {fieldState.invalid && (
                         <FieldError errors={[fieldState.error]} />
@@ -170,24 +193,73 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
                     </Field>
                   )}
                 />
-              </CollapsibleContent>
-            </Collapsible>
-          </FieldGroup>
-          {form.formState.errors.root && (
-            <FieldError errors={[form.formState.errors.root]} />
-          )}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Anuluj
-            </Button>
-            <Button
-              type="submit"
-              disabled={!form.formState.isDirty || form.formState.isSubmitting}
-            >
-              {form.formState.isSubmitting ? "Zapisywanie…" : "Zapisz"}
-            </Button>
-          </DialogFooter>
-        </form>
+                <Controller
+                  name="newPassword"
+                  control={passwordForm.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor={field.name}>Nowe hasło</FieldLabel>
+                      <Input
+                        {...field}
+                        id={field.name}
+                        type="password"
+                        aria-invalid={fieldState.invalid}
+                        autoComplete="new-password"
+                        disabled={isSubmitting}
+                      />
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
+                />
+                <Controller
+                  name="newPasswordConfirmation"
+                  control={passwordForm.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor={field.name}>
+                        Powtórz nowe hasło
+                      </FieldLabel>
+                      <Input
+                        {...field}
+                        id={field.name}
+                        type="password"
+                        aria-invalid={fieldState.invalid}
+                        autoComplete="new-password"
+                        disabled={isSubmitting}
+                      />
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
+                />
+              </FieldGroup>
+              {passwordForm.formState.errors.root && (
+                <FieldError errors={[passwordForm.formState.errors.root]} />
+              )}
+              <Button
+                type="submit"
+                disabled={!passwordForm.formState.isDirty || isSubmitting}
+              >
+                {passwordForm.formState.isSubmitting
+                  ? "Zapisywanie…"
+                  : "Zmień hasło"}
+              </Button>
+            </form>
+          </CollapsibleContent>
+        </Collapsible>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isSubmitting}
+            onClick={onClose}
+          >
+            Zamknij
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

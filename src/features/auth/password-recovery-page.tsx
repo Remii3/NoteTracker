@@ -65,15 +65,17 @@ export function PasswordRecoveryPage() {
             <Controller
               name="password"
               control={form.control}
-              render={({ field, fieldState }) => (
+              render={({ field, fieldState, formState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor={field.name}>Nowe hasło</FieldLabel>
                   <Input
                     {...field}
+                    id={field.name}
                     type="password"
                     aria-invalid={fieldState.invalid}
                     autoComplete="new-password"
                     autoFocus
+                    disabled={formState.isSubmitting}
                     minLength={6}
                   />
                   {fieldState.invalid && (
@@ -85,16 +87,18 @@ export function PasswordRecoveryPage() {
             <Controller
               name="passwordVerification"
               control={form.control}
-              render={({ field, fieldState }) => (
+              render={({ field, fieldState, formState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor={field.name}>
                     Powtórz nowe hasło
                   </FieldLabel>
                   <Input
                     {...field}
+                    id={field.name}
                     type="password"
                     aria-invalid={fieldState.invalid}
                     autoComplete="new-password"
+                    disabled={formState.isSubmitting}
                     minLength={6}
                   />
                   {fieldState.invalid && (
