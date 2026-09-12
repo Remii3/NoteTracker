@@ -1,28 +1,21 @@
+import {
+  ArrowUpDown,
+  BarChart3,
+  BookOpen,
+  Images,
+  Layers3,
+  LibraryBig,
+  LogOut,
+  Search,
+  X,
+} from "lucide-react";
+import { DndContext, closestCenter } from "@dnd-kit/core";
 import type {
   DragEndEvent,
   DragOverEvent,
   DragStartEvent,
   useSensors,
 } from "@dnd-kit/core";
-import { DndContext, closestCenter } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import {
-  ArrowUpDown,
-  BarChart3,
-  BookOpen,
-  LibraryBig,
-  Layers3,
-  Images,
-  LogOut,
-  Search,
-  X,
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,8 +25,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import type { ManagedItem, SortMode } from "../types/workspace-types";
 import {
   Sidebar,
   SidebarContent,
@@ -46,9 +38,17 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { SidebarChapter } from "./sidebar-chapter";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useEffect, useRef, useState } from "react";
+
+import { Button } from "@/components/ui/button";
 import type { Chapter } from "../types/model";
-import type { ManagedItem, SortMode } from "../types/workspace-types";
+import { Input } from "@/components/ui/input";
+import { SidebarChapter } from "./sidebar-chapter";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Props = {
   chapters: Chapter[];
@@ -455,26 +455,31 @@ export function WorkspaceSidebar({
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="h-16 shrink-0 justify-center border-t p-3">
-        <div className="flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-full bg-secondary text-sm font-semibold">
-            {(userName?.[0] ?? userEmail?.[0] ?? "U").toLocaleUpperCase("pl")}
-          </span>
-          <button
+      <SidebarFooter className="min-h-16 shrink-0 justify-center border-t p-2">
+        <div className="flex w-full items-center gap-1">
+          <Button
+            variant="ghost"
             type="button"
-            className="min-w-0 flex-1 text-left"
+            className="h-auto min-w-0 flex-1 justify-start gap-3 px-2 py-1.5 text-left"
             onClick={onOpenAccount}
           >
-            <p className="truncate text-sm font-medium">
-              {userName ?? "Użytkownik"}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {userEmail ?? "konto prywatne"}
-            </p>
-          </button>
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">
+              {(userName?.[0] ?? userEmail?.[0] ?? "U").toLocaleUpperCase("pl")}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium leading-5">
+                {userName ?? "Użytkownik"}
+              </span>
+              <span className="block truncate text-xs font-normal leading-4 text-muted-foreground">
+                {userEmail ?? "konto prywatne"}
+              </span>
+            </span>
+          </Button>
           <Button
             variant="ghost"
             size="icon-sm"
+            className="shrink-0"
+            type="button"
             aria-label="Wyloguj"
             onClick={onSignOut}
           >
