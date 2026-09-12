@@ -7,40 +7,47 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
+import {
+  emailSchema,
+  nameSchema,
+  passwordSchema,
+} from "@/features/auth/auth-schema";
 
 import { BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getAuthErrorMessage } from "./auth-error";
 import { useAuth } from "./auth-context";
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-const emailSchema = z
-  .string()
-  .trim()
-  .pipe(z.email({ error: "Podaj poprawny adres." }));
-
-const formSchema = z.discriminatedUnion("mode", [
-  z.object({
-    mode: z.literal("sign-in"),
-    email: emailSchema,
-    password: z.string().min(6, {
-      error: "Hasło musi mieć przynajmniej 6 znaków.",
+const formSchema = z
+  .discriminatedUnion("mode", [
+    z.object({
+      mode: z.literal("sign-in"),
+      email: emailSchema,
+      password: passwordSchema,
     }),
-  }),
-  z.object({
-    mode: z.literal("sign-up"),
-    email: emailSchema,
-    name: z.string().trim().min(1, { error: "Podaj imię." }),
-    password: z
-      .string()
-      .min(6, { error: "Hasło musi mieć przynajmniej 6 znaków." }),
-  }),
-  z.object({
-    mode: z.literal("reset"),
-    email: emailSchema,
-  }),
-]);
+    z.object({
+      mode: z.literal("sign-up"),
+      email: emailSchema,
+      name: nameSchema,
+      password: passwordSchema,
+      passwordConfirmation: passwordSchema,
+    }),
+    z.object({
+      mode: z.literal("reset"),
+      email: emailSchema,
+    }),
+  ])
+  .refine(
+    (data) =>
+      data.mode !== "sign-up" || data.password === data.passwordConfirmation,
+    {
+      error: "Hasła muszą być identyczne.",
+      path: ["passwordConfirmation"],
+    },
+  );
 
 type AuthFormValues = z.infer<typeof formSchema>;
 type Mode = AuthFormValues["mode"];
@@ -83,6 +90,7 @@ export function AuthPage() {
         email: form.getValues("email"),
         name: "",
         password: "",
+        passwordConfirmation: "",
       });
 
       return;
@@ -118,14 +126,10 @@ export function AuthPage() {
       }
     } catch (caughtError) {
       form.setError("root", {
-        message:
-          caughtError instanceof Error
-            ? caughtError.message
-            : data.mode === "sign-in"
-              ? "Nie udało się zalogować."
-              : data.mode === "sign-up"
-                ? "Nie udało się zarejestrować."
-                : "Nie udało się wysłać maila.",
+        message: getAuthErrorMessage(
+          caughtError,
+          data.mode === "reset" ? "request-password-reset" : data.mode,
+        ),
       });
     }
   }
@@ -224,6 +228,31 @@ export function AuthPage() {
                             ? "current-password"
                             : "new-password"
                         }
+                        aria-invalid={fieldState.invalid}
+                        disabled={formState.isSubmitting}
+                        minLength={6}
+                      />
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
+                />
+              )}
+              {mode === "sign-up" && (
+                <Controller
+                  name="passwordConfirmation"
+                  control={form.control}
+                  render={({ field, fieldState, formState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor={field.name}>
+                        Powtórz hasło
+                      </FieldLabel>
+                      <Input
+                        {...field}
+                        id={field.name}
+                        type="password"
+                        autoComplete="new-password"
                         aria-invalid={fieldState.invalid}
                         disabled={formState.isSubmitting}
                         minLength={6}

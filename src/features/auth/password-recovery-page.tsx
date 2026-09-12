@@ -10,17 +10,15 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getAuthErrorMessage } from "./auth-error";
+import { passwordSchema } from "@/features/auth/auth-schema";
 import { useAuth } from "./auth-context";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 const formSchema = z
   .object({
-    password: z
-      .string()
-      .min(6, { error: "Hasło musi mieć przynajmniej 6 znaków." }),
-    passwordVerification: z
-      .string()
-      .min(6, { error: "Hasło musi mieć przynajmniej 6 znaków." }),
+    password: passwordSchema,
+    passwordVerification: passwordSchema,
   })
   .refine((val) => val.password === val.passwordVerification, {
     error: "Hasła muszą być identyczne",
@@ -45,10 +43,7 @@ export function PasswordRecoveryPage() {
       await completePasswordRecovery(data.password);
     } catch (caughtError) {
       form.setError("root", {
-        message:
-          caughtError instanceof Error
-            ? caughtError.message
-            : "Nie udało się ustawić nowego hasła",
+        message: getAuthErrorMessage(caughtError, "recover-password"),
       });
     }
   }

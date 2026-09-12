@@ -51,6 +51,8 @@ w kodzie Workera.
 - Worker przechodzi `npm run typecheck` i dry run;
 - wymagane skrypty SQL zostały sprawdzone na projekcie testowym;
 - wykonano backup przed zmianą schematu;
+- `Authentication > URL Configuration` w Supabase zawiera produkcyjny origin
+  jako `Site URL` oraz `<origin>/update-password` na liście `Redirect URLs`;
 - `ALLOWED_ORIGINS` zawiera dokładny produkcyjny origin Vercel;
 - bucket `notetracker-images` nie ma publicznego dostępu;
 - sekrety nie znajdują się w repozytorium ani zmiennych `VITE_*`.

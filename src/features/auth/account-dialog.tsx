@@ -20,30 +20,26 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
+import { nameSchema, passwordSchema } from "@/features/auth/auth-schema";
 
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { getAuthErrorMessage } from "./auth-error";
 import { getUserDisplayName } from "./user-display-name";
 import { toast } from "sonner";
 import { useAuth } from "./auth-context";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 const profileFormSchema = z.object({
-  name: z.string().trim().min(1, { error: "Podaj imię." }),
+  name: nameSchema,
 });
 
 const passwordFormSchema = z
   .object({
-    oldPassword: z.string().min(6, {
-      error: "Hasło musi mieć przynajmniej 6 znaków.",
-    }),
-    newPassword: z.string().min(6, {
-      error: "Hasło musi mieć przynajmniej 6 znaków.",
-    }),
-    newPasswordConfirmation: z.string().min(6, {
-      error: "Hasło musi mieć przynajmniej 6 znaków.",
-    }),
+    oldPassword: passwordSchema,
+    newPassword: passwordSchema,
+    newPasswordConfirmation: passwordSchema,
   })
   .refine(
     ({ newPassword, newPasswordConfirmation }) =>
@@ -82,10 +78,7 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
       onClose();
     } catch (error) {
       profileForm.setError("root", {
-        message:
-          error instanceof Error
-            ? error.message
-            : "Nie udało się zaktualizować imienia.",
+        message: getAuthErrorMessage(error, "update-name"),
       });
     }
   }
@@ -99,10 +92,7 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
       onClose();
     } catch (error) {
       passwordForm.setError("root", {
-        message:
-          error instanceof Error
-            ? error.message
-            : "Nie udało się zmienić hasła.",
+        message: getAuthErrorMessage(error, "update-password"),
       });
     }
   }

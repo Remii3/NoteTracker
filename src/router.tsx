@@ -78,8 +78,10 @@ async function loadTrash() {
   return { Component: module.TrashPage };
 }
 
+let router: ReturnType<typeof createBrowserRouter> | undefined;
+
 function getRouter() {
-  return createBrowserRouter([
+  router ??= createBrowserRouter([
     { path: "/", element: <Navigate to="/modules" replace /> },
     {
       path: "/modules",
@@ -145,13 +147,15 @@ function getRouter() {
     { path: "/trash", lazy: loadTrash, HydrateFallback: AppLoading },
     { path: "*", element: <Navigate to="/modules" replace /> },
   ]);
+
+  return router;
 }
 
 export function AuthenticatedApp() {
   const { isLoading, isPasswordRecovery, user } = useAuth();
   if (isLoading) return <AppLoading />;
-  if (isPasswordRecovery) return <PasswordRecoveryPage />;
   if (!user) return <AuthPage />;
+  if (isPasswordRecovery) return <PasswordRecoveryPage />;
 
   return <RouterProvider router={getRouter()} />;
 }

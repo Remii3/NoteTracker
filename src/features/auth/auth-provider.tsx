@@ -10,17 +10,51 @@ import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
 import { AuthContext, type AuthContextValue } from "./auth-context";
 
+const passwordRecoveryPath = "/update-password";
+const passwordRecoveryStorageKey = "notetracker-password-recovery";
+
+function hasPendingPasswordRecovery() {
+  if (window.location.pathname !== passwordRecoveryPath) return false;
+
+  const hashParameters = new URLSearchParams(window.location.hash.slice(1));
+  const queryParameters = new URLSearchParams(window.location.search);
+
+  return (
+    window.sessionStorage.getItem(passwordRecoveryStorageKey) === "true" ||
+    hashParameters.get("type") === "recovery" ||
+    queryParameters.get("type") === "recovery"
+  );
+}
+
+function setPendingPasswordRecovery(isPending: boolean) {
+  if (isPending) {
+    window.sessionStorage.setItem(passwordRecoveryStorageKey, "true");
+  } else {
+    window.sessionStorage.removeItem(passwordRecoveryStorageKey);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(
+    hasPendingPasswordRecovery,
+  );
 
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
-      if (event === "PASSWORD_RECOVERY") setIsPasswordRecovery(true);
+
+      if (event === "PASSWORD_RECOVERY") {
+        setPendingPasswordRecovery(true);
+        setIsPasswordRecovery(true);
+      } else if (event === "SIGNED_OUT" || !session) {
+        setPendingPasswordRecovery(false);
+        setIsPasswordRecovery(false);
+      }
+
       setIsLoading(false);
     });
     return () => subscription.unsubscribe();
@@ -51,13 +85,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut({ scope: "local" });
     if (error) throw error;
   }, []);
 
   const requestPasswordReset = useCallback(async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
+      redirectTo: new URL(passwordRecoveryPath, window.location.origin).href,
     });
     if (error) throw error;
   }, []);
@@ -76,9 +110,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password: newPassword,
       });
 
-      if (error?.code === "invalid_credentials") {
-        throw new Error("Stare hasło jest nieprawidłowe.");
-      }
       if (error) throw error;
     },
     [],
@@ -86,9 +117,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const completePasswordRecovery = useCallback(async (password: string) => {
     const { error } = await supabase.auth.updateUser({ password });
-    if (error) {
-      throw new Error("Nie udało się ustawić nowego hasła.");
-    }
+    if (error) throw error;
+
+    setPendingPasswordRecovery(false);
+    window.history.replaceState(null, "", "/modules");
     setIsPasswordRecovery(false);
   }, []);
 
