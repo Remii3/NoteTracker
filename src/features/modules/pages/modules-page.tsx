@@ -34,9 +34,7 @@ export function ModulesPage() {
       repository={repository}
       cacheKey={`modules:${user.id}`}
       onSelect={(module) =>
-        navigate(`/modules/${module.slug}`, {
-          state: { moduleId: module.id },
-        })
+        navigate(`/${module.slug}`, { state: { moduleId: module.id } })
       }
       onOpenTrash={() => navigate("/trash")}
       onOpenStatistics={() => navigate("/statistics")}

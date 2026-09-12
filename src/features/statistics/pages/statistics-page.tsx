@@ -21,7 +21,7 @@ export function StatisticsPage() {
       repository={repository}
       moduleId={null}
       cacheScope={user.id}
-      onBack={() => navigate("/modules")}
+      onBack={() => navigate("/")}
     />
   );
 }

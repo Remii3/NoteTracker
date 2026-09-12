@@ -44,12 +44,12 @@ it("recognizes the module statistics route", () => {
   const router = createMemoryRouter(
     [
       {
-        path: "/modules/:moduleSlug/*",
+        path: "/:moduleSlug/*",
         element: <Workspace />,
         handle: routeHandle.statistics,
       },
     ],
-    { initialEntries: ["/modules/m/statistics"] },
+    { initialEntries: ["/m/statistics"] },
   );
   render(<RouterProvider router={router} />);
   expect(screen.getByText("statistics")).toBeTruthy();
@@ -72,7 +72,7 @@ it("keeps route state in a parent layout while rendering a child page", () => {
   const router = createMemoryRouter(
     [
       {
-        path: "/modules/:moduleSlug",
+        path: "/:moduleSlug",
         element: <Layout />,
         children: [
           {
@@ -83,7 +83,7 @@ it("keeps route state in a parent layout while rendering a child page", () => {
         ],
       },
     ],
-    { initialEntries: ["/modules/m/gallery"] },
+    { initialEntries: ["/m/gallery"] },
   );
   render(<RouterProvider router={router} />);
   expect(screen.getByText("gallery")).toBeTruthy();
@@ -100,11 +100,11 @@ it("keeps a deep link unchanged when the initial chapter load failed", () => {
     });
     return <span data-testid="path">{window.location.pathname}</span>;
   }
-  const path = "/modules/m/chapters/chapter/topic";
+  const path = "/m/chapters/chapter/topic";
   const router = createMemoryRouter(
     [
       {
-        path: "/modules/:moduleSlug/chapters/:chapterSlug/:topicSlug",
+        path: "/:moduleSlug/chapters/:chapterSlug/:topicSlug",
         element: <Workspace />,
         handle: routeHandle.chapter,
       },
@@ -145,12 +145,12 @@ it("stops after a failed chapter request until the user retries", async () => {
   const router = createMemoryRouter(
     [
       {
-        path: "/modules/:moduleSlug/chapters/:chapterSlug",
+        path: "/:moduleSlug/chapters/:chapterSlug",
         element: <Workspace />,
         handle: routeHandle.chapter,
       },
     ],
-    { initialEntries: [`/modules/m/chapters/${chapter.slug}`] },
+    { initialEntries: [`/m/chapters/${chapter.slug}`] },
   );
   render(<RouterProvider router={router} />);
   await screen.findByText("error");

@@ -83,8 +83,8 @@ export function ModulePage() {
     navigate(
       {
         pathname: location.pathname.replace(
-          /^\/modules\/[^/]+/,
-          `/modules/${selectedModule.slug}`,
+          /^\/[^/]+/,
+          `/${selectedModule.slug}`,
         ),
         search: location.search,
         hash: location.hash,
@@ -99,6 +99,7 @@ export function ModulePage() {
     navigate,
     selectedModule,
   ]);
+
   const handleSignOut = useCallback(() => {
     void signOut()
       .then(() => {
@@ -140,7 +141,7 @@ export function ModulePage() {
             : "Moduł nie istnieje lub jest niedostępny."
         }
         onRetry={moduleResource.retry}
-        onBack={() => navigate("/modules")}
+        onBack={() => navigate("/")}
       />
     );
 
@@ -162,7 +163,7 @@ export function ModulePage() {
         userEmail={user.email}
         moduleName={selectedModule?.name}
         moduleNameLoading={moduleResource.loading}
-        onOpenModules={() => navigate("/modules")}
+        onOpenModules={() => navigate("/")}
         onOpenAccount={() => setAccountOpen(true)}
         onSignOut={handleSignOut}
       />

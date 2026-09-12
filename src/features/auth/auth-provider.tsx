@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
 
     setPendingPasswordRecovery(false);
-    window.history.replaceState(null, "", "/modules");
+    window.history.replaceState(null, "", "/");
     setIsPasswordRecovery(false);
   }, []);
 

@@ -85,11 +85,7 @@ export function TrashPage() {
   return (
     <main className="min-h-dvh bg-muted/20 px-5 py-10 sm:px-8">
       <div className="mx-auto max-w-4xl">
-        <Button
-          variant="ghost"
-          className="-ml-3"
-          onClick={() => navigate("/modules")}
-        >
+        <Button variant="ghost" className="-ml-3" onClick={() => navigate("/")}>
           <ArrowLeft /> Moduły
         </Button>
         <h1 className="mt-5 text-3xl font-semibold">Usunięte</h1>
