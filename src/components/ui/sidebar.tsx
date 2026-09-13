@@ -282,7 +282,10 @@ function SidebarTrigger({
         {isOpen ? <PanelLeftCloseIcon /> : <PanelLeftOpenIcon />}
         <span className="sr-only">{label}</span>
       </TooltipTrigger>
-      <TooltipContent side="bottom">{label}</TooltipContent>
+      <TooltipContent side="bottom">
+        {label}
+        <span className="text-background/65">Ctrl/⌘ B</span>
+      </TooltipContent>
     </Tooltip>
   );
 }

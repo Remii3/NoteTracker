@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { BarChart3, BookOpen, LayoutGrid, Trash2 } from "lucide-react";
+import {
+  BarChart3,
+  BookOpen,
+  CircleCheck,
+  LayoutGrid,
+  Trash2,
+} from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { toast } from "sonner";
 
@@ -146,7 +152,10 @@ function GlobalSidebar({
                   <SidebarMenuItem key={module.id}>
                     <SidebarMenuButton
                       className="h-10"
-                      tooltip={`${module.name} — ukończono ${module.progress}%`}
+                      tooltip={{
+                        children: `${module.name} — ukończono ${module.progress}%`,
+                        hidden: false,
+                      }}
                       render={
                         <NavLink
                           to={`/${module.slug}`}
@@ -160,34 +169,41 @@ function GlobalSidebar({
                         {module.name}
                       </span>
                       <span className="ml-auto grid size-6 shrink-0 place-items-center">
-                        <svg
-                          viewBox="0 0 20 20"
-                          className="size-5 -rotate-90"
-                          aria-hidden="true"
-                        >
-                          <circle
-                            cx="10"
-                            cy="10"
-                            r="8"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            className="text-sidebar-border"
+                        {module.progress === 100 ? (
+                          <CircleCheck
+                            className="size-5 text-primary"
+                            aria-hidden="true"
                           />
-                          <circle
-                            cx="10"
-                            cy="10"
-                            r="8"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            pathLength="100"
-                            strokeDasharray="100"
-                            strokeDashoffset={100 - module.progress}
-                            className="text-primary transition-[stroke-dashoffset]"
-                          />
-                        </svg>
+                        ) : (
+                          <svg
+                            viewBox="0 0 20 20"
+                            className="size-5 -rotate-90"
+                            aria-hidden="true"
+                          >
+                            <circle
+                              cx="10"
+                              cy="10"
+                              r="8"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              className="text-sidebar-border"
+                            />
+                            <circle
+                              cx="10"
+                              cy="10"
+                              r="8"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              pathLength="100"
+                              strokeDasharray="100"
+                              strokeDashoffset={100 - module.progress}
+                              className="text-primary transition-[stroke-dashoffset]"
+                            />
+                          </svg>
+                        )}
                         <span className="sr-only">
                           Ukończono {module.progress}%
                         </span>

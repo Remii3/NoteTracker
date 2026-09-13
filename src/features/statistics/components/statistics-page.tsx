@@ -6,6 +6,7 @@ import {
   History,
   ListFilter,
   Medal,
+  MoreHorizontal,
   Target,
   TrendingUp,
 } from "lucide-react";
@@ -30,6 +31,16 @@ import {
 import type { StatisticsRepository } from "../data/statistics-repository";
 import { MaterialProgressDashboard } from "./material-progress-dashboard";
 import { AppHeaderActions } from "@/components/app-header";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   areaStatus,
   type DailyStatistics,
@@ -166,7 +177,11 @@ export function StatisticsPage({
           value={mode}
           onValueChange={(value) => setMode(value as StatisticsMode)}
         >
-          <SelectTrigger size="sm" aria-label="Rodzaj powtórek">
+          <SelectTrigger
+            size="sm"
+            className="max-[360px]:hidden"
+            aria-label="Rodzaj powtórek"
+          >
             <ListFilter />
             <SelectValue className="hidden sm:flex">
               {mode === "all"
@@ -186,6 +201,7 @@ export function StatisticsPage({
           <Button
             size="sm"
             variant="outline"
+            className="max-[360px]:hidden"
             aria-label="Historia nauki"
             onClick={onOpenHistory}
           >
@@ -193,6 +209,44 @@ export function StatisticsPage({
             <span className="hidden sm:inline">Historia</span>
           </Button>
         )}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="outline"
+                className="min-[361px]:hidden"
+                aria-label="Więcej filtrów statystyk"
+              />
+            }
+          >
+            <MoreHorizontal />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Rodzaj powtórek</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={mode}
+              onValueChange={(value) => setMode(value as StatisticsMode)}
+            >
+              <DropdownMenuRadioItem value="all">
+                Wszystkie powtórki
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="test">Testy</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="flashcards">
+                Fiszki
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+            {onOpenHistory && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onOpenHistory}>
+                  <History /> Historia nauki
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </AppHeaderActions>
       <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
         <div className="mx-auto max-w-6xl space-y-8">
