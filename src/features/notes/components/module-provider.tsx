@@ -35,6 +35,10 @@ type Props = {
   onOpenModules?: () => void;
   onSignOut?: () => void;
   onOpenAccount?: () => void;
+  onModuleProgressChange?: (progress: {
+    completedTopicsCount: number;
+    topicsCount: number;
+  }) => void;
 };
 
 export function ModuleProvider({
@@ -51,10 +55,10 @@ export function ModuleProvider({
   userName,
   userEmail,
   moduleName,
-  moduleNameLoading,
   onOpenModules,
   onSignOut,
   onOpenAccount,
+  onModuleProgressChange,
 }: Props) {
   const [isSearchPending, setIsSearchPending] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
@@ -70,6 +74,28 @@ export function ModuleProvider({
     clearError: clearNotesError,
     error: notesError,
   } = notesStore;
+  const moduleProgress = useMemo(
+    () => ({
+      completedTopicsCount: chapters.reduce(
+        (sum, chapter) => sum + chapter.completedTopicsCount,
+        0,
+      ),
+      topicsCount: chapters.reduce(
+        (sum, chapter) => sum + chapter.topicsCount,
+        0,
+      ),
+    }),
+    [chapters],
+  );
+  useEffect(() => {
+    if (!notesStore.isLoading && !notesStore.loadFailed)
+      onModuleProgressChange?.(moduleProgress);
+  }, [
+    moduleProgress,
+    notesStore.isLoading,
+    notesStore.loadFailed,
+    onModuleProgressChange,
+  ]);
   const {
     loadChapterTopics,
     loadTopicContent,
@@ -400,8 +426,6 @@ export function ModuleProvider({
     onDragCancel: handleSidebarDragCancel,
     onDragEnd: handleSidebarDragEnd,
     userEmail,
-    moduleName,
-    moduleNameLoading,
     isLoading: notesStore.isLoading,
     onOpenModules,
     userName,
@@ -420,6 +444,7 @@ export function ModuleProvider({
   const header = !showHeader
     ? null
     : {
+        moduleName,
         isChapters: activeView === "chapters",
         isGallery: activeView === "gallery",
         isQuestions: activeView === "questions",

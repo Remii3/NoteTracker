@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router";
 
 import { useAuth } from "@/features/auth";
 import { supabase } from "@/lib/supabase/client";
@@ -8,7 +7,6 @@ import { SupabaseStatisticsRepository } from "../data/supabase-statistics-reposi
 
 export function StatisticsPage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const repository = useMemo(
     () => new SupabaseStatisticsRepository(supabase, user?.id ?? ""),
     [user?.id],
@@ -21,7 +19,6 @@ export function StatisticsPage() {
       repository={repository}
       moduleId={null}
       cacheScope={user.id}
-      onBack={() => navigate("/")}
     />
   );
 }

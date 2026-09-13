@@ -4,3 +4,4 @@ export { useAuth } from "./auth-context";
 export { getUserDisplayName } from "./user-display-name";
 export { PasswordRecoveryPage } from "./password-recovery-page";
 export { AccountDialog } from "./account-dialog";
+export { AccountMenu } from "./account-menu";

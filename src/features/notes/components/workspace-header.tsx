@@ -1,7 +1,12 @@
-import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import { Eye, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -9,6 +14,7 @@ import {
 } from "@/components/ui/tooltip";
 
 type Props = {
+  moduleName?: string;
   isChapters?: boolean;
   isGallery?: boolean;
   isQuestions?: boolean;
@@ -23,6 +29,7 @@ type Props = {
 };
 
 export function WorkspaceHeader({
+  moduleName,
   isChapters,
   isGallery,
   isQuestions,
@@ -35,71 +42,108 @@ export function WorkspaceHeader({
   onOpenAddDialog,
   onOpenBulkDelete,
 }: Props) {
+  const viewTitle = isChapters
+    ? "Wszystkie rozdziały"
+    : isGallery
+      ? "Galeria"
+      : isQuestions
+        ? isQuestionHistory
+          ? "Historia nauki"
+          : "Baza pytań"
+        : `${chapterTitle ?? "Rozdział"} / ${topicTitle ?? "Wybierz temat"}`;
+  const compactViewTitle =
+    !isChapters && !isGallery && !isQuestions && topicTitle
+      ? topicTitle
+      : viewTitle;
+
   return (
-    <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between gap-3 border-b bg-background/95 px-4 backdrop-blur sm:px-6">
-      <div className="flex min-w-0 items-center gap-3">
-        <SidebarTrigger />
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-primary">
-            {isChapters || isGallery || isQuestions
-              ? "NoteTracker"
-              : (chapterTitle ?? "Rozdział")}
-          </p>
-          <h1 className="truncate font-semibold">
-            {isChapters
-              ? "Wszystkie rozdziały"
-              : isGallery
-                ? "Galeria"
-                : isQuestions
-                  ? isQuestionHistory
-                    ? "Historia nauki"
-                    : "Baza pytań"
-                  : (topicTitle ?? "Wybierz temat")}
-          </h1>
-        </div>
+    <>
+      <div
+        className="min-w-0 flex-1 overflow-hidden"
+        aria-label={`${moduleName ?? "Moduł"}: ${viewTitle}`}
+      >
+        <p className="hidden truncate text-xs font-medium text-primary min-[480px]:block">
+          {moduleName ?? "Moduł"}
+        </p>
+        <h1 className="truncate text-sm font-semibold min-[480px]:hidden">
+          {moduleName ?? "Moduł"} · {compactViewTitle}
+        </h1>
+        <h1 className="hidden truncate font-semibold min-[480px]:block">
+          {viewTitle}
+        </h1>
       </div>
       {!isGallery && (
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex h-8 shrink-0 items-center gap-2">
           {isEditing && (
-            <div className="flex items-center gap-1">
-              <Tooltip>
-                <TooltipTrigger
+            <>
+              <div className="hidden items-center gap-1 sm:flex">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label="Usuń wiele rozdziałów lub tematów"
+                        onClick={onOpenBulkDelete}
+                      />
+                    }
+                  >
+                    <Trash2 />
+                  </TooltipTrigger>
+                  <TooltipContent>Usuń wiele</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label="Dodaj rozdział lub tematy"
+                        onClick={onOpenAddDialog}
+                      />
+                    }
+                  >
+                    <Plus />
+                  </TooltipTrigger>
+                  <TooltipContent>Dodaj zawartość</TooltipContent>
+                </Tooltip>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger
                   render={
                     <Button
                       type="button"
                       size="icon-sm"
                       variant="ghost"
-                      aria-label="Usuń wiele rozdziałów lub tematów"
-                      onClick={onOpenBulkDelete}
+                      className="sm:hidden"
+                      aria-label="Więcej działań edycji"
                     />
                   }
                 >
-                  <Trash2 />
-                </TooltipTrigger>
-                <TooltipContent>Usuń wiele</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      type="button"
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label="Dodaj rozdział lub tematy"
-                      onClick={onOpenAddDialog}
-                    />
-                  }
-                >
-                  <Plus />
-                </TooltipTrigger>
-                <TooltipContent>Dodaj zawartość</TooltipContent>
-              </Tooltip>
-            </div>
+                  <MoreHorizontal />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={onOpenAddDialog}>
+                    <Plus />
+                    Dodaj zawartość
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={onOpenBulkDelete}
+                  >
+                    <Trash2 />
+                    Usuń wiele
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           )}
           <div
             role="group"
             aria-label="Tryb pracy"
-            className="flex rounded-md bg-muted/60 p-0.5"
+            className="flex h-8 items-center rounded-md bg-muted/60 p-0.5"
           >
             <Tooltip>
               <TooltipTrigger
@@ -108,13 +152,13 @@ export function WorkspaceHeader({
                     type="button"
                     size="sm"
                     variant="ghost"
-                    aria-label="Włącz tryb podglądu"
-                    aria-pressed={!isEditing}
                     className={
                       !isEditing
-                        ? "bg-background text-foreground shadow-xs hover:bg-background"
-                        : "text-muted-foreground"
+                        ? "h-7 bg-background text-foreground shadow-xs hover:bg-background"
+                        : "h-7 text-muted-foreground"
                     }
+                    aria-label="Włącz tryb podglądu"
+                    aria-pressed={!isEditing}
                     onClick={() => onChangeEditingMode(false)}
                   />
                 }
@@ -131,13 +175,13 @@ export function WorkspaceHeader({
                     type="button"
                     size="sm"
                     variant="ghost"
-                    aria-label="Włącz tryb edycji"
-                    aria-pressed={isEditing}
                     className={
                       isEditing
-                        ? "bg-background text-foreground shadow-xs hover:bg-background"
-                        : "text-muted-foreground"
+                        ? "h-7 bg-background text-foreground shadow-xs hover:bg-background"
+                        : "h-7 text-muted-foreground"
                     }
+                    aria-label="Włącz tryb edycji"
+                    aria-pressed={isEditing}
                     onClick={() => onChangeEditingMode(true)}
                     onPointerEnter={onPreloadEditor}
                     onFocus={onPreloadEditor}
@@ -153,6 +197,6 @@ export function WorkspaceHeader({
           </div>
         </div>
       )}
-    </header>
+    </>
   );
 }

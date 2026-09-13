@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router";
+import { LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -28,7 +27,6 @@ const labels: Record<TrashItem["item_type"], string> = {
 
 export function TrashPage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const repository = useMemo(
     () =>
       new TrashRepository(
@@ -83,12 +81,10 @@ export function TrashPage() {
   }
 
   return (
-    <main className="min-h-dvh bg-muted/20 px-5 py-10 sm:px-8">
+    <main className="min-h-0 flex-1 overflow-y-auto bg-muted/20 px-5 py-10 sm:px-8">
       <div className="mx-auto max-w-4xl">
-        <Button variant="ghost" className="-ml-3" onClick={() => navigate("/")}>
-          <ArrowLeft /> Moduły
-        </Button>
-        <h1 className="mt-5 text-3xl font-semibold">Usunięte</h1>
+        <p className="text-sm font-medium text-primary">Kosz</p>
+        <h1 className="mt-1 text-3xl font-semibold">Usunięte elementy</h1>
         <p className="mt-2 text-muted-foreground">
           Elementy są automatycznie trwale usuwane po 24 godzinach.
         </p>

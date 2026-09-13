@@ -2,15 +2,37 @@ import { AuthPage, PasswordRecoveryPage, useAuth } from "@/features/auth";
 import { Navigate, RouterProvider, createBrowserRouter } from "react-router";
 
 import { AppLoading } from "@/components/app-loading";
+import { GlobalLayout } from "@/components/global-layout";
 
 const router = createBrowserRouter([
   {
-    path: "/",
-    lazy: () =>
-      import("@/features/modules/pages/modules-page").then(
-        ({ ModulesPage }) => ({ Component: ModulesPage }),
-      ),
-    HydrateFallback: AppLoading,
+    element: <GlobalLayout />,
+    children: [
+      {
+        index: true,
+        lazy: () =>
+          import("@/features/modules/pages/modules-page").then(
+            ({ ModulesPage }) => ({ Component: ModulesPage }),
+          ),
+        HydrateFallback: AppLoading,
+      },
+      {
+        path: "statistics",
+        lazy: () =>
+          import("@/features/statistics/pages/statistics-page").then(
+            ({ StatisticsPage }) => ({ Component: StatisticsPage }),
+          ),
+        HydrateFallback: AppLoading,
+      },
+      {
+        path: "trash",
+        lazy: () =>
+          import("@/features/trash/trash-page").then(({ TrashPage }) => ({
+            Component: TrashPage,
+          })),
+        HydrateFallback: AppLoading,
+      },
+    ],
   },
   {
     path: "/:moduleSlug",
@@ -86,22 +108,6 @@ const router = createBrowserRouter([
         handle: { activeView: "questions" },
       },
     ],
-  },
-  {
-    path: "/statistics",
-    lazy: () =>
-      import("@/features/statistics/pages/statistics-page").then(
-        ({ StatisticsPage }) => ({ Component: StatisticsPage }),
-      ),
-    HydrateFallback: AppLoading,
-  },
-  {
-    path: "/trash",
-    lazy: () =>
-      import("@/features/trash/trash-page").then(({ TrashPage }) => ({
-        Component: TrashPage,
-      })),
-    HydrateFallback: AppLoading,
   },
   { path: "*", element: <Navigate to="/" replace /> },
 ]);

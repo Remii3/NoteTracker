@@ -1,11 +1,9 @@
 import {
   ArrowUpDown,
   BarChart3,
-  BookOpen,
   Images,
   Layers3,
   LibraryBig,
-  LogOut,
   Search,
   X,
 } from "lucide-react";
@@ -34,21 +32,25 @@ import {
   SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
 import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { Chapter } from "../types/model";
 import { Input } from "@/components/ui/input";
 import { SidebarChapter } from "./sidebar-chapter";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MobileAppSidebarHeader } from "@/components/app-header";
+import { AccountMenu } from "@/features/auth";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type Props = {
   chapters: Chapter[];
@@ -90,8 +92,6 @@ type Props = {
   onDragCancel: () => void;
   onDragEnd: (event: DragEndEvent) => void;
   userEmail?: string;
-  moduleName?: string;
-  moduleNameLoading?: boolean;
   isLoading?: boolean;
   onOpenModules?: () => void;
   userName?: string;
@@ -136,8 +136,6 @@ export function WorkspaceSidebar({
   onDragCancel,
   onDragEnd,
   userEmail,
-  moduleName,
-  moduleNameLoading,
   isLoading,
   onOpenModules,
   userName,
@@ -147,45 +145,52 @@ export function WorkspaceSidebar({
 }: Props) {
   const hasSearch = search.trim().length > 0;
   const isEmpty = chapters.length === 0 && !hasSearch;
-  const navigationSentinelRef = useRef<HTMLDivElement>(null);
-  const [primaryNavigationVisible, setPrimaryNavigationVisible] =
-    useState(true);
-
-  useEffect(() => {
-    const sentinel = navigationSentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setPrimaryNavigationVisible(entry.isIntersecting),
-      { threshold: 0.01 },
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, []);
+  const compactNavigation = [
+    {
+      label: "Wszystkie rozdziały",
+      ariaLabel: "Przejdź do wszystkich rozdziałów",
+      icon: LibraryBig,
+      active: isChapters,
+      onClick: onOpenChapters,
+    },
+    {
+      label: "Statystyki",
+      ariaLabel: "Przejdź do statystyk",
+      icon: BarChart3,
+      active: isStatistics,
+      onClick: onOpenStatistics,
+    },
+    {
+      label: "Galeria",
+      ariaLabel: "Przejdź do galerii",
+      icon: Images,
+      active: isGallery,
+      onClick: onOpenGallery,
+    },
+    {
+      label: "Baza pytań",
+      ariaLabel: "Przejdź do bazy pytań",
+      icon: Layers3,
+      active: isQuestions,
+      onClick: onOpenQuestions,
+    },
+  ];
+  const sortModeLabel = {
+    manual: "ręczne",
+    az: "alfabetycznie A–Z",
+    za: "alfabetycznie Z–A",
+    completed: "ukończone najpierw",
+    incomplete: "nieukończone najpierw",
+  }[sortMode];
 
   return (
-    <Sidebar collapsible="offcanvas">
-      <SidebarHeader className="border-b p-3">
-        <div className="flex items-center gap-3 px-1 py-1">
-          <Button
-            onClick={onOpenChapters}
-            className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"
-          >
-            <BookOpen className="size-5" />
-          </Button>
-          <div>
-            <button type="button" className="text-left" onClick={onOpenModules}>
-              {moduleNameLoading ? (
-                <Skeleton className="h-4 w-28" />
-              ) : (
-                <p className="font-semibold leading-tight">
-                  {moduleName ?? "NoteTracker"}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground">Zmień moduł</p>
-            </button>
-          </div>
-        </div>
-        <div className="mt-2 flex gap-2">
+    <Sidebar
+      collapsible="offcanvas"
+      className="top-14 h-[calc(100svh-3.5rem)] [&_button]:cursor-default"
+    >
+      <MobileAppSidebarHeader onOpenHome={() => onOpenModules?.()} />
+      <SidebarHeader className="gap-2 border-b p-2">
+        <div className="flex gap-2">
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -214,12 +219,19 @@ export function WorkspaceSidebar({
                 <Button
                   variant={sortMode === "manual" ? "outline" : "secondary"}
                   size="icon"
-                  aria-label="Sortuj rozdziały"
+                  className="relative"
+                  aria-label={`Sortowanie rozdziałów: ${sortModeLabel}`}
                   disabled={isLoading}
                 />
               }
             >
               <ArrowUpDown />
+              {sortMode !== "manual" && (
+                <span
+                  className="absolute top-1 right-1 size-1.5 rounded-full bg-primary"
+                  aria-hidden="true"
+                />
+              )}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuGroup>
@@ -250,94 +262,40 @@ export function WorkspaceSidebar({
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup className="pb-0">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton isActive={isChapters} onClick={onOpenChapters}>
-                <LibraryBig />
-                <span>Wszystkie rozdziały</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                isActive={isStatistics}
-                onClick={onOpenStatistics}
+      <div className="flex h-10 shrink-0 items-center gap-1 border-b bg-sidebar px-4">
+        <span className="mr-auto text-xs font-medium text-sidebar-foreground/70">
+          Rozdziały
+        </span>
+        {compactNavigation.map(
+          ({ label, ariaLabel, icon: Icon, active, onClick }) => (
+            <Tooltip key={label}>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={ariaLabel}
+                    aria-current={active ? "page" : undefined}
+                    className={
+                      active
+                        ? "size-10 bg-sidebar-accent text-sidebar-accent-foreground shadow-xs md:size-8"
+                        : "size-10 text-sidebar-foreground/70 md:size-8"
+                    }
+                    onClick={onClick}
+                  />
+                }
               >
-                <BarChart3 />
-                <span>Statystyki</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton isActive={isGallery} onClick={onOpenGallery}>
-                <Images />
-                <span>Galeria</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                isActive={isQuestions}
-                onClick={onOpenQuestions}
-              >
-                <Layers3 />
-                <span>Baza pytań</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-          <div ref={navigationSentinelRef} className="h-px" aria-hidden />
-        </SidebarGroup>
+                <Icon />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{label}</TooltipContent>
+            </Tooltip>
+          ),
+        )}
+      </div>
+
+      <SidebarContent className="gap-0">
         <SidebarGroup>
-          <div className="sticky top-0 z-20 -mx-2 bg-sidebar/95 px-2 py-1 backdrop-blur-sm">
-            <div className="flex h-8 items-center gap-1 px-2">
-              <span className="mr-auto text-xs font-medium text-sidebar-foreground/70">
-                Rozdziały
-              </span>
-              {!primaryNavigationVisible && (
-                <>
-                  <Button
-                    type="button"
-                    variant={isStatistics ? "secondary" : "ghost"}
-                    size="icon-xs"
-                    title="Statystyki"
-                    aria-label="Przejdź do statystyk"
-                    onClick={onOpenStatistics}
-                  >
-                    <BarChart3 />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={isGallery ? "secondary" : "ghost"}
-                    size="icon-xs"
-                    title="Galeria"
-                    aria-label="Przejdź do galerii"
-                    onClick={onOpenGallery}
-                  >
-                    <Images />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={isChapters ? "secondary" : "ghost"}
-                    size="icon-xs"
-                    title="Wszystkie rozdziały"
-                    aria-label="Przejdź do wszystkich rozdziałów"
-                    onClick={onOpenChapters}
-                  >
-                    <LibraryBig />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={isQuestions ? "secondary" : "ghost"}
-                    size="icon-xs"
-                    title="Baza pytań"
-                    aria-label="Przejdź do bazy pytań"
-                    onClick={onOpenQuestions}
-                  >
-                    <Layers3 />
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
           <SidebarGroupContent>
             {error && (
               <p role="alert" className="mb-2 px-2 text-xs text-destructive">
@@ -456,37 +414,14 @@ export function WorkspaceSidebar({
       </SidebarContent>
 
       <SidebarFooter className="min-h-16 shrink-0 justify-center border-t p-2">
-        <div className="flex w-full items-center gap-1">
-          <Button
-            variant="ghost"
-            type="button"
-            className="h-auto min-w-0 flex-1 justify-start gap-3 px-2 py-1.5 text-left"
-            onClick={onOpenAccount}
-          >
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">
-              {(userName?.[0] ?? userEmail?.[0] ?? "U").toLocaleUpperCase("pl")}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium leading-5">
-                {userName ?? "Użytkownik"}
-              </span>
-              <span className="block truncate text-xs font-normal leading-4 text-muted-foreground">
-                {userEmail ?? "konto prywatne"}
-              </span>
-            </span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="shrink-0"
-            type="button"
-            aria-label="Wyloguj"
-            onClick={onSignOut}
-          >
-            <LogOut />
-          </Button>
-        </div>
+        <AccountMenu
+          userName={userName}
+          userEmail={userEmail}
+          onOpenAccount={() => onOpenAccount?.()}
+          onSignOut={() => onSignOut?.()}
+        />
       </SidebarFooter>
+
       <SidebarRail />
     </Sidebar>
   );

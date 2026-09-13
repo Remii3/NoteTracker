@@ -37,7 +37,7 @@ export function SortableRow({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "relative flex items-center gap-1 rounded-lg pl-7 transition-colors",
+        "relative flex items-center gap-1 rounded-lg pl-7 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sidebar-ring/50",
         active ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/70",
         isDragging && "relative z-10 opacity-60 shadow-lg",
         className,

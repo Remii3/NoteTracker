@@ -2,9 +2,8 @@ import type { ComponentProps } from "react";
 import { Outlet } from "react-router";
 
 import { LoadError } from "@/components/load-error";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { AppFrame } from "@/components/app-header";
 import { WorkspaceHeader } from "./workspace-header";
 import { WorkspaceSidebar } from "./workspace-sidebar";
 import { WorkspaceDialogs } from "./workspace-dialogs";
@@ -28,29 +27,27 @@ export function ModuleLayout({
   onRetry,
   onBack,
 }: Props) {
+  const content = isLoading ? (
+    <WorkspaceLoadingSkeleton />
+  ) : loadFailed ? (
+    <LoadError
+      message="Nie udało się pobrać notatek."
+      onRetry={onRetry}
+      onBack={onBack}
+    />
+  ) : (
+    <Outlet />
+  );
+
   return (
-    <TooltipProvider>
-      <SidebarProvider
-        style={{ "--sidebar-width": "20rem" } as React.CSSProperties}
-      >
-        <WorkspaceSidebar {...sidebar} />
-        <SidebarInset className="h-dvh max-h-dvh min-w-0 overflow-hidden">
-          {header && <WorkspaceHeader {...header} />}
-          {isLoading ? (
-            <WorkspaceLoadingSkeleton />
-          ) : loadFailed ? (
-            <LoadError
-              message="Nie udało się pobrać notatek."
-              onRetry={onRetry}
-              onBack={onBack}
-            />
-          ) : (
-            <Outlet />
-          )}
-        </SidebarInset>
-        <WorkspaceDialogs {...dialogs} />
-      </SidebarProvider>
-    </TooltipProvider>
+    <AppFrame
+      content={content}
+      onOpenHome={() => sidebar.onOpenModules?.()}
+      overlay={<WorkspaceDialogs {...dialogs} />}
+      sidebar={<WorkspaceSidebar {...sidebar} />}
+    >
+      {header && <WorkspaceHeader {...header} />}
+    </AppFrame>
   );
 }
 

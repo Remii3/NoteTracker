@@ -1,10 +1,8 @@
 import {
   ArrowDown,
   ArrowUp,
-  BarChart3,
   BookOpen,
   LoaderCircle,
-  LogOut,
   Pencil,
   Plus,
   Trash2,
@@ -31,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { readMemoryCache, writeMemoryCache } from "@/lib/memory-cache";
+import { AppHeaderActions } from "@/components/app-header";
 import type { Module, ModulesRepository } from "./data/modules-repository";
 import {
   MODULE_NAME_MAX_LENGTH,
@@ -42,29 +41,25 @@ import {
 type Props = {
   repository: ModulesRepository;
   onSelect: (module: Module) => void;
-  onSignOut: () => void;
-  onOpenTrash?: () => void;
-  onOpenStatistics?: () => void;
   cacheKey?: string;
+  onDeleted?: (module: Module) => void;
+  onLoaded?: (modules: Module[]) => void;
 };
 
 export function ModulePicker({
   repository,
   onSelect,
-  onSignOut,
-  onOpenTrash,
-  onOpenStatistics,
   cacheKey,
+  onDeleted,
+  onLoaded,
 }: Props) {
   const cachedModules = cacheKey
     ? readMemoryCache<Module[]>(cacheKey)
     : undefined;
   const [modules, setModules] = useState<Module[]>(cachedModules ?? []);
-  const [name, setName] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(!cachedModules);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [nameError, setNameError] = useState<string | null>(null);
   const [renamedModule, setRenamedModule] = useState<Module | null>(null);
   const [deletedModule, setDeletedModule] = useState<Module | null>(null);
   const updateModules = useCallback(
@@ -82,7 +77,9 @@ export function ModulePicker({
     setIsLoading(true);
     setError(null);
     try {
-      updateModules(await repository.list());
+      const items = await repository.list();
+      updateModules(items);
+      onLoaded?.(items);
     } catch {
       setError("Nie udało się pobrać modułów.");
     } finally {
@@ -94,7 +91,10 @@ export function ModulePicker({
     void repository
       .list()
       .then((items) => {
-        if (active) updateModules(items);
+        if (active) {
+          updateModules(items);
+          onLoaded?.(items);
+        }
       })
       .catch(() => {
         if (active) setError("Nie udało się pobrać modułów.");
@@ -105,26 +105,20 @@ export function ModulePicker({
     return () => {
       active = false;
     };
-  }, [repository, updateModules]);
+  }, [onLoaded, repository, updateModules]);
 
-  async function createModule() {
-    const validationError = validateModuleName(name, modules);
-    setNameError(validationError);
-    if (validationError || isSubmitting) return;
-    setIsSubmitting(true);
+  async function createModule(name: string) {
     setError(null);
     try {
       const created = await repository.create(
-        normalizeModuleName(name),
+        name,
         (modules.at(-1)?.position ?? 0) + 1000,
       );
       updateModules((current) => [...current, created]);
-      setName("");
+      setCreateOpen(false);
       onSelect(created);
     } catch {
-      setError("Nie udało się utworzyć modułu.");
-    } finally {
-      setIsSubmitting(false);
+      throw new Error("create-module-failed");
     }
   }
 
@@ -142,218 +136,261 @@ export function ModulePicker({
   }
 
   return (
-    <main className="min-h-dvh bg-muted/20 px-5 py-10 sm:px-8">
-      <div className="mx-auto max-w-4xl">
-        <header className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-primary">NoteTracker</p>
-            <h1 className="mt-1 text-3xl font-semibold">Wybierz moduł</h1>
+    <>
+      <AppHeaderActions>
+        <Button size="sm" onClick={() => setCreateOpen(true)}>
+          <Plus />
+          <span className="hidden sm:inline">Nowy moduł</span>
+        </Button>
+      </AppHeaderActions>
+      <main className="min-h-0 flex-1 overflow-y-auto bg-muted/20 px-5 py-10 sm:px-8">
+        <div className="mx-auto max-w-4xl">
+          <header>
+            <p className="text-sm font-medium text-primary">Twoja przestrzeń</p>
+            <h1 className="mt-1 text-3xl font-semibold">Moduły</h1>
             <p className="mt-2 text-muted-foreground">
               Moduł grupuje rozdziały należące do jednego obszaru nauki.
             </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onOpenStatistics}>
-              <BarChart3 /> Statystyki
-            </Button>
-            <Button variant="outline" onClick={onOpenTrash}>
-              <Trash2 /> Usunięte
-            </Button>
-            <Button variant="ghost" onClick={onSignOut}>
-              <LogOut /> Wyloguj
-            </Button>
-          </div>
-        </header>
-        <form
-          className="mt-8"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void createModule();
-          }}
-        >
-          <div className="flex gap-2">
-            <Input
-              value={name}
-              maxLength={MODULE_NAME_MAX_LENGTH}
-              aria-invalid={Boolean(nameError)}
-              placeholder="Nazwa nowego modułu"
-              onChange={(event) => {
-                setName(event.target.value);
-                setNameError(null);
-              }}
-            />
-            <Button type="submit" disabled={!name.trim() || isSubmitting}>
-              {isSubmitting ? (
-                <LoaderCircle className="animate-spin" />
-              ) : (
-                <Plus />
-              )}
-              Utwórz
-            </Button>
-          </div>
-          <div className="mt-1 flex justify-between text-xs">
-            <span className="text-destructive">{nameError}</span>
+          </header>
+          {error && (
+            <div className="mt-8 flex items-center gap-3 text-sm text-destructive">
+              <span>{error}</span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void loadModules()}
+              >
+                Spróbuj ponownie
+              </Button>
+            </div>
+          )}
+          {isLoading ? (
+            <div
+              className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+              role="status"
+              aria-busy="true"
+              aria-label="Ładowanie modułów"
+            >
+              {Array.from({ length: 6 }, (_, index) => (
+                <div
+                  key={index}
+                  className="rounded-xl border bg-background p-5"
+                  aria-hidden="true"
+                >
+                  <Skeleton className="size-5 rounded-md" />
+                  <Skeleton className="mt-4 h-5 w-3/4" />
+                  <Skeleton className="mt-2 h-4 w-24" />
+                  <div className="mt-4 flex gap-2 border-t pt-3">
+                    {Array.from({ length: 4 }, (_, actionIndex) => (
+                      <Skeleton
+                        key={actionIndex}
+                        className="size-8 rounded-md"
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : modules.length ? (
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {modules.map((module, index) => (
+                <article
+                  key={module.id}
+                  className="rounded-xl border bg-background p-5"
+                >
+                  <button
+                    type="button"
+                    className="w-full text-left"
+                    onClick={() => onSelect(module)}
+                  >
+                    <BookOpen className="size-5 text-primary" />
+                    <span className="mt-4 block font-semibold">
+                      {module.name}
+                    </span>
+                    <span className="mt-1 block text-sm text-muted-foreground">
+                      {module.chaptersCount === 1
+                        ? "1 rozdział"
+                        : `${module.chaptersCount} rozdziałów`}
+                    </span>
+                    {module.topicsCount ? (
+                      <span className="mt-4 block">
+                        <span className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                          <span>
+                            {module.completedTopicsCount}/{module.topicsCount}{" "}
+                            tematów
+                          </span>
+                          <span className="font-medium text-foreground">
+                            {getModuleProgress(module)}%
+                          </span>
+                        </span>
+                        <Progress
+                          className="mt-2"
+                          value={getModuleProgress(module)}
+                          aria-label={`Postęp modułu ${module.name}`}
+                        />
+                      </span>
+                    ) : (
+                      <span className="mt-4 block text-xs text-muted-foreground">
+                        Brak tematów
+                      </span>
+                    )}
+                  </button>
+                  <div className="mt-4 flex gap-1 border-t pt-3">
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label="Przenieś wyżej"
+                      disabled={index === 0}
+                      onClick={() => void reorder(module.id, -1)}
+                    >
+                      <ArrowUp />
+                    </Button>
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label="Przenieś niżej"
+                      disabled={index === modules.length - 1}
+                      onClick={() => void reorder(module.id, 1)}
+                    >
+                      <ArrowDown />
+                    </Button>
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label="Zmień nazwę"
+                      onClick={() => setRenamedModule(module)}
+                    >
+                      <Pencil />
+                    </Button>
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label="Usuń moduł"
+                      onClick={() => setDeletedModule(module)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-8 rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
+              Utwórz pierwszy moduł, aby rozpocząć.
+            </div>
+          )}
+        </div>
+        {renamedModule && (
+          <RenameModuleDialog
+            module={renamedModule}
+            modules={modules}
+            onClose={() => setRenamedModule(null)}
+            onRename={async (nextName) => {
+              await repository.rename(renamedModule.id, nextName);
+              updateModules((current) =>
+                current.map((item) =>
+                  item.id === renamedModule.id
+                    ? { ...item, name: nextName }
+                    : item,
+                ),
+              );
+            }}
+          />
+        )}
+        {deletedModule && (
+          <DeleteModuleDialog
+            module={deletedModule}
+            onClose={() => setDeletedModule(null)}
+            onDelete={async () => {
+              await repository.remove(deletedModule.id);
+              updateModules((current) =>
+                current.filter((item) => item.id !== deletedModule.id),
+              );
+              onDeleted?.(deletedModule);
+            }}
+          />
+        )}
+        {createOpen && (
+          <CreateModuleDialog
+            modules={modules}
+            onClose={() => setCreateOpen(false)}
+            onCreate={createModule}
+          />
+        )}
+      </main>
+    </>
+  );
+}
+
+function CreateModuleDialog({
+  modules,
+  onClose,
+  onCreate,
+}: {
+  modules: Module[];
+  onClose: () => void;
+  onCreate: (name: string) => Promise<void>;
+}) {
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    const validationError = validateModuleName(name, modules);
+    setError(validationError);
+    if (validationError) return;
+    setIsSubmitting(true);
+    try {
+      await onCreate(normalizeModuleName(name));
+    } catch {
+      setError("Nie udało się utworzyć modułu.");
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && !isSubmitting && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Nowy moduł</DialogTitle>
+        </DialogHeader>
+        <form className="space-y-4" onSubmit={submit}>
+          <Input
+            autoFocus
+            value={name}
+            maxLength={MODULE_NAME_MAX_LENGTH}
+            aria-invalid={Boolean(error)}
+            placeholder="Nazwa nowego modułu"
+            onChange={(event) => {
+              setName(event.target.value);
+              setError(null);
+            }}
+          />
+          <div className="flex justify-between text-xs">
+            <span className="text-destructive">{error}</span>
             <span className="text-muted-foreground">
               {name.length}/{MODULE_NAME_MAX_LENGTH}
             </span>
           </div>
-        </form>
-        {error && (
-          <div className="mt-4 flex items-center gap-3 text-sm text-destructive">
-            <span>{error}</span>
+          <DialogFooter>
             <Button
               type="button"
-              size="sm"
               variant="outline"
-              onClick={() => void loadModules()}
+              disabled={isSubmitting}
+              onClick={onClose}
             >
-              Spróbuj ponownie
+              Anuluj
             </Button>
-          </div>
-        )}
-        {isLoading ? (
-          <div
-            className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-            role="status"
-            aria-busy="true"
-            aria-label="Ładowanie modułów"
-          >
-            {Array.from({ length: 6 }, (_, index) => (
-              <div
-                key={index}
-                className="rounded-xl border bg-background p-5"
-                aria-hidden="true"
-              >
-                <Skeleton className="size-5 rounded-md" />
-                <Skeleton className="mt-4 h-5 w-3/4" />
-                <Skeleton className="mt-2 h-4 w-24" />
-                <div className="mt-4 flex gap-2 border-t pt-3">
-                  {Array.from({ length: 4 }, (_, actionIndex) => (
-                    <Skeleton key={actionIndex} className="size-8 rounded-md" />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : modules.length ? (
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {modules.map((module, index) => (
-              <article
-                key={module.id}
-                className="rounded-xl border bg-background p-5"
-              >
-                <button
-                  type="button"
-                  className="w-full text-left"
-                  onClick={() => onSelect(module)}
-                >
-                  <BookOpen className="size-5 text-primary" />
-                  <span className="mt-4 block font-semibold">
-                    {module.name}
-                  </span>
-                  <span className="mt-1 block text-sm text-muted-foreground">
-                    {module.chaptersCount === 1
-                      ? "1 rozdział"
-                      : `${module.chaptersCount} rozdziałów`}
-                  </span>
-                  {module.topicsCount ? (
-                    <span className="mt-4 block">
-                      <span className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                        <span>
-                          {module.completedTopicsCount}/{module.topicsCount}{" "}
-                          tematów
-                        </span>
-                        <span className="font-medium text-foreground">
-                          {getModuleProgress(module)}%
-                        </span>
-                      </span>
-                      <Progress
-                        className="mt-2"
-                        value={getModuleProgress(module)}
-                        aria-label={`Postęp modułu ${module.name}`}
-                      />
-                    </span>
-                  ) : (
-                    <span className="mt-4 block text-xs text-muted-foreground">
-                      Brak tematów
-                    </span>
-                  )}
-                </button>
-                <div className="mt-4 flex gap-1 border-t pt-3">
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    aria-label="Przenieś wyżej"
-                    disabled={index === 0}
-                    onClick={() => void reorder(module.id, -1)}
-                  >
-                    <ArrowUp />
-                  </Button>
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    aria-label="Przenieś niżej"
-                    disabled={index === modules.length - 1}
-                    onClick={() => void reorder(module.id, 1)}
-                  >
-                    <ArrowDown />
-                  </Button>
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    aria-label="Zmień nazwę"
-                    onClick={() => setRenamedModule(module)}
-                  >
-                    <Pencil />
-                  </Button>
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    aria-label="Usuń moduł"
-                    onClick={() => setDeletedModule(module)}
-                  >
-                    <Trash2 />
-                  </Button>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-8 rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
-            Utwórz pierwszy moduł, aby rozpocząć.
-          </div>
-        )}
-      </div>
-      {renamedModule && (
-        <RenameModuleDialog
-          module={renamedModule}
-          modules={modules}
-          onClose={() => setRenamedModule(null)}
-          onRename={async (nextName) => {
-            await repository.rename(renamedModule.id, nextName);
-            updateModules((current) =>
-              current.map((item) =>
-                item.id === renamedModule.id
-                  ? { ...item, name: nextName }
-                  : item,
-              ),
-            );
-          }}
-        />
-      )}
-      {deletedModule && (
-        <DeleteModuleDialog
-          module={deletedModule}
-          onClose={() => setDeletedModule(null)}
-          onDelete={async () => {
-            await repository.remove(deletedModule.id);
-            updateModules((current) =>
-              current.filter((item) => item.id !== deletedModule.id),
-            );
-          }}
-        />
-      )}
-    </main>
+            <Button type="submit" disabled={!name.trim() || isSubmitting}>
+              {isSubmitting && <LoaderCircle className="animate-spin" />}
+              Utwórz
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

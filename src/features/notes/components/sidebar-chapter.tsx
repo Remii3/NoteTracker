@@ -123,8 +123,8 @@ export function SidebarChapter(props: Props) {
             onClick={() => onSelectChapter(chapter)}
             className={
               isEditing
-                ? "min-w-0 flex-1 pr-7 hover:bg-transparent active:bg-transparent data-active:bg-transparent"
-                : "min-w-0 flex-1 hover:bg-transparent active:bg-transparent data-active:bg-transparent"
+                ? "min-w-0 flex-1 pr-7 before:hidden hover:bg-transparent active:bg-transparent data-active:bg-transparent"
+                : "min-w-0 flex-1 before:hidden hover:bg-transparent active:bg-transparent data-active:bg-transparent"
             }
           >
             <span className="min-w-0 flex-1 truncate">{chapter.title}</span>

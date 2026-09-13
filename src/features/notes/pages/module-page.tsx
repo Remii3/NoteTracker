@@ -16,6 +16,8 @@ import { ModuleProvider } from "../components/module-provider";
 import {
   clearUserMemoryCache,
   readMemoryCache,
+  rememberRecentModule,
+  updateRecentModuleProgress,
   writeMemoryCache,
 } from "@/lib/memory-cache";
 import { AppLoading } from "@/components/app-loading";
@@ -77,6 +79,39 @@ export function ModulePage() {
   });
   const selectedModule = moduleResource.value;
   const moduleId = selectedModule?.id;
+
+  const handleModuleProgressChange = useCallback(
+    ({
+      completedTopicsCount,
+      topicsCount,
+    }: {
+      completedTopicsCount: number;
+      topicsCount: number;
+    }) => {
+      if (!userId || !moduleId) return;
+      updateRecentModuleProgress(
+        userId,
+        moduleId,
+        completedTopicsCount,
+        topicsCount,
+      );
+      const cached = readMemoryCache<Module[]>(modulesCacheKey);
+      if (cached)
+        writeMemoryCache(
+          modulesCacheKey,
+          cached.map((module) =>
+            module.id === moduleId
+              ? { ...module, completedTopicsCount, topicsCount }
+              : module,
+          ),
+        );
+    },
+    [moduleId, modulesCacheKey, userId],
+  );
+
+  useEffect(() => {
+    if (selectedModule && userId) rememberRecentModule(userId, selectedModule);
+  }, [selectedModule, userId]);
 
   useEffect(() => {
     if (!selectedModule || selectedModule.slug === moduleSlug) return;
@@ -165,6 +200,7 @@ export function ModulePage() {
         moduleNameLoading={moduleResource.loading}
         onOpenModules={() => navigate("/")}
         onOpenAccount={() => setAccountOpen(true)}
+        onModuleProgressChange={handleModuleProgressChange}
         onSignOut={handleSignOut}
       />
       {accountOpen && <AccountDialog onClose={() => setAccountOpen(false)} />}

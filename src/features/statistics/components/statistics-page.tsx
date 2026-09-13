@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Flame,
   History,
+  ListFilter,
   Medal,
   Target,
   TrendingUp,
@@ -28,6 +29,7 @@ import {
 } from "@/lib/memory-cache";
 import type { StatisticsRepository } from "../data/statistics-repository";
 import { MaterialProgressDashboard } from "./material-progress-dashboard";
+import { AppHeaderActions } from "@/components/app-header";
 import {
   areaStatus,
   type DailyStatistics,
@@ -42,7 +44,7 @@ type Props = {
   repository: StatisticsRepository;
   moduleId: string | null;
   moduleName?: string;
-  onBack: () => void;
+  onBack?: () => void;
   onOpenHistory?: () => void;
   cacheScope?: string;
 };
@@ -140,232 +142,247 @@ export function StatisticsPage({
   }
 
   return (
-    <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
-      <div className="mx-auto max-w-6xl space-y-8">
-        <header className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-          <div>
-            <Button variant="ghost" className="mb-4 -ml-3" onClick={onBack}>
-              <ArrowLeft /> {moduleId ? "Wszystkie rozdziały" : "Moduły"}
-            </Button>
-            <p className="mb-2 text-sm font-medium text-primary">Twoja nauka</p>
-            <h1 className="text-3xl font-semibold">Statystyki</h1>
-            <p className="mt-2 text-muted-foreground">
-              {moduleId ? moduleName : "Wszystkie moduły"}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Select
-              value={String(range)}
-              onValueChange={(value) =>
-                setRange(Number(value) as StatisticsRange)
-              }
-            >
-              <SelectTrigger>
-                <CalendarDays />
-                <SelectValue>{RANGE_LABELS[range]}</SelectValue>
-              </SelectTrigger>
-              <SelectContent align="end">
-                {([7, 30, 90, 0] as const).map((value) => (
-                  <SelectItem key={value} value={String(value)}>
-                    {RANGE_LABELS[value]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={mode}
-              onValueChange={(value) => setMode(value as StatisticsMode)}
-            >
-              <SelectTrigger>
-                <SelectValue>
-                  {mode === "all"
-                    ? "Wszystkie powtórki"
-                    : mode === "test"
-                      ? "Testy"
-                      : "Fiszki"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent align="end">
-                <SelectItem value="all">Wszystkie powtórki</SelectItem>
-                <SelectItem value="test">Testy</SelectItem>
-                <SelectItem value="flashcards">Fiszki</SelectItem>
-              </SelectContent>
-            </Select>
-            {onOpenHistory && (
-              <Button variant="outline" onClick={onOpenHistory}>
-                <History /> Historia
-              </Button>
-            )}
-          </div>
-        </header>
-
-        {!data ? (
-          <LoadingState />
-        ) : (
-          <>
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <SummaryCard
-                icon={<Target />}
-                label="Ukończone tematy"
-                value={`${data.progress.summary.completedTopics}/${data.progress.summary.totalTopics}`}
-                note={`${data.progress.summary.remainingTopics} tematów pozostało`}
-              />
-              <SummaryCard
-                icon={<BarChart3 />}
-                label="Ukończone rozdziały"
-                value={`${data.progress.summary.completedChapters}/${data.progress.summary.totalChapters}`}
-                note="Rozdział zalicza się po ukończeniu wszystkich tematów"
-              />
-              {moduleId ? (
-                <SummaryCard
-                  icon={<Medal />}
-                  label="Postęp modułu"
-                  value={`${getPercent(data.progress.summary.completedTopics, data.progress.summary.totalTopics)}%`}
-                  note={`${data.progress.summary.remainingTopics} tematów pozostało do ukończenia`}
-                />
-              ) : (
-                <SummaryCard
-                  icon={<Medal />}
-                  label="Ukończone moduły"
-                  value={`${data.progress.summary.completedModules}/${data.progress.summary.totalModules}`}
-                  note="Moduł zalicza się po ukończeniu całego materiału"
-                />
-              )}
-              <SummaryCard
-                icon={<Flame />}
-                label="Seria zaliczeń"
-                value={`${data.progress.summary.currentStreak} dni`}
-                note={`Rekord: ${data.progress.summary.longestStreak} dni`}
-              />
-            </section>
-
-            <MaterialProgressDashboard
-              data={data}
-              moduleId={moduleId}
-              repository={repository}
-            />
-
-            <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-              <div className="rounded-2xl border p-5 sm:p-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-semibold">Aktywność</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Dzień po dniu w wybranym okresie
-                    </p>
-                  </div>
-                  <div className="flex rounded-lg bg-muted p-1">
-                    {(["completed", "answers", "sessions"] as const).map(
-                      (value) => (
-                        <Button
-                          key={value}
-                          size="sm"
-                          variant={metric === value ? "secondary" : "ghost"}
-                          onClick={() => setMetric(value)}
-                        >
-                          {value === "completed"
-                            ? "Zaliczenia"
-                            : value === "answers"
-                              ? "Odpowiedzi"
-                              : "Powtórki"}
-                        </Button>
-                      ),
-                    )}
-                  </div>
-                </div>
-                <ActivityChart
-                  daily={data.daily}
-                  progressDaily={data.progress.daily}
-                  metric={metric}
-                />
-              </div>
-              <WeeklyGoal
-                data={data}
-                goal={goal}
-                saving={savingGoal}
-                onChange={(value) => setGoalDraft({ key: requestKey, value })}
-                onSave={() => void saveGoal()}
-              />
-            </section>
-
-            <section className="grid gap-4 lg:grid-cols-2">
-              <div className="rounded-2xl border p-5 sm:p-6">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="size-5 text-primary" />
-                  <h2 className="text-lg font-semibold">
-                    Trend wyników powtórek
-                  </h2>
-                </div>
-                <SessionTrendChart sessions={data.sessionTrend} mode={mode} />
-              </div>
-              <div className="rounded-2xl border p-5 sm:p-6">
-                <div className="flex items-center gap-2">
-                  <Medal className="size-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Jakość powtórek</h2>
-                </div>
-                <ReviewQualityChart data={data} />
-                <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-                  <Record
-                    value={`${data.records.bestAccuracy}%`}
-                    label="Najlepsza sesja"
-                  />
-                  <Record
-                    value={data.records.mostAnswersInDay}
-                    label="Odpowiedzi w dzień"
-                  />
-                  <Record
-                    value={
-                      data.records.mostActiveDate
-                        ? formatShortDate(data.records.mostActiveDate)
-                        : "—"
-                    }
-                    label="Najaktywniejszy dzień"
-                  />
-                </div>
-              </div>
-            </section>
-
-            {moduleId ? (
-              <AreasTable data={data} />
-            ) : (
-              <ModulesTable data={data} />
-            )}
-
-            <section className="rounded-2xl border p-5 sm:p-6">
-              <h2 className="text-lg font-semibold">Ostatnie sesje powtórek</h2>
-              <div className="mt-4 divide-y">
-                {data.recentSessions.length ? (
-                  data.recentSessions.map((session) => (
-                    <div
-                      key={session.id}
-                      className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                    >
-                      <div>
-                        <p className="font-medium">
-                          {session.mode === "test" ? "Test" : "Fiszki"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {!moduleId && `${session.moduleName} · `}
-                          {formatDateTime(session.startedAt)}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold">{session.accuracy}%</p>
-                        <p className="text-xs text-muted-foreground">
-                          {session.answers} odpowiedzi
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <EmptyState />
-                )}
-              </div>
-            </section>
-          </>
+    <>
+      <AppHeaderActions>
+        <Select
+          value={String(range)}
+          onValueChange={(value) => setRange(Number(value) as StatisticsRange)}
+        >
+          <SelectTrigger size="sm" aria-label="Zakres statystyk">
+            <CalendarDays />
+            <SelectValue className="hidden sm:flex">
+              {RANGE_LABELS[range]}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent align="end">
+            {([7, 30, 90, 0] as const).map((value) => (
+              <SelectItem key={value} value={String(value)}>
+                {RANGE_LABELS[value]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={mode}
+          onValueChange={(value) => setMode(value as StatisticsMode)}
+        >
+          <SelectTrigger size="sm" aria-label="Rodzaj powtórek">
+            <ListFilter />
+            <SelectValue className="hidden sm:flex">
+              {mode === "all"
+                ? "Wszystkie powtórki"
+                : mode === "test"
+                  ? "Testy"
+                  : "Fiszki"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent align="end">
+            <SelectItem value="all">Wszystkie powtórki</SelectItem>
+            <SelectItem value="test">Testy</SelectItem>
+            <SelectItem value="flashcards">Fiszki</SelectItem>
+          </SelectContent>
+        </Select>
+        {onOpenHistory && (
+          <Button
+            size="sm"
+            variant="outline"
+            aria-label="Historia nauki"
+            onClick={onOpenHistory}
+          >
+            <History />
+            <span className="hidden sm:inline">Historia</span>
+          </Button>
         )}
-      </div>
-    </main>
+      </AppHeaderActions>
+      <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+        <div className="mx-auto max-w-6xl space-y-8">
+          <header>
+            <div>
+              {onBack && (
+                <Button variant="ghost" className="mb-4 -ml-3" onClick={onBack}>
+                  <ArrowLeft /> Wszystkie rozdziały
+                </Button>
+              )}
+              <p className="mb-2 text-sm font-medium text-primary">
+                Twoja nauka
+              </p>
+              <h1 className="text-3xl font-semibold">Statystyki</h1>
+              <p className="mt-2 text-muted-foreground">
+                {moduleId ? moduleName : "Wszystkie moduły"}
+              </p>
+            </div>
+          </header>
+
+          {!data ? (
+            <LoadingState />
+          ) : (
+            <>
+              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <SummaryCard
+                  icon={<Target />}
+                  label="Ukończone tematy"
+                  value={`${data.progress.summary.completedTopics}/${data.progress.summary.totalTopics}`}
+                  note={`${data.progress.summary.remainingTopics} tematów pozostało`}
+                />
+                <SummaryCard
+                  icon={<BarChart3 />}
+                  label="Ukończone rozdziały"
+                  value={`${data.progress.summary.completedChapters}/${data.progress.summary.totalChapters}`}
+                  note="Rozdział zalicza się po ukończeniu wszystkich tematów"
+                />
+                {moduleId ? (
+                  <SummaryCard
+                    icon={<Medal />}
+                    label="Postęp modułu"
+                    value={`${getPercent(data.progress.summary.completedTopics, data.progress.summary.totalTopics)}%`}
+                    note={`${data.progress.summary.remainingTopics} tematów pozostało do ukończenia`}
+                  />
+                ) : (
+                  <SummaryCard
+                    icon={<Medal />}
+                    label="Ukończone moduły"
+                    value={`${data.progress.summary.completedModules}/${data.progress.summary.totalModules}`}
+                    note="Moduł zalicza się po ukończeniu całego materiału"
+                  />
+                )}
+                <SummaryCard
+                  icon={<Flame />}
+                  label="Seria zaliczeń"
+                  value={`${data.progress.summary.currentStreak} dni`}
+                  note={`Rekord: ${data.progress.summary.longestStreak} dni`}
+                />
+              </section>
+
+              <MaterialProgressDashboard
+                data={data}
+                moduleId={moduleId}
+                repository={repository}
+              />
+
+              <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+                <div className="rounded-2xl border p-5 sm:p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-semibold">Aktywność</h2>
+                      <p className="text-sm text-muted-foreground">
+                        Dzień po dniu w wybranym okresie
+                      </p>
+                    </div>
+                    <div className="flex rounded-lg bg-muted p-1">
+                      {(["completed", "answers", "sessions"] as const).map(
+                        (value) => (
+                          <Button
+                            key={value}
+                            size="sm"
+                            variant={metric === value ? "secondary" : "ghost"}
+                            onClick={() => setMetric(value)}
+                          >
+                            {value === "completed"
+                              ? "Zaliczenia"
+                              : value === "answers"
+                                ? "Odpowiedzi"
+                                : "Powtórki"}
+                          </Button>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                  <ActivityChart
+                    daily={data.daily}
+                    progressDaily={data.progress.daily}
+                    metric={metric}
+                  />
+                </div>
+                <WeeklyGoal
+                  data={data}
+                  goal={goal}
+                  saving={savingGoal}
+                  onChange={(value) => setGoalDraft({ key: requestKey, value })}
+                  onSave={() => void saveGoal()}
+                />
+              </section>
+
+              <section className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-2xl border p-5 sm:p-6">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="size-5 text-primary" />
+                    <h2 className="text-lg font-semibold">
+                      Trend wyników powtórek
+                    </h2>
+                  </div>
+                  <SessionTrendChart sessions={data.sessionTrend} mode={mode} />
+                </div>
+                <div className="rounded-2xl border p-5 sm:p-6">
+                  <div className="flex items-center gap-2">
+                    <Medal className="size-5 text-primary" />
+                    <h2 className="text-lg font-semibold">Jakość powtórek</h2>
+                  </div>
+                  <ReviewQualityChart data={data} />
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+                    <Record
+                      value={`${data.records.bestAccuracy}%`}
+                      label="Najlepsza sesja"
+                    />
+                    <Record
+                      value={data.records.mostAnswersInDay}
+                      label="Odpowiedzi w dzień"
+                    />
+                    <Record
+                      value={
+                        data.records.mostActiveDate
+                          ? formatShortDate(data.records.mostActiveDate)
+                          : "—"
+                      }
+                      label="Najaktywniejszy dzień"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              {moduleId ? (
+                <AreasTable data={data} />
+              ) : (
+                <ModulesTable data={data} />
+              )}
+
+              <section className="rounded-2xl border p-5 sm:p-6">
+                <h2 className="text-lg font-semibold">
+                  Ostatnie sesje powtórek
+                </h2>
+                <div className="mt-4 divide-y">
+                  {data.recentSessions.length ? (
+                    data.recentSessions.map((session) => (
+                      <div
+                        key={session.id}
+                        className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                      >
+                        <div>
+                          <p className="font-medium">
+                            {session.mode === "test" ? "Test" : "Fiszki"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {!moduleId && `${session.moduleName} · `}
+                            {formatDateTime(session.startedAt)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">{session.accuracy}%</p>
+                          <p className="text-xs text-muted-foreground">
+                            {session.answers} odpowiedzi
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <EmptyState />
+                  )}
+                </div>
+              </section>
+            </>
+          )}
+        </div>
+      </main>
+    </>
   );
 }
 
