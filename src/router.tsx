@@ -75,7 +75,6 @@ const router = createBrowserRouter([
           ),
         handle: {
           activeView: "statistics",
-          showHeader: false,
         },
       },
       {

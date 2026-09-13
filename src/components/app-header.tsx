@@ -21,13 +21,19 @@ type Props = {
   children?: ReactNode;
   onOpenHome: () => void;
   onActionsTargetChange?: (target: HTMLDivElement | null) => void;
+  onInfoTargetChange?: (target: HTMLDivElement | null) => void;
+  onTrailingActionsTargetChange?: (target: HTMLDivElement | null) => void;
 };
 
 const HeaderActionsContext = createContext<HTMLElement | null>(null);
+const HeaderInfoContext = createContext<HTMLElement | null>(null);
+const HeaderTrailingActionsContext = createContext<HTMLElement | null>(null);
 
 export function AppHeader({
   children,
   onActionsTargetChange,
+  onInfoTargetChange,
+  onTrailingActionsTargetChange,
   onOpenHome,
 }: Props) {
   const { state } = useSidebar();
@@ -36,7 +42,7 @@ export function AppHeader({
     <header className="relative z-30 flex h-14 shrink-0 border-b bg-background/95 backdrop-blur">
       <div
         className={cn(
-          "hidden shrink-0 items-center overflow-hidden border-r transition-[width,padding] duration-200 md:flex",
+          "hidden shrink-0 items-center overflow-hidden border-r transition-[width,padding] duration-200 motion-reduce:transition-none md:flex",
           state === "expanded" ? "w-(--sidebar-width) px-3" : "w-0 px-0",
         )}
       >
@@ -46,7 +52,7 @@ export function AppHeader({
               <Button
                 type="button"
                 variant="ghost"
-                className="min-w-0 justify-start px-2 font-semibold"
+                className="min-w-0 justify-start px-2 font-semibold focus-visible:ring-2 focus-visible:ring-ring/70"
                 aria-label="Przejdź do modułów"
                 onClick={onOpenHome}
               />
@@ -59,13 +65,21 @@ export function AppHeader({
         </Tooltip>
       </div>
       <div className="flex min-w-0 flex-1 items-center gap-2 px-2 sm:gap-3 sm:px-6">
-        <SidebarTrigger className="shrink-0" />
+        <SidebarTrigger className="shrink-0 focus-visible:ring-2 focus-visible:ring-ring/70" />
         <div className="flex min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden sm:gap-3">
+          <div
+            ref={onInfoTargetChange}
+            className="min-w-0 flex-1 empty:hidden"
+          />
           {children}
         </div>
         <div
           ref={onActionsTargetChange}
           className="ml-auto flex shrink-0 items-center gap-2"
+        />
+        <div
+          ref={onTrailingActionsTargetChange}
+          className="flex shrink-0 items-center empty:hidden"
         />
       </div>
     </header>
@@ -76,12 +90,26 @@ export function AppHeaderActions({ children }: { children: ReactNode }) {
   const target = useContext(HeaderActionsContext);
   return target
     ? createPortal(
-        <div className="flex h-8 items-center gap-2 [&_[data-slot=button]]:h-8 [&_[data-slot=select-trigger]]:h-8">
+        <div className="flex h-8 items-center gap-2 sm:gap-3 [&_[data-slot=button]]:h-8 [&_[data-slot=select-trigger]]:h-8">
           {children}
         </div>,
         target,
       )
     : null;
+}
+
+export function AppHeaderInfo({ children }: { children: ReactNode }) {
+  const target = useContext(HeaderInfoContext);
+  return target ? createPortal(children, target) : null;
+}
+
+export function AppHeaderTrailingActions({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const target = useContext(HeaderTrailingActionsContext);
+  return target ? createPortal(children, target) : null;
 }
 
 export function MobileAppSidebarHeader({
@@ -95,7 +123,7 @@ export function MobileAppSidebarHeader({
             <Button
               type="button"
               variant="ghost"
-              className="min-w-0 justify-start px-2 font-semibold"
+              className="min-w-0 justify-start px-2 font-semibold focus-visible:ring-2 focus-visible:ring-ring/70"
               aria-label="Przejdź do modułów"
               onClick={onOpenHome}
             />
@@ -125,28 +153,44 @@ export function AppFrame({
 }: AppFrameProps) {
   const [headerActionsTarget, setHeaderActionsTarget] =
     useState<HTMLDivElement | null>(null);
+  const [headerInfoTarget, setHeaderInfoTarget] =
+    useState<HTMLDivElement | null>(null);
+  const [headerTrailingActionsTarget, setHeaderTrailingActionsTarget] =
+    useState<HTMLDivElement | null>(null);
 
   return (
     <TooltipProvider>
       <SidebarProvider
         className="flex-col"
-        style={{ "--sidebar-width": "20rem" } as React.CSSProperties}
+        style={
+          {
+            "--sidebar-width": "clamp(17rem, 25vw, 20rem)",
+          } as React.CSSProperties
+        }
       >
-        <HeaderActionsContext.Provider value={headerActionsTarget}>
-          <AppHeader
-            onActionsTargetChange={setHeaderActionsTarget}
-            onOpenHome={onOpenHome}
-          >
-            {children}
-          </AppHeader>
-          <div className="flex min-h-0 flex-1">
-            {sidebar}
-            <SidebarInset className="h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] min-w-0 overflow-hidden">
-              {content}
-            </SidebarInset>
-            {overlay}
-          </div>
-        </HeaderActionsContext.Provider>
+        <HeaderInfoContext.Provider value={headerInfoTarget}>
+          <HeaderActionsContext.Provider value={headerActionsTarget}>
+            <HeaderTrailingActionsContext.Provider
+              value={headerTrailingActionsTarget}
+            >
+              <AppHeader
+                onActionsTargetChange={setHeaderActionsTarget}
+                onInfoTargetChange={setHeaderInfoTarget}
+                onTrailingActionsTargetChange={setHeaderTrailingActionsTarget}
+                onOpenHome={onOpenHome}
+              >
+                {children}
+              </AppHeader>
+              <div className="flex min-h-0 flex-1">
+                {sidebar}
+                <SidebarInset className="h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] min-w-0 overflow-hidden">
+                  {content}
+                </SidebarInset>
+                {overlay}
+              </div>
+            </HeaderTrailingActionsContext.Provider>
+          </HeaderActionsContext.Provider>
+        </HeaderInfoContext.Provider>
       </SidebarProvider>
     </TooltipProvider>
   );

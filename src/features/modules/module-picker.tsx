@@ -29,7 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { readMemoryCache, writeMemoryCache } from "@/lib/memory-cache";
-import { AppHeaderActions } from "@/components/app-header";
+import { AppHeaderActions, AppHeaderInfo } from "@/components/app-header";
 import type { Module, ModulesRepository } from "./data/modules-repository";
 import {
   MODULE_NAME_MAX_LENGTH,
@@ -137,14 +137,19 @@ export function ModulePicker({
 
   return (
     <>
+      <AppHeaderInfo>
+        <p className="hidden truncate text-sm text-muted-foreground min-[480px]:block">
+          {isLoading ? "Ładowanie modułów…" : formatModuleCount(modules.length)}
+        </p>
+      </AppHeaderInfo>
       <AppHeaderActions>
         <Button size="sm" onClick={() => setCreateOpen(true)}>
           <Plus />
           <span className="hidden sm:inline">Nowy moduł</span>
         </Button>
       </AppHeaderActions>
-      <main className="min-h-0 flex-1 overflow-y-auto bg-muted/20 px-5 py-10 sm:px-8">
-        <div className="mx-auto max-w-4xl">
+      <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+        <div>
           <header>
             <p className="text-sm font-medium text-primary">Twoja przestrzeń</p>
             <h1 className="mt-1 text-3xl font-semibold">Moduły</h1>
@@ -321,6 +326,18 @@ export function ModulePicker({
       </main>
     </>
   );
+}
+
+function formatModuleCount(count: number) {
+  const lastTwo = count % 100;
+  const last = count % 10;
+  const noun =
+    count === 1
+      ? "moduł"
+      : last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)
+        ? "moduły"
+        : "modułów";
+  return `${count} ${noun}`;
 }
 
 function CreateModuleDialog({

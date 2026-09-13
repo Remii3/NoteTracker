@@ -10,7 +10,6 @@ type Options = {
   chapterId: string;
   topicId: string;
   topic?: Topic;
-  isEditing: boolean;
   isSaving: boolean;
   editorDirty: boolean;
   commands: {
@@ -51,7 +50,6 @@ export function useWorkspaceActions({
   chapterId,
   topicId,
   topic,
-  isEditing,
   isSaving,
   editorDirty,
   commands,
@@ -131,7 +129,7 @@ export function useWorkspaceActions({
   }
 
   async function addChapters(titles: string[]) {
-    if (!isEditing || isSaving || !titles.length) return false;
+    if (isSaving || !titles.length) return false;
     const usedSlugs = new Set(chapters.map((chapter) => chapter.slug));
     const newChapters: Chapter[] = titles.map((title, index) => {
       const slug = createUniqueSlug(title, usedSlugs, "rozdzial");
@@ -162,7 +160,7 @@ export function useWorkspaceActions({
   }
 
   async function addTopics(targetChapterId: string, titles: string[]) {
-    if (!isEditing || isSaving) return false;
+    if (isSaving) return false;
     let firstTopicId = "";
     const loadedTopics = await commands.loadChapterTopics(targetChapterId);
     const targetChapter = chapters.find((item) => item.id === targetChapterId);
@@ -199,7 +197,7 @@ export function useWorkspaceActions({
   }
 
   async function renameItem(item: ManagedItem, title: string) {
-    if (!isEditing || isSaving) return false;
+    if (isSaving) return false;
     if (item.kind === "chapter") {
       if (!(await commands.renameItem(item, title))) return false;
       toast.success("Zmieniono nazwę rozdziału.");
@@ -211,7 +209,7 @@ export function useWorkspaceActions({
   }
 
   async function deleteItem(item: ManagedItem) {
-    if (!isEditing || isSaving) return false;
+    if (isSaving) return false;
     if (item.kind === "chapter") {
       const remaining = chapters.filter((chapter) => chapter.id !== item.id);
       if (!(await commands.removeItem(item))) return false;
@@ -240,8 +238,7 @@ export function useWorkspaceActions({
   }
 
   async function deleteItems(chapterIds: string[], topicIds: string[]) {
-    if (!isEditing || isSaving || (!chapterIds.length && !topicIds.length))
-      return false;
+    if (isSaving || (!chapterIds.length && !topicIds.length)) return false;
 
     const selectedChapters = new Set(chapterIds);
     const topicIdsForCleanup = new Set(topicIds);

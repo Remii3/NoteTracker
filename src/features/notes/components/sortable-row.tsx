@@ -37,8 +37,10 @@ export function SortableRow({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "relative flex items-center gap-1 rounded-lg pl-7 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sidebar-ring/50",
-        active ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/70",
+        "relative flex min-h-8 items-center gap-2 rounded-lg border border-transparent px-2 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sidebar-ring/50",
+        active
+          ? "border-sidebar-border bg-sidebar-accent"
+          : "hover:bg-sidebar-accent/70",
         isDragging && "relative z-10 opacity-60 shadow-lg",
         className,
       )}
@@ -47,7 +49,7 @@ export function SortableRow({
         <button
           type="button"
           aria-label="Przeciągnij, aby zmienić kolejność"
-          className="absolute left-0 grid size-7 touch-none cursor-grab place-items-center rounded-md text-muted-foreground opacity-30 hover:bg-background hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
+          className="grid size-9 shrink-0 touch-none cursor-grab place-items-center rounded-md text-muted-foreground opacity-30 hover:bg-background hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing md:size-6"
           {...attributes}
           {...listeners}
         >

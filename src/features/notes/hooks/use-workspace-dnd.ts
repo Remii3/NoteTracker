@@ -30,7 +30,6 @@ type Options = {
   chapters: Chapter[];
   chapterId: string;
   topicId: string;
-  isEditing: boolean;
   isSaving: boolean;
   sortMode: SortMode;
   previewChapters: (updater: (chapters: Chapter[]) => Chapter[]) => void;
@@ -54,7 +53,6 @@ export function useWorkspaceDnd({
   chapters,
   chapterId,
   topicId,
-  isEditing,
   isSaving,
   sortMode,
   previewChapters,
@@ -78,7 +76,7 @@ export function useWorkspaceDnd({
   );
 
   function handleDragStart({ active }: DragStartEvent) {
-    if (!isEditing || isSaving) return;
+    if (isSaving) return;
     dragSnapshot.current = chapters;
     dragSelectionSnapshot.current = { chapterId, topicId };
     setError(null);
@@ -99,13 +97,7 @@ export function useWorkspaceDnd({
   }
 
   function handleDragOver({ active, over }: DragOverEvent) {
-    if (
-      !isEditing ||
-      isSaving ||
-      !over ||
-      active.data.current?.type !== "topic"
-    )
-      return;
+    if (isSaving || !over || active.data.current?.type !== "topic") return;
     const sourceChapter = chapters.find((item) =>
       item.topics.some((topic) => topic.id === active.id),
     );
@@ -162,7 +154,7 @@ export function useWorkspaceDnd({
   }
 
   async function handleDragEnd({ active, over }: DragEndEvent) {
-    if (!isEditing || isSaving) return;
+    if (isSaving) return;
     if (!over) {
       handleDragCancel();
       return;

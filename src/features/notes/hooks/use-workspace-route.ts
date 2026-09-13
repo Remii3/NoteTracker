@@ -21,7 +21,10 @@ export function useWorkspaceRoute({
 }: Options) {
   const matches = useMatches();
   const navigate = useNavigate();
-  const { moduleSlug = "" } = useParams<{ moduleSlug: string }>();
+  const { moduleSlug = "", studyMode: routeStudyMode } = useParams<{
+    moduleSlug: string;
+    studyMode?: string;
+  }>();
   const basePath = `/${moduleSlug}`;
   const leafMatch = matches.at(-1);
   const routeHandle = leafMatch?.handle as ModuleRouteHandle | undefined;
@@ -37,6 +40,10 @@ export function useWorkspaceRoute({
   const chapterId = chapter?.id ?? "";
   const topicId = topic?.id ?? "";
   const editorDirty = Boolean(topic && isTopicDirty(topic.id));
+  const studyMode: "flashcards" | "test" | undefined =
+    routeStudyMode === "test" || routeStudyMode === "flashcards"
+      ? routeStudyMode
+      : undefined;
 
   const navigateToChapter = useCallback(
     (nextChapterId: string, nextTopicId = "", replace = false) => {
@@ -146,5 +153,6 @@ export function useWorkspaceRoute({
     topicId,
     isQuestionHistory: routeHandle?.moduleView === "question-history",
     showHeader: routeHandle?.showHeader ?? true,
+    studyMode,
   };
 }

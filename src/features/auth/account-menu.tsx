@@ -32,7 +32,7 @@ export function AccountMenu({
           <Button
             type="button"
             variant="ghost"
-            className="h-auto w-full min-w-0 justify-start gap-3 px-2 py-1.5 text-left"
+            className="h-auto w-full min-w-0 justify-start gap-3 px-2 py-1.5 text-left focus-visible:ring-2 focus-visible:ring-sidebar-ring/70"
             aria-label="Otwórz menu konta"
           />
         }

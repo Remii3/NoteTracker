@@ -33,6 +33,7 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   SortableContext,
@@ -144,6 +145,7 @@ export function WorkspaceSidebar({
   onOpenAccount,
   isSearching,
 }: Props) {
+  const { isMobile, setOpen, setOpenMobile } = useSidebar();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const chapterListRef = useRef<HTMLDivElement>(null);
   const [scrollEdges, setScrollEdges] = useState({
@@ -152,6 +154,13 @@ export function WorkspaceSidebar({
   });
   const hasSearch = search.trim().length > 0;
   const isEmpty = chapters.length === 0 && !hasSearch;
+  const matchingTopicsCount = visibleChapters.reduce(
+    (total, chapter) => total + chapter.topics.length,
+    0,
+  );
+  const closeMobileSidebar = useCallback(() => {
+    if (isMobile) setOpenMobile(false);
+  }, [isMobile, setOpenMobile]);
   const compactNavigation = [
     {
       label: "Wszystkie rozdziały",
@@ -235,19 +244,29 @@ export function WorkspaceSidebar({
       )
         return;
       event.preventDefault();
-      searchInputRef.current?.focus();
+      if (isMobile) setOpenMobile(true);
+      else setOpen(true);
+      window.requestAnimationFrame(() => searchInputRef.current?.focus());
     };
     window.addEventListener("keydown", focusSearch);
     return () => window.removeEventListener("keydown", focusSearch);
-  }, []);
+  }, [isMobile, setOpen, setOpenMobile]);
 
   return (
     <Sidebar
       collapsible="offcanvas"
       className="top-14 h-[calc(100svh-3.5rem)] [&_button]:cursor-default"
     >
-      <MobileAppSidebarHeader onOpenHome={() => onOpenModules?.()} />
-      <div className="flex h-10 shrink-0 items-center gap-1 border-b bg-sidebar px-4">
+      <MobileAppSidebarHeader
+        onOpenHome={() => {
+          onOpenModules?.();
+          closeMobileSidebar();
+        }}
+      />
+      <nav
+        aria-label="Widoki modułu"
+        className="flex h-10 shrink-0 items-center gap-1 border-b bg-sidebar px-4"
+      >
         <span className="mr-auto text-xs font-medium text-sidebar-foreground/70">
           Widoki
         </span>
@@ -264,10 +283,13 @@ export function WorkspaceSidebar({
                     aria-current={active ? "page" : undefined}
                     className={
                       active
-                        ? "size-10 bg-sidebar-accent text-sidebar-accent-foreground shadow-xs md:size-8"
-                        : "size-10 text-sidebar-foreground/70 md:size-8"
+                        ? "size-10 border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring/70 md:size-8"
+                        : "size-10 text-sidebar-foreground/75 focus-visible:ring-2 focus-visible:ring-sidebar-ring/70 md:size-8"
                     }
-                    onClick={onClick}
+                    onClick={() => {
+                      onClick();
+                      closeMobileSidebar();
+                    }}
                   />
                 }
               >
@@ -277,7 +299,7 @@ export function WorkspaceSidebar({
             </Tooltip>
           ),
         )}
-      </div>
+      </nav>
       <SidebarHeader className="gap-2 border-b p-2">
         <div className="flex gap-2">
           <div className="group relative min-w-0 flex-1">
@@ -308,7 +330,7 @@ export function WorkspaceSidebar({
                 variant="ghost"
                 size="icon-xs"
                 aria-label="Wyczyść wyszukiwanie"
-                className="absolute top-1/2 right-1 -translate-y-1/2"
+                className="absolute top-1/2 right-1 -translate-y-1/2 active:not-aria-[haspopup]:-translate-y-1/2!"
                 onClick={() => onSearchChange("")}
               >
                 <X />
@@ -370,131 +392,155 @@ export function WorkspaceSidebar({
           className="gap-0"
           onScroll={updateChapterScrollState}
         >
-          <SidebarGroup>
-            <SidebarGroupContent>
-              {error && (
-                <p role="alert" className="mb-2 px-2 text-xs text-destructive">
-                  {error}
-                </p>
-              )}
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragStart={onDragStart}
-                onDragOver={onDragOver}
-                onDragCancel={onDragCancel}
-                onDragEnd={onDragEnd}
-              >
-                <SortableContext
-                  items={visibleChapters}
-                  strategy={verticalListSortingStrategy}
+          <nav aria-label="Rozdziały modułu">
+            <SidebarGroup>
+              <SidebarGroupContent>
+                {hasSearch && !isSearching && !isLoading && (
+                  <p
+                    className="px-2 pb-2 text-xs text-sidebar-foreground/65"
+                    aria-live="polite"
+                  >
+                    {formatResultCount(visibleChapters.length, "rozdział")} ·{" "}
+                    {formatResultCount(matchingTopicsCount, "temat")}
+                  </p>
+                )}
+                {error && (
+                  <p
+                    role="alert"
+                    className="mb-2 px-2 text-xs text-destructive"
+                  >
+                    {error}
+                  </p>
+                )}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={onDragStart}
+                  onDragOver={onDragOver}
+                  onDragCancel={onDragCancel}
+                  onDragEnd={onDragEnd}
                 >
-                  <SidebarMenu>
-                    {!visibleChapters.length && !isSearching && !isLoading && (
-                      <li className="px-3 py-8 text-center">
-                        {isEmpty ? (
-                          <>
-                            <p className="text-sm font-medium">
-                              Nie masz jeszcze rozdziałów
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Dodaj pierwszy rozdział, aby zacząć tworzyć
-                              notatki.
-                            </p>
-                            {isEditing && (
-                              <Button
-                                type="button"
-                                variant="link"
-                                size="sm"
-                                className="mt-2"
-                                onClick={onOpenAddDialog}
-                              >
-                                Dodaj pierwszy rozdział
-                              </Button>
+                  <SortableContext
+                    items={visibleChapters}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <SidebarMenu>
+                      {!visibleChapters.length &&
+                        !isSearching &&
+                        !isLoading && (
+                          <li className="px-3 py-8 text-center">
+                            {isEmpty ? (
+                              <>
+                                <p className="text-sm font-medium">
+                                  Nie masz jeszcze rozdziałów
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  Dodaj pierwszy rozdział, aby zacząć tworzyć
+                                  notatki.
+                                </p>
+                                {isEditing && (
+                                  <Button
+                                    type="button"
+                                    variant="link"
+                                    size="sm"
+                                    className="mt-2"
+                                    onClick={onOpenAddDialog}
+                                  >
+                                    Dodaj pierwszy rozdział
+                                  </Button>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-sm font-medium">
+                                  Brak wyników
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  Nie znaleziono rozdziału ani tematu pasującego
+                                  do „{search.trim()}”.
+                                </p>
+                                <Button
+                                  type="button"
+                                  variant="link"
+                                  size="sm"
+                                  className="mt-2"
+                                  onClick={() => onSearchChange("")}
+                                >
+                                  Wyczyść wyszukiwanie
+                                </Button>
+                              </>
                             )}
-                          </>
-                        ) : (
-                          <>
-                            <p className="text-sm font-medium">Brak wyników</p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Nie znaleziono rozdziału ani tematu pasującego do
-                              „{search.trim()}”.
-                            </p>
-                            <Button
-                              type="button"
-                              variant="link"
-                              size="sm"
-                              className="mt-2"
-                              onClick={() => onSearchChange("")}
-                            >
-                              Wyczyść wyszukiwanie
-                            </Button>
-                          </>
+                          </li>
                         )}
-                      </li>
-                    )}
-                    {!isSearching &&
-                      !isLoading &&
-                      visibleChapters.map((chapter) => (
-                        <SidebarChapter
-                          key={chapter.id}
-                          chapter={chapter}
-                          completeChapter={chapters.find(
-                            (item) => item.id === chapter.id,
-                          )}
-                          expanded={expandedChapters.has(chapter.id)}
-                          chapterId={chapterId}
-                          topicId={topicId}
-                          isEditing={isEditing}
-                          search={search}
-                          sortMode={sortMode}
-                          allChapters={chapters}
-                          onSelectChapter={onSelectChapter}
-                          onSelectTopic={onSelectTopic}
-                          onToggleExpanded={onToggleExpanded}
-                          onPrefetchTopics={onPrefetchTopics}
-                          onToggleChapter={onToggleChapter}
-                          onToggleTopic={onToggleTopic}
-                          onRenameItem={onRenameItem}
-                          onDeleteItem={onDeleteItem}
-                          onMoveChapter={onMoveChapter}
-                        />
-                      ))}
-                    {isSearching && (
-                      <li
-                        className="space-y-2 px-1 py-1"
-                        aria-label="Wyszukiwanie rozdziałów"
-                      >
-                        {Array.from({ length: 4 }, (_, index) => (
-                          <div
-                            key={index}
-                            className="flex h-8 items-center gap-2 px-2"
-                          >
-                            <Skeleton className="size-4 shrink-0 rounded-sm" />
-                            <Skeleton
-                              className={
-                                index % 2 === 0 ? "h-3 w-32" : "h-3 w-24"
-                              }
-                            />
-                            <Skeleton className="ml-auto h-3 w-7" />
-                          </div>
+                      {!isSearching &&
+                        !isLoading &&
+                        visibleChapters.map((chapter) => (
+                          <SidebarChapter
+                            key={chapter.id}
+                            chapter={chapter}
+                            completeChapter={chapters.find(
+                              (item) => item.id === chapter.id,
+                            )}
+                            expanded={expandedChapters.has(chapter.id)}
+                            chapterId={chapterId}
+                            topicId={topicId}
+                            isEditing={isEditing}
+                            search={search}
+                            sortMode={sortMode}
+                            allChapters={chapters}
+                            onSelectChapter={(chapter) => {
+                              onSelectChapter(chapter);
+                              closeMobileSidebar();
+                            }}
+                            onSelectTopic={(nextChapterId, nextTopicId) => {
+                              onSelectTopic(nextChapterId, nextTopicId);
+                              closeMobileSidebar();
+                            }}
+                            onToggleExpanded={onToggleExpanded}
+                            onPrefetchTopics={onPrefetchTopics}
+                            onToggleChapter={onToggleChapter}
+                            onToggleTopic={onToggleTopic}
+                            onRenameItem={onRenameItem}
+                            onDeleteItem={onDeleteItem}
+                            onMoveChapter={onMoveChapter}
+                          />
                         ))}
-                      </li>
-                    )}
-                    {isLoading && <SidebarChaptersSkeleton />}
-                  </SidebarMenu>
-                </SortableContext>
-              </DndContext>
-            </SidebarGroupContent>
-          </SidebarGroup>
+                      {isSearching && (
+                        <li
+                          className="space-y-2 px-1 py-1"
+                          aria-label="Wyszukiwanie rozdziałów"
+                        >
+                          {Array.from({ length: 4 }, (_, index) => (
+                            <div
+                              key={index}
+                              className="flex h-8 items-center gap-2 px-2"
+                            >
+                              <Skeleton className="size-4 shrink-0 rounded-sm" />
+                              <Skeleton
+                                className={
+                                  index % 2 === 0 ? "h-3 w-32" : "h-3 w-24"
+                                }
+                              />
+                              <Skeleton className="ml-auto h-3 w-7" />
+                            </div>
+                          ))}
+                        </li>
+                      )}
+                      {isLoading && <SidebarChaptersSkeleton />}
+                    </SidebarMenu>
+                  </SortableContext>
+                </DndContext>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </nav>
         </SidebarContent>
         <div
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-linear-to-b from-sidebar to-transparent transition-opacity ${scrollEdges.top ? "opacity-100" : "opacity-0"}`}
+          className={`pointer-events-none absolute inset-x-0 top-0 z-10 h-5 bg-linear-to-b from-sidebar via-sidebar/80 to-transparent transition-opacity motion-reduce:transition-none ${scrollEdges.top ? "opacity-100" : "opacity-0"}`}
         />
         <div
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 h-4 bg-linear-to-t from-sidebar to-transparent transition-opacity ${scrollEdges.bottom ? "opacity-100" : "opacity-0"}`}
+          className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 h-5 bg-linear-to-t from-sidebar via-sidebar/80 to-transparent transition-opacity motion-reduce:transition-none ${scrollEdges.bottom ? "opacity-100" : "opacity-0"}`}
         />
       </div>
 
@@ -533,4 +579,20 @@ function SidebarChaptersSkeleton() {
       ))}
     </li>
   );
+}
+
+function formatResultCount(count: number, noun: "rozdział" | "temat") {
+  const lastTwo = count % 100;
+  const last = count % 10;
+  const form =
+    count === 1
+      ? noun
+      : last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)
+        ? noun === "rozdział"
+          ? "rozdziały"
+          : "tematy"
+        : noun === "rozdział"
+          ? "rozdziałów"
+          : "tematów";
+  return `${count} ${form}`;
 }

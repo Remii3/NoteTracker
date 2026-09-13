@@ -3,6 +3,7 @@ import { LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { AppHeaderInfo } from "@/components/app-header";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -81,8 +82,15 @@ export function TrashPage() {
   }
 
   return (
-    <main className="min-h-0 flex-1 overflow-y-auto bg-muted/20 px-5 py-10 sm:px-8">
-      <div className="mx-auto max-w-4xl">
+    <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+      <AppHeaderInfo>
+        <p className="hidden truncate text-sm text-muted-foreground min-[480px]:block">
+          {loading
+            ? "Ładowanie kosza…"
+            : `${items.length} ${items.length === 1 ? "element" : "elementów"}`}
+        </p>
+      </AppHeaderInfo>
+      <div>
         <p className="text-sm font-medium text-primary">Kosz</p>
         <h1 className="mt-1 text-3xl font-semibold">Usunięte elementy</h1>
         <p className="mt-2 text-muted-foreground">

@@ -135,6 +135,7 @@ export function ModuleProvider({
     topicId,
     isQuestionHistory,
     showHeader,
+    studyMode,
   } = useWorkspaceRoute({
     chapters,
     isTopicDirty,
@@ -170,6 +171,7 @@ export function ModuleProvider({
     firstChapterId: chapters[0]?.id,
     initialChapterId: chapterId,
   });
+  const showsRichTextEditor = activeView === "notes";
   const {
     sensors,
     handleDragCancel: handleSidebarDragCancel,
@@ -180,7 +182,6 @@ export function ModuleProvider({
     chapters,
     chapterId,
     topicId,
-    isEditing,
     isSaving: notesStore.isSaving,
     sortMode,
     previewChapters: notesStore.previewChapters,
@@ -205,7 +206,6 @@ export function ModuleProvider({
     chapterId,
     topicId,
     topic,
-    isEditing,
     isSaving: notesStore.isSaving,
     editorDirty,
     commands: notesStore,
@@ -396,7 +396,7 @@ export function ModuleProvider({
     isGallery: activeView === "gallery",
     isQuestions: activeView === "questions",
     isStatistics: activeView === "statistics",
-    isEditing,
+    isEditing: true,
     search,
     sortMode,
     error: sidebarError,
@@ -448,10 +448,15 @@ export function ModuleProvider({
         isChapters: activeView === "chapters",
         isGallery: activeView === "gallery",
         isQuestions: activeView === "questions",
+        isStatistics: activeView === "statistics",
         isQuestionHistory,
+        studyMode,
         chapterTitle: chapter?.title,
         topicTitle: topic?.title,
+        showEditingMode: showsRichTextEditor,
         isEditing,
+        isSaving: notesStore.isSaving,
+        hasUnsavedChanges: editorDirty,
         onChangeEditingMode: changeEditingMode,
         onPreloadEditor: preloadRichTextEditor,
         onOpenAddDialog: () => setAddDialogOpen(true),
@@ -459,42 +464,38 @@ export function ModuleProvider({
       };
 
   const dialogs: WorkspaceDialogsProps = {
-    add:
-      isEditing && addDialogOpen
-        ? {
-            open: true,
-            chapters: orderedChapters,
-            activeChapterId: chapterId,
-            onOpenChange: setAddDialogOpen,
-            onAddChapters: addChapters,
-            onAddTopics: addTopics,
-          }
-        : null,
-    rename:
-      isEditing && renameItem
-        ? {
-            item: renameItem,
-            onClose: () => setRenameItem(null),
-            onRename: (title: string) => renameManagedItem(renameItem, title),
-          }
-        : null,
-    deleteItem:
-      isEditing && deleteItem
-        ? {
-            item: deleteItem,
-            onClose: () => setDeleteItem(null),
-            onDelete: () => deleteManagedItem(deleteItem),
-          }
-        : null,
-    bulkDelete:
-      isEditing && bulkDeleteOpen
-        ? {
-            chapters: orderedChapters,
-            onClose: () => setBulkDeleteOpen(false),
-            onLoadTopics: loadChapterTopics,
-            onDelete: deleteManagedItems,
-          }
-        : null,
+    add: addDialogOpen
+      ? {
+          open: true,
+          chapters: orderedChapters,
+          activeChapterId: chapterId,
+          onOpenChange: setAddDialogOpen,
+          onAddChapters: addChapters,
+          onAddTopics: addTopics,
+        }
+      : null,
+    rename: renameItem
+      ? {
+          item: renameItem,
+          onClose: () => setRenameItem(null),
+          onRename: (title: string) => renameManagedItem(renameItem, title),
+        }
+      : null,
+    deleteItem: deleteItem
+      ? {
+          item: deleteItem,
+          onClose: () => setDeleteItem(null),
+          onDelete: () => deleteManagedItem(deleteItem),
+        }
+      : null,
+    bulkDelete: bulkDeleteOpen
+      ? {
+          chapters: orderedChapters,
+          onClose: () => setBulkDeleteOpen(false),
+          onLoadTopics: loadChapterTopics,
+          onDelete: deleteManagedItems,
+        }
+      : null,
     navigation:
       navigationBlocker.state === "blocked"
         ? {

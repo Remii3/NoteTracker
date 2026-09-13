@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   BarChart3,
   CalendarDays,
   Flame,
@@ -30,7 +29,7 @@ import {
 } from "@/lib/memory-cache";
 import type { StatisticsRepository } from "../data/statistics-repository";
 import { MaterialProgressDashboard } from "./material-progress-dashboard";
-import { AppHeaderActions } from "@/components/app-header";
+import { AppHeaderActions, AppHeaderInfo } from "@/components/app-header";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,7 +70,6 @@ export function StatisticsPage({
   repository,
   moduleId,
   moduleName,
-  onBack,
   onOpenHistory,
   cacheScope,
 }: Props) {
@@ -154,6 +152,15 @@ export function StatisticsPage({
 
   return (
     <>
+      {!moduleId && (
+        <AppHeaderInfo>
+          <p className="hidden truncate text-sm text-muted-foreground min-[480px]:block">
+            {data
+              ? `${data.progress.summary.completedTopics}/${data.progress.summary.totalTopics} ukończonych tematów`
+              : "Ładowanie podsumowania…"}
+          </p>
+        </AppHeaderInfo>
+      )}
       <AppHeaderActions>
         <Select
           value={String(range)}
@@ -252,11 +259,6 @@ export function StatisticsPage({
         <div className="mx-auto max-w-6xl space-y-8">
           <header>
             <div>
-              {onBack && (
-                <Button variant="ghost" className="mb-4 -ml-3" onClick={onBack}>
-                  <ArrowLeft /> Wszystkie rozdziały
-                </Button>
-              )}
               <p className="mb-2 text-sm font-medium text-primary">
                 Twoja nauka
               </p>

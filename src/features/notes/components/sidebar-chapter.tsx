@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   SortableContext,
   verticalListSortingStrategy,
@@ -13,6 +14,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Collapsible,
   CollapsibleContent,
@@ -94,6 +100,8 @@ export function SidebarChapter(props: Props) {
     : (completeChapter?.topicsCount ?? chapter.topicsCount);
   const completed = total > 0 && count === total;
   const partial = count > 0 && !completed;
+  const isChapterActive = chapter.id === chapterId && !topicId;
+  const canDragChapter = isEditing && sortMode === "manual" && !isSearch;
 
   return (
     <Collapsible
@@ -103,12 +111,9 @@ export function SidebarChapter(props: Props) {
       <SidebarMenuItem onPointerEnter={() => onPrefetchTopics(chapter.id)}>
         <SortableRow
           id={chapter.id}
-          active={chapter.id === chapterId}
-          disabled={
-            !isEditing || sortMode !== "manual" || Boolean(search.trim())
-          }
+          active={isChapterActive}
+          disabled={!canDragChapter}
           data={{ type: "chapter" }}
-          className="gap-0"
         >
           <Checkbox
             checked={completed}
@@ -116,18 +121,14 @@ export function SidebarChapter(props: Props) {
             disabled={!total}
             aria-label={`Zmień status rozdziału ${chapter.title}`}
             onCheckedChange={(value) => onToggleChapter(chapter.id, value)}
-            className="ml-1"
           />
           <SidebarMenuButton
-            isActive={chapter.id === chapterId}
+            isActive={isChapterActive}
+            aria-current={isChapterActive ? "page" : undefined}
             onClick={() => onSelectChapter(chapter)}
-            className={
-              isEditing
-                ? "min-w-0 flex-1 pr-7 before:hidden hover:bg-transparent active:bg-transparent data-active:bg-transparent"
-                : "min-w-0 flex-1 before:hidden hover:bg-transparent active:bg-transparent data-active:bg-transparent"
-            }
+            className="h-8 min-w-0 flex-1 px-0 before:hidden hover:bg-transparent active:bg-transparent data-active:bg-transparent"
           >
-            <span className="min-w-0 flex-1 truncate">{chapter.title}</span>
+            <OverflowTooltipLabel>{chapter.title}</OverflowTooltipLabel>
             <span className="shrink-0 text-xs text-muted-foreground">
               {count}/{total}
             </span>
@@ -139,7 +140,7 @@ export function SidebarChapter(props: Props) {
                   <Button
                     variant="ghost"
                     size="icon-xs"
-                    className="absolute right-7"
+                    className="size-9 md:size-6"
                     aria-label={`Akcje rozdziału ${chapter.title}`}
                   />
                 }
@@ -190,11 +191,12 @@ export function SidebarChapter(props: Props) {
               <Button
                 variant="ghost"
                 size="icon-xs"
-                aria-label={`Rozwiń rozdział ${chapter.title}`}
+                className="size-9 md:size-6"
+                aria-label={`${expanded ? "Zwiń" : "Rozwiń"} rozdział ${chapter.title}`}
               />
             }
           >
-            <ChevronRight className="transition-transform [[data-panel-open]_&]:rotate-90" />
+            <ChevronRight className="transition-transform motion-reduce:transition-none [[data-panel-open]_&]:rotate-90" />
           </CollapsibleTrigger>
         </SortableRow>
         <CollapsibleContent>
@@ -202,7 +204,9 @@ export function SidebarChapter(props: Props) {
             items={chapter.topics}
             strategy={verticalListSortingStrategy}
           >
-            <SidebarMenuSub>
+            <SidebarMenuSub
+              className={canDragChapter ? "ml-[3.75rem] md:ml-12" : undefined}
+            >
               {chapter.topicsStatus === "loading" && !isSearch && (
                 <li
                   className="space-y-2 px-2 py-2"
@@ -223,7 +227,6 @@ export function SidebarChapter(props: Props) {
                       type: "topic",
                       chapterId: chapter.id,
                     }}
-                    className="gap-0"
                   >
                     <Checkbox
                       checked={child.completed}
@@ -234,15 +237,12 @@ export function SidebarChapter(props: Props) {
                     />
                     <SidebarMenuSubButton
                       isActive={child.id === topicId}
+                      aria-current={child.id === topicId ? "page" : undefined}
                       render={<button type="button" />}
                       onClick={() => onSelectTopic(chapter.id, child.id)}
-                      className={
-                        isEditing
-                          ? "flex-1 pr-7 hover:bg-transparent active:bg-transparent data-active:bg-transparent"
-                          : "flex-1 hover:bg-transparent active:bg-transparent data-active:bg-transparent"
-                      }
+                      className="h-8 min-w-0 flex-1 px-0 hover:bg-transparent active:bg-transparent data-active:bg-transparent"
                     >
-                      <span>{child.title}</span>
+                      <OverflowTooltipLabel>{child.title}</OverflowTooltipLabel>
                     </SidebarMenuSubButton>
                     {isEditing && (
                       <DropdownMenu>
@@ -251,7 +251,7 @@ export function SidebarChapter(props: Props) {
                             <Button
                               variant="ghost"
                               size="icon-xs"
-                              className="absolute right-0"
+                              className="size-9 md:size-6"
                               aria-label={`Akcje tematu ${child.title}`}
                             />
                           }
@@ -308,5 +308,39 @@ export function SidebarChapter(props: Props) {
         </CollapsibleContent>
       </SidebarMenuItem>
     </Collapsible>
+  );
+}
+
+function OverflowTooltipLabel({ children }: { children: ReactNode }) {
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  useEffect(() => {
+    const element = labelRef.current;
+    if (!element) return;
+    const update = () =>
+      setIsOverflowing(element.scrollWidth > element.clientWidth + 1);
+    const frame = window.requestAnimationFrame(update);
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [children]);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span ref={labelRef} className="min-w-0 flex-1 truncate text-left" />
+        }
+      >
+        {children}
+      </TooltipTrigger>
+      <TooltipContent side="right" hidden={!isOverflowing}>
+        {children}
+      </TooltipContent>
+    </Tooltip>
   );
 }

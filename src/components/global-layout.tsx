@@ -119,101 +119,105 @@ function GlobalSidebar({
         }}
       />
       <SidebarContent className="gap-0">
-        <SidebarGroup>
-          <SidebarGroupLabel>Nawigacja</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigation.map(({ to, label, icon: Icon, end }) => (
-                <SidebarMenuItem key={to}>
-                  <SidebarMenuButton
-                    render={
-                      <NavLink
-                        to={to}
-                        end={end}
-                        className="relative before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:content-[''] aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-medium aria-[current=page]:text-sidebar-accent-foreground aria-[current=page]:before:bg-primary"
-                        onClick={() => isMobile && setOpenMobile(false)}
-                      />
-                    }
-                  >
-                    <Icon />
-                    <span>{label}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        {recentModules.length > 0 && (
-          <SidebarGroup className="border-t">
-            <SidebarGroupLabel>Ostatnie moduły</SidebarGroupLabel>
+        <nav aria-label="Główna nawigacja">
+          <SidebarGroup>
+            <SidebarGroupLabel>Nawigacja</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {recentModules.map((module) => (
-                  <SidebarMenuItem key={module.id}>
+                {navigation.map(({ to, label, icon: Icon, end }) => (
+                  <SidebarMenuItem key={to}>
                     <SidebarMenuButton
-                      className="h-10"
-                      tooltip={{
-                        children: `${module.name} — ukończono ${module.progress}%`,
-                        hidden: false,
-                      }}
                       render={
                         <NavLink
-                          to={`/${module.slug}`}
-                          state={{ moduleId: module.id }}
+                          to={to}
+                          end={end}
+                          className="border border-transparent aria-[current=page]:border-sidebar-border aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground"
                           onClick={() => isMobile && setOpenMobile(false)}
                         />
                       }
                     >
-                      <BookOpen />
-                      <span className="min-w-0 flex-1 truncate">
-                        {module.name}
-                      </span>
-                      <span className="ml-auto grid size-6 shrink-0 place-items-center">
-                        {module.progress === 100 ? (
-                          <CircleCheck
-                            className="size-5 text-primary"
-                            aria-hidden="true"
-                          />
-                        ) : (
-                          <svg
-                            viewBox="0 0 20 20"
-                            className="size-5 -rotate-90"
-                            aria-hidden="true"
-                          >
-                            <circle
-                              cx="10"
-                              cy="10"
-                              r="8"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              className="text-sidebar-border"
-                            />
-                            <circle
-                              cx="10"
-                              cy="10"
-                              r="8"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              pathLength="100"
-                              strokeDasharray="100"
-                              strokeDashoffset={100 - module.progress}
-                              className="text-primary transition-[stroke-dashoffset]"
-                            />
-                          </svg>
-                        )}
-                        <span className="sr-only">
-                          Ukończono {module.progress}%
-                        </span>
-                      </span>
+                      <Icon />
+                      <span>{label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+        </nav>
+        {recentModules.length > 0 && (
+          <nav aria-label="Ostatnie moduły" className="border-t">
+            <SidebarGroup>
+              <SidebarGroupLabel>Ostatnie moduły</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {recentModules.map((module) => (
+                    <SidebarMenuItem key={module.id}>
+                      <SidebarMenuButton
+                        className="h-10"
+                        tooltip={{
+                          children: `${module.name} — ukończono ${module.progress}%`,
+                          hidden: false,
+                        }}
+                        render={
+                          <NavLink
+                            to={`/${module.slug}`}
+                            state={{ moduleId: module.id }}
+                            onClick={() => isMobile && setOpenMobile(false)}
+                          />
+                        }
+                      >
+                        <BookOpen />
+                        <span className="min-w-0 flex-1 truncate">
+                          {module.name}
+                        </span>
+                        <span className="ml-auto grid size-4 shrink-0 place-items-center">
+                          {module.progress === 100 ? (
+                            <CircleCheck
+                              className="size-4 text-primary"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <svg
+                              viewBox="0 0 20 20"
+                              className="size-4 -rotate-90"
+                              aria-hidden="true"
+                            >
+                              <circle
+                                cx="10"
+                                cy="10"
+                                r="8"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                className="text-sidebar-foreground/20"
+                              />
+                              <circle
+                                cx="10"
+                                cy="10"
+                                r="8"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                pathLength="100"
+                                strokeDasharray="100"
+                                strokeDashoffset={100 - module.progress}
+                                className="text-primary transition-[stroke-dashoffset] motion-reduce:transition-none dark:text-chart-2"
+                              />
+                            </svg>
+                          )}
+                          <span className="sr-only">
+                            Ukończono {module.progress}%
+                          </span>
+                        </span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </nav>
         )}
       </SidebarContent>
       <SidebarFooter className="min-h-16 shrink-0 justify-center border-t p-2">

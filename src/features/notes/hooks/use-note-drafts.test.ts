@@ -46,7 +46,6 @@ function setup() {
       chapterId: chapter.id,
       topicId: topic.id,
       topic,
-      isEditing: true,
       isSaving: store.isSaving,
       editorDirty: drafts.isTopicDirty(topic.id),
       commands: store,
