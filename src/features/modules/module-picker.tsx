@@ -29,7 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { readMemoryCache, writeMemoryCache } from "@/lib/memory-cache";
-import { AppHeaderActions, AppHeaderInfo } from "@/components/app-header";
+import { AppHeaderActions, AppHeaderInfo } from "@/layout/app-header";
 import type { Module, ModulesRepository } from "./data/modules-repository";
 import {
   MODULE_NAME_MAX_LENGTH,

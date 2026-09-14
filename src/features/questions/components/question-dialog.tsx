@@ -1,7 +1,4 @@
-import { Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import type { Chapter, Topic } from "@/features/notes/types/model";
 import {
   Combobox,
   ComboboxCollection,
@@ -19,10 +16,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import type { Chapter, Topic } from "@/features/notes/types/model";
-import type { QuestionsRepository } from "../data/questions-repository";
+import { Plus, Trash2 } from "lucide-react";
 import type { Question, QuestionOption } from "../model/types";
+import { useEffect, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import type { QuestionsRepository } from "../data/questions-repository";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/toast";
 
 type Props = {
   question?: Question | null;
@@ -323,15 +324,21 @@ export function QuestionDialog({
                 .then(() => {
                   onSaved();
                   onClose();
-                  toast.success("Zapisano pytanie.");
+                  toast.add({
+                    data: { type: "success" },
+                    description: "Zapisano pytanie.",
+                  });
                 })
                 .catch((error: unknown) => {
                   setSaving(false);
-                  toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : "Nie udało się zapisać pytania.",
-                  );
+
+                  toast.add({
+                    data: { type: "error" },
+                    description:
+                      error instanceof Error
+                        ? error.message
+                        : "Nie udało się zapisać pytania.",
+                  });
                 });
             }}
           >

@@ -17,7 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, ImagePlus, LoaderCircle, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 
 import {
   AlertDialog,
@@ -68,7 +68,6 @@ function SortableImage({
     transition,
     isDragging,
   } = useSortable({ id: image.id, disabled: !isEditing || disabled });
-
   return (
     <div
       ref={setNodeRef}
@@ -150,17 +149,20 @@ export function TopicImagesSection({ topicId, isEditing, service }: Props) {
     const result = await upload(files);
     if (!result) return;
     if (result.uploaded.length)
-      toast.success(
-        result.uploaded.length === 1
-          ? "Dodano zdjęcie."
-          : `Dodano ${result.uploaded.length} zdjęć.`,
-      );
+      toast.add({
+        data: { type: "success" },
+        description:
+          result.uploaded.length === 1
+            ? "Dodano zdjęcie."
+            : `Dodano ${result.uploaded.length} zdjęć.`,
+      });
     if (result.failed.length) {
-      toast.error(
-        result.uploaded.length
+      toast.add({
+        data: { type: "error" },
+        description: result.uploaded.length
           ? `Nie udało się dodać ${result.failed.length} z ${files.length} zdjęć.`
           : "Nie udało się dodać zdjęć.",
-      );
+      });
     }
   }
 
@@ -179,7 +181,11 @@ export function TopicImagesSection({ topicId, isEditing, service }: Props) {
     if (from < 0 || to < 0) return;
     const next = arrayMove(images, from, to);
     void reorder(next.map((image) => image.id)).then((saved) => {
-      if (!saved) toast.error("Nie udało się zapisać kolejności zdjęć.");
+      if (!saved)
+        toast.add({
+          data: { type: "error" },
+          description: "Nie udało się zapisać kolejności zdjęć.",
+        });
     });
   }
 
@@ -336,7 +342,11 @@ export function TopicImagesSection({ topicId, isEditing, service }: Props) {
                 const imageId = pendingDelete.id;
                 setPendingDelete(null);
                 void remove(imageId).then((removed) => {
-                  if (removed) toast.success("Usunięto zdjęcie.");
+                  if (removed)
+                    toast.add({
+                      data: { type: "success" },
+                      description: "Usunięto zdjęcie.",
+                    });
                 });
               }}
             >

@@ -1,16 +1,4 @@
 import {
-  ArrowLeft,
-  BookOpenCheck,
-  CheckCircle2,
-  Clock3,
-  Layers3,
-  Play,
-  XCircle,
-} from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
-
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -20,7 +8,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import {
+  ArrowLeft,
+  BookOpenCheck,
+  CheckCircle2,
+  Clock3,
+  Layers3,
+  Play,
+  XCircle,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -28,14 +24,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { QuestionsRepository } from "../data/questions-repository";
 import type {
   StudyMode,
   StudySession,
   StudySessionSummary,
 } from "../model/types";
+import { useCallback, useEffect, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import type { QuestionsRepository } from "../data/questions-repository";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/components/ui/toast";
 
 const PAGE_SIZE = 20;
 
@@ -65,7 +65,10 @@ export function StudyHistoryPage({ repository, onBack, onOpenSession }: Props) {
       setSessions(result.sessions);
       setTotal(result.total);
     } catch {
-      toast.error("Nie udało się pobrać historii nauki.");
+      toast.add({
+        data: { type: "error" },
+        description: "Nie udało się pobrać historii nauki.",
+      });
     } finally {
       setLoading(false);
     }
@@ -169,10 +172,18 @@ export function StudyHistoryPage({ repository, onBack, onOpenSession }: Props) {
                   .abandonSession(abandoning.id)
                   .then(() => {
                     setAbandoning(null);
-                    toast.success("Sesja została oznaczona jako porzucona.");
+                    toast.add({
+                      data: { type: "success" },
+                      description: "Sesja została oznaczona jako porzucona.",
+                    });
                     void load();
                   })
-                  .catch(() => toast.error("Nie udało się porzucić sesji."));
+                  .catch(() => {
+                    toast.add({
+                      data: { type: "error" },
+                      description: "Nie udało się porzucić sesji.",
+                    });
+                  });
               }}
             >
               Porzuć sesję
@@ -272,7 +283,10 @@ function SessionDetails({
       .getSession(sessionId)
       .then(setSession)
       .catch(() => {
-        toast.error("Nie udało się pobrać szczegółów sesji.");
+        toast.add({
+          data: { type: "error" },
+          description: "Nie udało się pobrać szczegółów sesji.",
+        });
         onClose();
       });
   }, [onClose, repository, sessionId]);

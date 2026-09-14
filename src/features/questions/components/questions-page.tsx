@@ -7,9 +7,7 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import type { Chapter, Topic } from "@/features/notes/types/model";
 import {
   Combobox,
   ComboboxCollection,
@@ -19,7 +17,6 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -28,10 +25,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Chapter, Topic } from "@/features/notes/types/model";
-import type { QuestionsRepository } from "../data/questions-repository";
 import type { Question, StudyMode, StudyScope } from "../model/types";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { QuestionDialog } from "./question-dialog";
+import type { QuestionsRepository } from "../data/questions-repository";
+import { toast } from "@/components/ui/toast";
 
 const PAGE_SIZE = 20;
 type FilterOption = { value: string; label: string };
@@ -83,7 +84,10 @@ export function QuestionsPage({
       setTotal(result.total);
       setAvailability(nextAvailability);
     } catch {
-      toast.error("Nie udało się pobrać bazy pytań.");
+      toast.add({
+        data: { type: "error" },
+        description: "Nie udało się pobrać bazy pytań.",
+      });
     }
   }, [chapterFilter, page, query, repository, topicFilter]);
   useEffect(() => {
@@ -326,7 +330,10 @@ export function QuestionsPage({
                           .remove(question.id)
                           .then(load)
                           .catch(() =>
-                            toast.error("Nie udało się usunąć pytania."),
+                            toast.add({
+                              data: { type: "error" },
+                              description: "Nie udało się usunąć pytania.",
+                            }),
                           )
                       }
                     >
@@ -548,11 +555,13 @@ function StudySetup({
                 .then((id) => onOpenSession(mode, id))
                 .catch((error: unknown) => {
                   setCreating(false);
-                  toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : "Nie udało się rozpocząć sesji.",
-                  );
+                  toast.add({
+                    data: { type: "error" },
+                    description:
+                      error instanceof Error
+                        ? error.message
+                        : "Nie udało się rozpocząć sesji.",
+                  });
                 });
             }}
           >

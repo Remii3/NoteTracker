@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useEffect, useRef, useState } from "react";
 
-import { AppHeaderTrailingActions } from "@/components/app-header";
+import { AppHeaderTrailingActions } from "@/layout/app-header";
 import { Button } from "@/components/ui/button";
 
 type Props = {

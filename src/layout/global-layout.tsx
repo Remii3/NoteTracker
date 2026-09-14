@@ -7,9 +7,9 @@ import {
   Trash2,
 } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 
-import { AppFrame, MobileAppSidebarHeader } from "@/components/app-header";
+import { AppFrame, MobileAppSidebarHeader } from "@/layout/app-header";
 import {
   Sidebar,
   SidebarContent,
@@ -28,6 +28,7 @@ import {
   AccountMenu,
   getUserDisplayName,
   useAuth,
+  useUser,
 } from "@/features/auth";
 import {
   clearUserMemoryCache,
@@ -48,17 +49,19 @@ const navigation = [
 ] as const;
 
 export function GlobalLayout() {
-  const { signOut, user } = useAuth();
-  const userId = user?.id;
+  const { signOut } = useAuth();
+  const user = useUser();
+  const userId = user.id;
   const navigate = useNavigate();
   const [accountOpen, setAccountOpen] = useState(false);
   const [recentModules, setRecentModules] = useState<RecentModule[]>(() =>
     userId ? readRecentModules(userId) : [],
   );
+
   useEffect(() => {
-    if (!userId) return;
     return subscribeToRecentModules(userId, setRecentModules);
   }, [userId]);
+
   const handleSignOut = useCallback(() => {
     void signOut()
       .then(() => {
@@ -66,11 +69,12 @@ export function GlobalLayout() {
         navigate("/");
       })
       .catch(() => {
-        toast.error("Nie udało się wylogować. Spróbuj ponownie.");
+        toast.add({
+          data: { type: "error" },
+          description: "Nie udało się wylogować. Spróbuj ponownie.",
+        });
       });
   }, [navigate, signOut, userId]);
-
-  if (!user) return null;
 
   const accountMenu = (
     <AccountMenu

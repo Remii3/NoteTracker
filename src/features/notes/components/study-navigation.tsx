@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { TopicNavigationItem } from "../types/model";

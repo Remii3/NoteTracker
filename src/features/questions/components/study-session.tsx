@@ -1,12 +1,13 @@
 import { Eye, ThumbsDown, ThumbsUp } from "lucide-react";
+import type { StudySession as Session, StudyResult } from "../model/types";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
-import { useAsyncResource } from "@/hooks/use-async-resource";
 import { LoadError } from "@/components/load-error";
 import { Progress } from "@/components/ui/progress";
 import type { QuestionsRepository } from "../data/questions-repository";
-import type { StudyResult, StudySession as Session } from "../model/types";
+import { toast } from "@/components/ui/toast";
+import { useAsyncResource } from "@/hooks/use-async-resource";
 
 type Props = {
   sessionId: string;
@@ -105,7 +106,10 @@ function LoadedStudySession({
       await repository.completeSession(session.id);
       setSession((current) => ({ ...current, status: "completed" }));
     } catch {
-      toast.error("Nie udało się zakończyć sesji. Spróbuj ponownie.");
+      toast.add({
+        data: { type: "error" },
+        description: "Nie udało się zakończyć sesji. Spróbuj ponownie.",
+      });
     } finally {
       setSaving(false);
     }
@@ -135,7 +139,10 @@ function LoadedStudySession({
           setRevealed(false);
         }
       } catch {
-        toast.error("Nie udało się zapisać odpowiedzi.");
+        toast.add({
+          data: { type: "error" },
+          description: "Nie udało się zapisać odpowiedzi.",
+        });
       } finally {
         setSaving(false);
       }
@@ -233,7 +240,10 @@ function LoadedStudySession({
             }
           : current,
       );
-      toast.error("Nie udało się zapisać odpowiedzi.");
+      toast.add({
+        data: { type: "error" },
+        description: "Nie udało się zapisać odpowiedzi.",
+      });
     } finally {
       setSaving(false);
     }

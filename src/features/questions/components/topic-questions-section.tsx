@@ -1,11 +1,12 @@
+import type { Chapter, Topic } from "@/features/notes/types/model";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
-import type { Chapter, Topic } from "@/features/notes/types/model";
-import type { QuestionsRepository } from "../data/questions-repository";
 import type { Question } from "../model/types";
 import { QuestionDialog } from "./question-dialog";
+import type { QuestionsRepository } from "../data/questions-repository";
+import { toast } from "@/components/ui/toast";
 
 type Props = {
   chapter: Chapter;
@@ -33,7 +34,10 @@ export function TopicQuestionsSection({
         (await repository.list({ topicId: topic.id, limit: 100 })).questions,
       );
     } catch {
-      toast.error("Nie udało się pobrać pytań.");
+      toast.add({
+        data: { type: "error" },
+        description: "Nie udało się pobrać pytań.",
+      });
     }
   }, [repository, topic.id]);
   useEffect(() => {
@@ -44,7 +48,12 @@ export function TopicQuestionsSection({
       .then((result) => {
         if (!cancelled) setQuestions(result.questions);
       })
-      .catch(() => toast.error("Nie udało się pobrać pytań."));
+      .catch(() =>
+        toast.add({
+          data: { type: "error" },
+          description: "Nie udało się pobrać pytań.",
+        }),
+      );
     return () => {
       cancelled = true;
     };
@@ -105,7 +114,10 @@ export function TopicQuestionsSection({
                           .remove(question.id)
                           .then(load)
                           .catch(() =>
-                            toast.error("Nie udało się usunąć pytania."),
+                            toast.add({
+                              data: { type: "error" },
+                              description: "Nie udało się usunąć pytania.",
+                            }),
                           )
                       }
                     >

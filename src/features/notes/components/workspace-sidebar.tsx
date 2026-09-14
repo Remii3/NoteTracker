@@ -50,7 +50,7 @@ import { AccountMenu } from "@/features/auth";
 import { Button } from "@/components/ui/button";
 import type { Chapter } from "../types/model";
 import { Input } from "@/components/ui/input";
-import { MobileAppSidebarHeader } from "@/components/app-header";
+import { MobileAppSidebarHeader } from "@/layout/app-header";
 import { SidebarChapter } from "./sidebar-chapter";
 import { Skeleton } from "@/components/ui/skeleton";
 

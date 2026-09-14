@@ -1,12 +1,12 @@
-import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/features/auth";
 import { AuthenticatedApp } from "@/router";
+import { Toaster } from "@/components/ui/toast";
 
 function App() {
   return (
     <AuthProvider>
       <AuthenticatedApp />
-      <Toaster position="bottom-right" />
+      <Toaster />
     </AuthProvider>
   );
 }

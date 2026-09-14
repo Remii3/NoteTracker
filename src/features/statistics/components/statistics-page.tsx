@@ -10,7 +10,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -29,7 +29,7 @@ import {
 } from "@/lib/memory-cache";
 import type { StatisticsRepository } from "../data/statistics-repository";
 import { MaterialProgressDashboard } from "./material-progress-dashboard";
-import { AppHeaderActions, AppHeaderInfo } from "@/components/app-header";
+import { AppHeaderActions, AppHeaderInfo } from "@/layout/app-header";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,7 +110,10 @@ export function StatisticsPage({
       setResult({ key: requestKey, value: next });
       if (cacheKey) writeMemoryCache(cacheKey, next);
     } catch {
-      toast.error("Nie udało się pobrać statystyk.");
+      toast.add({
+        data: { type: "error" },
+        description: "Nie udało się pobrać statystyk.",
+      });
     }
   }, [cacheKey, mode, moduleId, range, repository, requestKey, timezone]);
 
@@ -121,7 +124,10 @@ export function StatisticsPage({
   async function saveGoal() {
     const topics = Number(goal);
     if (!Number.isInteger(topics) || topics < 1 || topics > 1000) {
-      toast.error("Cel musi wynosić od 1 do 1000 tematów.");
+      toast.add({
+        data: { type: "error" },
+        description: "Cel musi wynosić od 1 do 1000 tematów.",
+      });
       return;
     }
     setSavingGoal(true);
@@ -142,9 +148,15 @@ export function StatisticsPage({
           if (cacheKey) writeMemoryCache(cacheKey, next);
         }
       }
-      toast.success("Cel tygodniowy został zapisany.");
+      toast.add({
+        data: { type: "success" },
+        description: "Cel tygodniowy został zapisany.",
+      });
     } catch {
-      toast.error("Nie udało się zapisać celu.");
+      toast.add({
+        data: { type: "error" },
+        description: "Nie udało się zapisać celu.",
+      });
     } finally {
       setSavingGoal(false);
     }

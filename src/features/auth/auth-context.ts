@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+
 import type { User } from "@supabase/supabase-js";
 
 export type SignUpResult = { confirmationRequired: boolean };
@@ -30,4 +31,13 @@ export function useAuth() {
   if (!context)
     throw new Error("useAuth musi być użyty wewnątrz AuthProvider.");
   return context;
+}
+
+export function useUser() {
+  const { user } = useAuth();
+
+  if (!user) {
+    throw new Error("useUser nie dostał danych usera");
+  }
+  return user;
 }

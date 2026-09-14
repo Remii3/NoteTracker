@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 
 import { Button } from "@/components/ui/button";
-import { AppHeaderInfo } from "@/components/app-header";
+import { AppHeaderInfo } from "@/layout/app-header";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -46,7 +46,12 @@ export function TrashPage() {
     void repository
       .list()
       .then((value) => active && setItems(value))
-      .catch(() => toast.error("Nie udało się pobrać usuniętych elementów."))
+      .catch(() =>
+        toast.add({
+          data: { type: "error" },
+          description: "Nie udało się pobrać usuniętych elementów.",
+        }),
+      )
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
@@ -58,11 +63,16 @@ export function TrashPage() {
     try {
       await repository.restore(item.id);
       setItems((all) => all.filter((x) => x.id !== item.id));
-      toast.success("Element został przywrócony.");
+      toast.add({
+        data: { type: "success" },
+        description: "Element został przywrócony.",
+      });
     } catch {
-      toast.error(
-        "Nie udało się przywrócić elementu. Sprawdź, czy jego nazwa nie jest już używana.",
-      );
+      toast.add({
+        data: { type: "error" },
+        description:
+          "Nie udało się przywrócić elementu. Sprawdź, czy jego nazwa nie jest już używana.",
+      });
     } finally {
       setPending(null);
     }
@@ -73,9 +83,15 @@ export function TrashPage() {
       await repository.purge(item.id);
       setItems((all) => all.filter((x) => x.id !== item.id));
       setPurgedItem(null);
-      toast.success("Element został trwale usunięty.");
+      toast.add({
+        data: { type: "success" },
+        description: "Element został trwale usunięty.",
+      });
     } catch {
-      toast.error("Nie udało się trwale usunąć elementu.");
+      toast.add({
+        data: { type: "error" },
+        description: "Nie udało się trwale usunąć elementu.",
+      });
     } finally {
       setPending(null);
     }

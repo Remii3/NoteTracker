@@ -1,12 +1,11 @@
+import { AppFrame } from "@/layout/app-header";
 import type { ComponentProps } from "react";
-import { Outlet } from "react-router";
-
 import { LoadError } from "@/components/load-error";
+import { Outlet } from "react-router";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AppFrame } from "@/components/app-header";
+import { WorkspaceDialogs } from "./workspace-dialogs";
 import { WorkspaceHeader } from "./workspace-header";
 import { WorkspaceSidebar } from "./workspace-sidebar";
-import { WorkspaceDialogs } from "./workspace-dialogs";
 
 type Props = {
   sidebar: ComponentProps<typeof WorkspaceSidebar>;
