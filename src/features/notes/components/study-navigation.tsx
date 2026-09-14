@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { TopicNavigationItem } from "../types/model";
@@ -21,7 +21,7 @@ export function StudyNavigation({
   return (
     <nav
       aria-label="Nawigacja między tematami"
-      className="flex h-16 shrink-0 items-center gap-3 border-t px-3 sm:px-6"
+      className="flex shrink-0 items-center gap-3 border-t p-2 sm:px-6"
     >
       <Button
         type="button"
@@ -30,9 +30,9 @@ export function StudyNavigation({
         disabled={!previousTopic}
         onClick={() => previousTopic && onOpenTopic(previousTopic)}
       >
-        <ArrowLeft />
+        <ChevronLeft className="size-5" />
         <span className="min-w-0 flex-1 text-left">
-          <span className="block truncate text-xs font-normal text-muted-foreground">
+          <span className="block truncate text-xs font-normal leading-[1] text-muted-foreground">
             {previousTopic?.chapterTitle}
           </span>
           <span className="block truncate">{previousTopic?.topicTitle}</span>
@@ -51,12 +51,12 @@ export function StudyNavigation({
         onClick={() => nextTopic && onOpenTopic(nextTopic)}
       >
         <span className="min-w-0 flex-1 text-right">
-          <span className="block truncate text-xs font-normal text-muted-foreground">
+          <span className="block truncate text-xs font-normal leading-[1] text-muted-foreground">
             {nextTopic?.chapterTitle}
           </span>
           <span className="block truncate">{nextTopic?.topicTitle}</span>
         </span>
-        <ArrowRight />
+        <ChevronRight className="size-5" />
       </Button>
     </nav>
   );

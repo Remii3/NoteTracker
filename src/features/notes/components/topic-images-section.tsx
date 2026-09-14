@@ -215,6 +215,7 @@ export function TopicImagesSection({ topicId, isEditing, service }: Props) {
         type="file"
         accept="image/jpeg,image/png,image/webp"
         multiple
+        tabIndex={-1}
         className="sr-only"
         onChange={(event) => {
           const files = [...(event.target.files ?? [])];
@@ -273,7 +274,7 @@ export function TopicImagesSection({ topicId, isEditing, service }: Props) {
             <button
               type="button"
               disabled={isUploading || !service}
-              className={`mt-4 flex h-44 w-full flex-col items-center justify-center rounded-lg border border-dashed bg-muted/20 text-sm transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50 ${
+              className={`mt-4 flex h-44 w-full flex-col items-center justify-center rounded-lg border border-dashed bg-muted/20 text-sm outline-none transition-[color,background-color,border-color,box-shadow] hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 ${
                 isDragging ? "border-primary bg-primary/5" : ""
               }`}
               onClick={() => inputRef.current?.click()}
@@ -302,8 +303,8 @@ export function TopicImagesSection({ topicId, isEditing, service }: Props) {
           )}
 
           {!isEditing && images.length === 0 && (
-            <div className="grid h-44 place-items-center rounded-lg border border-dashed bg-muted/20 text-sm text-muted-foreground">
-              Brak zdjęć.
+            <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+              Ten temat nie ma jeszcze żadnych zdjęć
             </div>
           )}
         </>

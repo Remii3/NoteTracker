@@ -202,11 +202,11 @@ export function ModulePicker({
               {modules.map((module, index) => (
                 <article
                   key={module.id}
-                  className="rounded-xl border bg-background p-5"
+                  className="rounded-xl border bg-background p-5 transition-[border-color,box-shadow] has-[>button:first-child:focus-visible]:border-ring has-[>button:first-child:focus-visible]:ring-3 has-[>button:first-child:focus-visible]:ring-ring/50"
                 >
                   <button
                     type="button"
-                    className="w-full text-left"
+                    className="w-full text-left outline-none"
                     onClick={() => onSelect(module)}
                   >
                     <BookOpen className="size-5 text-primary" />

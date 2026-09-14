@@ -39,20 +39,20 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useCallback, useEffect, useRef, useState } from "react";
-
-import { Button } from "@/components/ui/button";
-import type { Chapter } from "../types/model";
-import { Input } from "@/components/ui/input";
-import { SidebarChapter } from "./sidebar-chapter";
-import { Skeleton } from "@/components/ui/skeleton";
-import { MobileAppSidebarHeader } from "@/components/app-header";
-import { AccountMenu } from "@/features/auth";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { AccountMenu } from "@/features/auth";
+import { Button } from "@/components/ui/button";
+import type { Chapter } from "../types/model";
+import { Input } from "@/components/ui/input";
+import { MobileAppSidebarHeader } from "@/components/app-header";
+import { SidebarChapter } from "./sidebar-chapter";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Props = {
   chapters: Chapter[];
@@ -265,7 +265,7 @@ export function WorkspaceSidebar({
       />
       <nav
         aria-label="Widoki modułu"
-        className="flex h-10 shrink-0 items-center gap-1 border-b bg-sidebar px-4"
+        className="flex h-10 shrink-0 items-center gap-1 border-b bg-sidebar px-2"
       >
         <span className="mr-auto text-xs font-medium text-sidebar-foreground/70">
           Widoki

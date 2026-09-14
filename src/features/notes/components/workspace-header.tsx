@@ -221,9 +221,6 @@ export function WorkspaceHeader({
       {showEditingMode && (
         <AppHeaderTrailingActions>
           <div className="flex h-8 items-center gap-2 sm:gap-3">
-            {showStructureActions && (
-              <div className="h-5 w-px shrink-0 bg-border" aria-hidden="true" />
-            )}
             <div
               role="group"
               aria-label="Tryb pracy"

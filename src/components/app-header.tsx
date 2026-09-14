@@ -66,17 +66,14 @@ export function AppHeader({
       </div>
       <div className="flex min-w-0 flex-1 items-center gap-2 px-2 sm:gap-3 sm:px-6">
         <SidebarTrigger className="shrink-0 focus-visible:ring-2 focus-visible:ring-ring/70" />
-        <div className="flex min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden sm:gap-3">
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-2 sm:gap-3">
           <div
             ref={onInfoTargetChange}
             className="min-w-0 flex-1 empty:hidden"
           />
           {children}
         </div>
-        <div
-          ref={onActionsTargetChange}
-          className="ml-auto flex shrink-0 items-center gap-2"
-        />
+        <div ref={onActionsTargetChange} className="hidden" />
         <div
           ref={onTrailingActionsTargetChange}
           className="flex shrink-0 items-center empty:hidden"
