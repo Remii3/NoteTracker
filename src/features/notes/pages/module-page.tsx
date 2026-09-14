@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 
 import { AccountDialog, getUserDisplayName, useAuth } from "@/features/auth";
 import { supabase } from "@/lib/supabase/client";
@@ -142,7 +142,10 @@ export function ModulePage() {
         navigate("/");
       })
       .catch(() => {
-        toast.error("Nie udało się wylogować. Spróbuj ponownie.");
+        toast.add({
+          data: { type: "error" },
+          description: "Nie udało się wylogować. Spróbuj ponownie.",
+        });
       });
   }, [signOut, navigate, userId]);
 

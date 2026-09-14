@@ -25,9 +25,9 @@ import { nameSchema, passwordSchema } from "@/features/auth/auth-schema";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { getAuthErrorMessage } from "./auth-error";
 import { getUserDisplayName } from "./user-display-name";
-import { toast } from "sonner";
 import { useAuth } from "./auth-context";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -74,7 +74,10 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
 
     try {
       await updateName(data.name);
-      toast.success("Zaktualizowano imię.");
+      toast.add({
+        data: { type: "success" },
+        description: "Zaktualizowano imię.",
+      });
       onClose();
     } catch (error) {
       profileForm.setError("root", {
@@ -88,7 +91,10 @@ export function AccountDialog({ onClose }: { onClose: () => void }) {
 
     try {
       await updatePassword(data.oldPassword, data.newPassword);
-      toast.success("Zmieniono hasło.");
+      toast.add({
+        data: { type: "success" },
+        description: "Zmieniono hasło.",
+      });
       onClose();
     } catch (error) {
       passwordForm.setError("root", {

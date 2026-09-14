@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import { useWorkspaceActions } from "../hooks/use-workspace-actions";
 import { useNoteDrafts } from "../hooks/use-note-drafts";
 import { useNotesStore } from "../hooks/use-notes-store";
@@ -230,7 +230,10 @@ export function ModuleProvider({
 
   useEffect(() => {
     if (!notesError) return;
-    toast.error(notesError);
+    toast.add({
+      data: { type: "error" },
+      description: notesError,
+    });
     clearNotesError();
   }, [clearNotesError, notesError]);
 
@@ -431,7 +434,10 @@ export function ModuleProvider({
     userName,
     onSignOut: () => {
       if (notesStore.isSaving) {
-        toast.info("Poczekaj na zakończenie zapisywania.");
+        toast.add({
+          data: { type: "info" },
+          description: "Poczekaj na zakończenie zapisywania.",
+        });
         return;
       }
       if (hasDirtyDrafts) setSignOutPending(true);

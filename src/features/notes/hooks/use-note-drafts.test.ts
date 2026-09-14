@@ -7,7 +7,7 @@ import { useWorkspaceActions } from "./use-workspace-actions";
 import { initialChapters } from "../data/mock-data";
 import { memoryNotesRepository } from "../data/memory-notes-repository";
 
-vi.mock("sonner", () => ({ toast: { success: vi.fn() } }));
+vi.mock("@/components/ui/toast", () => ({ toast: { add: vi.fn() } }));
 beforeEach(() => {
   for (const name of ["localStorage", "sessionStorage"]) {
     const values = new Map<string, string>();

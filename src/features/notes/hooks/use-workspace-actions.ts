@@ -1,4 +1,4 @@
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 
 import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
 import { createUniqueSlug } from "../lib/slug-utils";
@@ -74,11 +74,13 @@ export function useWorkspaceActions({
     const total = chapters.reduce((sum, item) => sum + item.topicsCount, 0);
     const completedAfter =
       completedBefore + chapter.topicsCount - chapter.completedTopicsCount;
-    toast.success(
-      completedAfter === total
-        ? "Moduł ukończony."
-        : `Rozdział „${chapter.title}” ukończony.`,
-    );
+    toast.add({
+      data: { type: "success" },
+      description:
+        completedAfter === total
+          ? "Moduł ukończony."
+          : `Rozdział „${chapter.title}” ukończony.`,
+    });
     return saved;
   }
 
@@ -97,13 +99,20 @@ export function useWorkspaceActions({
     const total = chapters.reduce((sum, item) => sum + item.topicsCount, 0);
     const completedAfter = completedBefore + 1;
     if (completedAfter === total) {
-      toast.success("Moduł ukończony.");
+      toast.add({
+        data: { type: "success" },
+        description: "Moduł ukończony.",
+      });
     } else if (chapter.completedTopicsCount + 1 === chapter.topicsCount) {
-      toast.success(`Rozdział „${chapter.title}” ukończony.`);
+      toast.add({
+        data: { type: "success" },
+        description: `Rozdział „${chapter.title}” ukończony.`,
+      });
     } else {
-      toast.success(
-        `Temat ukończony — do końca modułu: ${total - completedAfter}.`,
-      );
+      toast.add({
+        data: { type: "success" },
+        description: `Temat ukończony — do końca modułu: ${total - completedAfter}.`,
+      });
     }
     return saved;
   }
@@ -120,11 +129,12 @@ export function useWorkspaceActions({
     );
     if (!saved) return false;
     const fullySaved = acknowledgeSave(topic.id, contentToSave);
-    toast.success(
-      fullySaved
+    toast.add({
+      data: { type: "success" },
+      description: fullySaved
         ? "Notatka została zapisana."
         : "Zapisano wcześniejszą wersję. Masz jeszcze niezapisane zmiany.",
-    );
+    });
     return fullySaved;
   }
 
@@ -151,11 +161,13 @@ export function useWorkspaceActions({
     const firstChapter = newChapters[0];
     navigateToChapter(firstChapter.id);
     expandChapter(firstChapter.id);
-    toast.success(
-      titles.length === 1
-        ? `Dodano rozdział „${titles[0]}”.`
-        : `Dodano ${titles.length} rozdziałów.`,
-    );
+    toast.add({
+      data: { type: "success" },
+      description:
+        titles.length === 1
+          ? `Dodano rozdział „${titles[0]}”.`
+          : `Dodano ${titles.length} rozdziałów.`,
+    });
     return true;
   }
 
@@ -188,11 +200,13 @@ export function useWorkspaceActions({
     if (!(await commands.addTopics(targetChapterId, newTopics))) return false;
     navigateToChapter(targetChapterId, firstTopicId);
     expandChapter(targetChapterId);
-    toast.success(
-      titles.length === 1
-        ? `Dodano temat „${titles[0]}”.`
-        : `Dodano ${titles.length} tematów.`,
-    );
+    toast.add({
+      data: { type: "success" },
+      description:
+        titles.length === 1
+          ? `Dodano temat „${titles[0]}”.`
+          : `Dodano ${titles.length} tematów.`,
+    });
     return true;
   }
 
@@ -200,11 +214,17 @@ export function useWorkspaceActions({
     if (isSaving) return false;
     if (item.kind === "chapter") {
       if (!(await commands.renameItem(item, title))) return false;
-      toast.success("Zmieniono nazwę rozdziału.");
+      toast.add({
+        data: { type: "success" },
+        description: "Zmieniono nazwę rozdziału.",
+      });
       return true;
     }
     if (!(await commands.renameItem(item, title))) return false;
-    toast.success("Zmieniono nazwę tematu.");
+    toast.add({
+      data: { type: "success" },
+      description: "Zmieniono nazwę tematu.",
+    });
     return true;
   }
 
@@ -222,7 +242,10 @@ export function useWorkspaceActions({
           navigateHome();
         }
       }
-      toast.success("Rozdział przeniesiono do usuniętych.");
+      toast.add({
+        data: { type: "success" },
+        description: "Rozdział przeniesiono do usuniętych.",
+      });
       return true;
     }
 
@@ -233,7 +256,10 @@ export function useWorkspaceActions({
     clearDraft(item.id);
     if (topicId === item.id)
       navigateToChapter(item.chapterId, remainingTopics[0]?.id ?? "");
-    toast.success("Temat przeniesiono do usuniętych.");
+    toast.add({
+      data: { type: "success" },
+      description: "Temat przeniesiono do usuniętych.",
+    });
     return true;
   }
 
@@ -266,11 +292,13 @@ export function useWorkspaceActions({
     }
 
     const deletedCount = chapterIds.length + topicIds.length;
-    toast.success(
-      deletedCount === 1
-        ? "Element przeniesiono do usuniętych."
-        : `${deletedCount} elementów przeniesiono do usuniętych.`,
-    );
+    toast.add({
+      data: { type: "success" },
+      description:
+        deletedCount === 1
+          ? "Element przeniesiono do usuniętych."
+          : `${deletedCount} elementów przeniesiono do usuniętych.`,
+    });
     return true;
   }
 

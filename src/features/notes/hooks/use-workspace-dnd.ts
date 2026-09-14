@@ -9,7 +9,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 
 import {
   moveTopic,
@@ -180,7 +180,10 @@ export function useWorkspaceDnd({
         previous &&
         (await commitDrag(previous, chapters, "topic", String(active.id)))
       )
-        toast.success(`Przeniesiono temat do „${currentChapter.title}”.`);
+        toast.add({
+          data: { type: "success" },
+          description: `Przeniesiono temat do „${currentChapter.title}”.`,
+        });
       return;
     }
     setError(null);
@@ -255,7 +258,10 @@ export function useWorkspaceDnd({
     navigateToChapter(overChapterId, String(active.id), true);
     expandChapter(overChapterId);
     if (movedBetweenChapters)
-      toast.success(`Przeniesiono temat do „${currentChapter.title}”.`);
+      toast.add({
+        data: { type: "success" },
+        description: `Przeniesiono temat do „${currentChapter.title}”.`,
+      });
   }
 
   return {
