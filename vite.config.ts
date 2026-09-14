@@ -38,6 +38,16 @@ export default defineConfig(({ mode }) => {
                 test: /node_modules[\\/]@supabase[\\/]/,
                 priority: 20,
               },
+              {
+                name: "react-router",
+                test: /node_modules[\\/]react-router[\\/]/,
+                priority: 20,
+              },
+              {
+                name: "forms",
+                test: /node_modules[\\/](?:react-hook-form|zod|@hookform[\\/]resolvers)[\\/]/,
+                priority: 20,
+              },
             ],
           },
         },
