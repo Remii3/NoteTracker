@@ -1,3 +1,5 @@
+import type { ImportedModuleDraft } from "../import/docx-import";
+
 export type Module = {
   id: string;
   slug: string;
@@ -14,6 +16,7 @@ export interface ModulesRepository {
   get(id: string): Promise<Module | null>;
   getBySlug(slug: string): Promise<Module | null>;
   create(name: string, position: number): Promise<Module>;
+  importDocx(draft: ImportedModuleDraft, position: number): Promise<Module>;
   rename(id: string, name: string): Promise<void>;
   remove(id: string): Promise<void>;
   reorder(ids: string[]): Promise<void>;

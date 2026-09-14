@@ -1,9 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database, Json } from "@/lib/supabase/database.types";
 import { throwIfPostgrestError } from "@/features/notes/data/supabase-error";
 import type { Module, ModulesRepository } from "./modules-repository";
 import { clearMemoryCacheByPrefix } from "@/lib/memory-cache";
+import type { ImportedModuleDraft } from "../import/docx-import";
+import { createUniqueSlug } from "@/features/notes/lib/slug-utils";
 
 export class SupabaseModulesRepository implements ModulesRepository {
   private readonly client: SupabaseClient<Database>;
@@ -78,6 +80,46 @@ export class SupabaseModulesRepository implements ModulesRepository {
       topicsCount: 0,
       completedTopicsCount: 0,
     };
+  }
+
+  async importDocx(draft: ImportedModuleDraft, position: number) {
+    const chapterSlugs = new Set<string>();
+    const chapters = draft.chapters.map((chapter, chapterIndex) => {
+      const chapterSlug = createUniqueSlug(
+        chapter.title,
+        chapterSlugs,
+        "rozdzial",
+      );
+      chapterSlugs.add(chapterSlug);
+      const topicSlugs = new Set<string>();
+      return {
+        title: chapter.title,
+        slug: chapterSlug,
+        position: (chapterIndex + 1) * 1000,
+        topics: chapter.topics.map((topic, topicIndex) => {
+          const slug = createUniqueSlug(topic.title, topicSlugs, "temat");
+          topicSlugs.add(slug);
+          return {
+            title: topic.title,
+            slug,
+            position: (topicIndex + 1) * 1000,
+            content: topic.content,
+          };
+        }),
+      };
+    });
+    const { data, error } = await this.client.rpc("import_docx_module", {
+      target_name: draft.name,
+      target_position: position,
+      imported_chapters: chapters as unknown as Json,
+    });
+    throwIfPostgrestError(error);
+    if (!data) throw new Error("Nie udało się zaimportować modułu.");
+    this.clearStatisticsCache();
+    const imported = await this.get(data);
+    if (!imported)
+      throw new Error("Nie udało się odczytać modułu po imporcie.");
+    return imported;
   }
 
   async rename(id: string, name: string) {

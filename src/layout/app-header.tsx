@@ -73,7 +73,10 @@ export function AppHeader({
           />
           {children}
         </div>
-        <div ref={onActionsTargetChange} className="hidden" />
+        <div
+          ref={onActionsTargetChange}
+          className="flex shrink-0 items-center empty:hidden"
+        />
         <div
           ref={onTrailingActionsTargetChange}
           className="flex shrink-0 items-center empty:hidden"

@@ -311,6 +311,14 @@ export type Database = {
     };
     Views: Record<never, never>;
     Functions: {
+      import_docx_module: {
+        Args: {
+          imported_chapters: Json;
+          target_name: string;
+          target_position: number;
+        };
+        Returns: string;
+      };
       get_module_summaries: {
         Args: {
           target_module_id?: string | null;

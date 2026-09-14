@@ -2,12 +2,20 @@ import {
   ArrowDown,
   ArrowUp,
   BookOpen,
+  FileUp,
   LoaderCircle,
   Pencil,
   Plus,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -28,6 +36,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/components/ui/toast";
 import { readMemoryCache, writeMemoryCache } from "@/lib/memory-cache";
 import { AppHeaderActions, AppHeaderInfo } from "@/layout/app-header";
 import type { Module, ModulesRepository } from "./data/modules-repository";
@@ -37,6 +46,8 @@ import {
   normalizeModuleName,
   validateModuleName,
 } from "./lib/module-validation";
+import { parseDocxFile, type ImportedModuleDraft } from "./import/docx-import";
+import { DocxImportDialog } from "./import/docx-import-dialog";
 
 type Props = {
   repository: ModulesRepository;
@@ -62,6 +73,11 @@ export function ModulePicker({
   const [error, setError] = useState<string | null>(null);
   const [renamedModule, setRenamedModule] = useState<Module | null>(null);
   const [deletedModule, setDeletedModule] = useState<Module | null>(null);
+  const [importDraft, setImportDraft] = useState<ImportedModuleDraft | null>(
+    null,
+  );
+  const [isParsingDocx, setIsParsingDocx] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const updateModules = useCallback(
     (update: Module[] | ((current: Module[]) => Module[])) => {
       setModules((current) => {
@@ -122,6 +138,44 @@ export function ModulePicker({
     }
   }
 
+  async function selectDocx(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setError(null);
+    setIsParsingDocx(true);
+    try {
+      setImportDraft(
+        await parseDocxFile(
+          file,
+          modules.map((module) => module.name),
+        ),
+      );
+    } catch (parseError) {
+      setError(
+        parseError instanceof Error
+          ? parseError.message
+          : "Nie udało się odczytać dokumentu Word.",
+      );
+    } finally {
+      setIsParsingDocx(false);
+    }
+  }
+
+  async function importDocx(draft: ImportedModuleDraft) {
+    const imported = await repository.importDocx(
+      draft,
+      (modules.at(-1)?.position ?? 0) + 1000,
+    );
+    updateModules((current) => [...current, imported]);
+    setImportDraft(null);
+    toast.add({
+      data: { type: "success" },
+      description: `Zaimportowano moduł „${imported.name}”.`,
+    });
+    onSelect(imported);
+  }
+
   async function reorder(id: string, direction: -1 | 1) {
     const previous = modules;
     const next = moveModule(previous, id, direction);
@@ -143,6 +197,30 @@ export function ModulePicker({
         </p>
       </AppHeaderInfo>
       <AppHeaderActions>
+        <input
+          ref={fileInputRef}
+          className="sr-only"
+          type="file"
+          accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          tabIndex={-1}
+          onChange={(event) => void selectDocx(event)}
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          aria-label="Importuj dokument Word"
+          disabled={isParsingDocx}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {isParsingDocx ? (
+            <LoaderCircle className="animate-spin" />
+          ) : (
+            <FileUp />
+          )}
+          <span className="hidden sm:inline">
+            {isParsingDocx ? "Odczytywanie…" : "Importuj Word"}
+          </span>
+        </Button>
         <Button size="sm" onClick={() => setCreateOpen(true)}>
           <Plus />
           <span className="hidden sm:inline">Nowy moduł</span>
@@ -321,6 +399,14 @@ export function ModulePicker({
             modules={modules}
             onClose={() => setCreateOpen(false)}
             onCreate={createModule}
+          />
+        )}
+        {importDraft && (
+          <DocxImportDialog
+            draft={importDraft}
+            onChange={setImportDraft}
+            onClose={() => setImportDraft(null)}
+            onImport={importDocx}
           />
         )}
       </main>

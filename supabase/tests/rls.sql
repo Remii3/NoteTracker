@@ -519,6 +519,55 @@ select * from public.get_module_gallery_sections('10000001-0000-4000-8000-000000
 select * from public.get_chapter_gallery_images('10000001-0000-4000-8000-000000000000','10000002-0000-4000-8000-000000000000',0,12);
 select public.reorder_topics('10000002-0000-4000-8000-000000000000',array['10000003-0000-4000-8000-000000000000'::uuid]);
 select public.reorder_topic_images('10000003-0000-4000-8000-000000000000',array['10000009-0000-4000-8000-000000000000'::uuid]);
+do $$
+declare
+ imported_module_id uuid;
+ duplicate_module_id uuid;
+begin
+ imported_module_id := public.import_docx_module(
+  'Word import',
+  3000,
+  '[{"title":"Chapter from Word","slug":"chapter-from-word","position":1000,"topics":[{"title":"Topic from Word","slug":"topic-from-word","position":1000,"content":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Imported content"}]}]}}]}]'::jsonb
+ );
+ perform pg_temp.assert_true(
+  (select user_id = '10000000-0000-4000-8000-000000000000'
+   from public.modules where id = imported_module_id),
+  'DOCX import: creates an owned module'
+ );
+ perform pg_temp.assert_true(
+  (select count(*) = 1 from public.chapters where module_id = imported_module_id),
+  'DOCX import: creates chapters'
+ );
+ perform pg_temp.assert_true(
+  (select count(*) = 1 and bool_and(content #>> '{content,0,content,0,text}' = 'Imported content')
+   from public.topics where chapter_id in (
+    select id from public.chapters where module_id = imported_module_id
+   )),
+  'DOCX import: creates topics with rich content'
+ );
+
+ duplicate_module_id := public.import_docx_module('Word import', 4000, '[]'::jsonb);
+ perform pg_temp.assert_true(
+  (select name = 'Word import (2)' from public.modules where id = duplicate_module_id),
+  'DOCX import: adds a numeric suffix to a duplicate module name'
+ );
+
+ begin
+  perform public.import_docx_module(
+   'Broken import',
+   5000,
+   '[{"title":"Chapter","slug":"chapter","position":1000,"topics":[{"title":"","slug":"topic","position":1000,"content":{"type":"doc"}}]}]'::jsonb
+  );
+  raise exception 'Invalid DOCX import was accepted';
+ exception when raise_exception then
+  if SQLERRM = 'Invalid DOCX import was accepted' then raise; end if;
+ end;
+ perform pg_temp.assert_true(
+  not exists (select 1 from public.modules where name = 'Broken import'),
+  'DOCX import: invalid nested data rolls back the whole module'
+ );
+end;
+$$;
 do $$ declare test_question_id uuid; test_session_id uuid; test_trash_id uuid; begin
  test_question_id := public.save_question('10000001-0000-4000-8000-000000000000',null,'New question','',null,null,
   '[{"content":"Yes","isCorrect":true},{"content":"No","isCorrect":false}]'::jsonb);

@@ -1,4 +1,5 @@
 import Highlight from "@tiptap/extension-highlight";
+import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { TableKit } from "@tiptap/extension-table";
 import TextAlign from "@tiptap/extension-text-align";
@@ -20,6 +21,13 @@ const baseExtensions = [
   TextStyleKit,
   TextAlign.configure({ types: ["heading", "paragraph"] }),
   Highlight.configure({ multicolor: true }),
+  Image.configure({
+    allowBase64: true,
+    inline: true,
+    HTMLAttributes: {
+      class: "max-h-[32rem] max-w-full rounded-md object-contain",
+    },
+  }),
   TableKit.configure({
     table: {
       resizable: true,
