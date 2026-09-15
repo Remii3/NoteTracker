@@ -439,7 +439,10 @@ export function ModulePicker({
                       onClick={() => onSelect(module)}
                     >
                       <BookOpen className="size-5 text-primary" />
-                      <span className="mt-4 block font-semibold">
+                      <span
+                        className="mt-4 block truncate font-semibold"
+                        title={module.name}
+                      >
                         {module.name}
                       </span>
                       <span className="mt-1 block text-sm text-muted-foreground">
