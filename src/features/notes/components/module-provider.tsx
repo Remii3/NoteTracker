@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { Outlet } from "react-router";
+import { LoadError } from "@/components/load-error";
 import { toast } from "@/components/ui/toast";
+import { AccountMenu } from "@/features/auth";
+import { AppLayout } from "@/layout/app-layout";
 import { useWorkspaceActions } from "../hooks/use-workspace-actions";
 import { useNoteDrafts } from "../hooks/use-note-drafts";
 import { useNotesStore } from "../hooks/use-notes-store";
@@ -15,8 +19,13 @@ import type { QuestionsRepository } from "@/features/questions/data/questions-re
 import type { ModulesRepository } from "@/features/modules/data/modules-repository";
 import type { StatisticsRepository } from "@/features/statistics/data/statistics-repository";
 import { ModuleContext, type ModuleContextValue } from "./module-context";
-import { ModuleLayout } from "./module-layout";
-import type { WorkspaceDialogsProps } from "./workspace-dialogs";
+import {
+  WorkspaceDialogs,
+  type WorkspaceDialogsProps,
+} from "./workspace-dialogs";
+import { WorkspaceHeader } from "./workspace-header";
+import { WorkspaceLoadingSkeleton } from "./workspace-loading-skeleton";
+import { WorkspaceSidebar } from "./workspace-sidebar";
 type Props = {
   moduleId: string;
   draftScope?: string;
@@ -428,23 +437,20 @@ export function ModuleProvider({
     onDragOver: handleSidebarDragOver,
     onDragCancel: handleSidebarDragCancel,
     onDragEnd: handleSidebarDragEnd,
-    userEmail,
     isLoading: notesStore.isLoading,
-    onOpenModules,
-    userName,
-    onSignOut: () => {
-      if (notesStore.isSaving) {
-        toast.add({
-          data: { type: "info" },
-          description: "Poczekaj na zakończenie zapisywania.",
-        });
-        return;
-      }
-      if (hasDirtyDrafts) setSignOutPending(true);
-      else onSignOut?.();
-    },
-    onOpenAccount,
     isSearching: isSearchPending || notesStore.isSearching,
+  };
+
+  const requestSignOut = () => {
+    if (notesStore.isSaving) {
+      toast.add({
+        data: { type: "info" },
+        description: "Poczekaj na zakończenie zapisywania.",
+      });
+      return;
+    }
+    if (hasDirtyDrafts) setSignOutPending(true);
+    else onSignOut?.();
   };
 
   const header = !showHeader
@@ -548,15 +554,32 @@ export function ModuleProvider({
 
   return (
     <ModuleContext.Provider value={contextValue}>
-      <ModuleLayout
-        sidebar={sidebar}
-        header={header}
-        dialogs={dialogs}
-        isLoading={notesStore.isLoading}
-        loadFailed={notesStore.loadFailed}
-        onRetry={() => void notesStore.load()}
-        onBack={onOpenModules ?? navigateHome}
-      />
+      <AppLayout
+        accountMenu={
+          <AccountMenu
+            userName={userName}
+            userEmail={userEmail}
+            onOpenAccount={() => onOpenAccount?.()}
+            onSignOut={requestSignOut}
+          />
+        }
+        header={header ? <WorkspaceHeader {...header} /> : undefined}
+        onOpenHome={onOpenModules ?? navigateHome}
+        overlay={<WorkspaceDialogs {...dialogs} />}
+        sidebar={<WorkspaceSidebar {...sidebar} />}
+      >
+        {notesStore.isLoading ? (
+          <WorkspaceLoadingSkeleton />
+        ) : notesStore.loadFailed ? (
+          <LoadError
+            message="Nie udało się pobrać notatek."
+            onRetry={() => void notesStore.load()}
+            onBack={onOpenModules ?? navigateHome}
+          />
+        ) : (
+          <Outlet />
+        )}
+      </AppLayout>
     </ModuleContext.Provider>
   );
 }

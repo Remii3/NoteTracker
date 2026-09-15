@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/tooltip";
 import { useEffect, useRef, useState } from "react";
 
-import { AppHeaderTrailingActions } from "@/layout/app-header";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -219,65 +218,63 @@ export function WorkspaceHeader({
         </div>
       ) : null}
       {showEditingMode && (
-        <AppHeaderTrailingActions>
-          <div className="flex h-8 items-center gap-2 sm:gap-3">
-            <div
-              role="group"
-              aria-label="Tryb pracy"
-              className="flex h-8 items-center rounded-md bg-muted/70 p-0.5 ring-1 ring-inset ring-border/70"
-            >
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className={
-                        !isEditing
-                          ? "h-7 bg-background text-foreground shadow-xs ring-1 ring-inset ring-border/60 hover:bg-background"
-                          : "h-7 text-muted-foreground"
-                      }
-                      aria-label="Włącz tryb podglądu"
-                      aria-pressed={!isEditing}
-                      onClick={() => onChangeEditingMode(false)}
-                    />
-                  }
-                >
-                  <Eye className="size-3.5" />
-                  <span className="hidden sm:inline">Podgląd</span>
-                </TooltipTrigger>
-                <TooltipContent className="sm:hidden">Podgląd</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className={
-                        isEditing
-                          ? "h-7 bg-background text-foreground shadow-xs ring-1 ring-inset ring-border/60 hover:bg-background"
-                          : "h-7 text-muted-foreground"
-                      }
-                      aria-label="Włącz tryb edycji"
-                      aria-pressed={isEditing}
-                      onClick={() => onChangeEditingMode(true)}
-                      onPointerEnter={onPreloadEditor}
-                      onFocus={onPreloadEditor}
-                      onTouchStart={onPreloadEditor}
-                    />
-                  }
-                >
-                  <Pencil className="size-3.5" />
-                  <span className="hidden sm:inline">Edycja</span>
-                </TooltipTrigger>
-                <TooltipContent className="sm:hidden">Edycja</TooltipContent>
-              </Tooltip>
-            </div>
+        <div className="flex h-8 shrink-0 items-center gap-2 sm:gap-3">
+          <div
+            role="group"
+            aria-label="Tryb pracy"
+            className="flex h-8 items-center rounded-md bg-muted/70 p-0.5 ring-1 ring-inset ring-border/70"
+          >
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className={
+                      !isEditing
+                        ? "h-7 bg-background text-foreground shadow-xs ring-1 ring-inset ring-border/60 hover:bg-background"
+                        : "h-7 text-muted-foreground"
+                    }
+                    aria-label="Włącz tryb podglądu"
+                    aria-pressed={!isEditing}
+                    onClick={() => onChangeEditingMode(false)}
+                  />
+                }
+              >
+                <Eye className="size-3.5" />
+                <span className="hidden sm:inline">Podgląd</span>
+              </TooltipTrigger>
+              <TooltipContent className="sm:hidden">Podgląd</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className={
+                      isEditing
+                        ? "h-7 bg-background text-foreground shadow-xs ring-1 ring-inset ring-border/60 hover:bg-background"
+                        : "h-7 text-muted-foreground"
+                    }
+                    aria-label="Włącz tryb edycji"
+                    aria-pressed={isEditing}
+                    onClick={() => onChangeEditingMode(true)}
+                    onPointerEnter={onPreloadEditor}
+                    onFocus={onPreloadEditor}
+                    onTouchStart={onPreloadEditor}
+                  />
+                }
+              >
+                <Pencil className="size-3.5" />
+                <span className="hidden sm:inline">Edycja</span>
+              </TooltipTrigger>
+              <TooltipContent className="sm:hidden">Edycja</TooltipContent>
+            </Tooltip>
           </div>
-        </AppHeaderTrailingActions>
+        </div>
       )}
     </>
   );

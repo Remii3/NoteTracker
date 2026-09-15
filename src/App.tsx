@@ -1,6 +1,6 @@
 import { AuthProvider } from "@/features/auth";
-import { ThemeProvider } from "@/features/theme";
 import { AuthenticatedApp } from "@/router";
+import { ThemeProvider } from "@/features/theme";
 import { Toaster } from "@/components/ui/toast";
 
 function App() {

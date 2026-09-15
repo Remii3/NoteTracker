@@ -1,5 +1,24 @@
 import type { Module } from "../data/modules-repository";
 
+const naturalPolishCollator = new Intl.Collator("pl", {
+  numeric: true,
+  sensitivity: "base",
+});
+
+export function compareModuleNames(
+  first: Pick<Module, "name">,
+  second: Pick<Module, "name">,
+) {
+  return naturalPolishCollator.compare(first.name, second.name);
+}
+
+export function compareModules(first: Module, second: Module) {
+  return (
+    Number(second.isPinned) - Number(first.isPinned) ||
+    compareModuleNames(first, second)
+  );
+}
+
 export const MODULE_NAME_MAX_LENGTH = 120;
 
 export function normalizeModuleName(name: string) {

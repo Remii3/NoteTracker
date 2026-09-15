@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  compareModuleNames,
+  compareModules,
   moveModule,
   normalizeModuleName,
   validateModuleName,
@@ -9,6 +11,7 @@ import {
 const modules = [
   {
     id: "a",
+    isPinned: false,
     slug: "matematyka",
     name: "Matematyka",
     position: 1000,
@@ -19,6 +22,7 @@ const modules = [
   },
   {
     id: "b",
+    isPinned: false,
     slug: "fizyka",
     name: "Fizyka",
     position: 2000,
@@ -40,6 +44,28 @@ describe("module validation", () => {
       "Moduł o tej nazwie już istnieje.",
     );
     expect(validateModuleName("matematyka", modules, "a")).toBeNull();
+  });
+
+  it("sortuje moduły alfabetycznie, naturalnie i po polsku", () => {
+    const names = ["Żywienie 10", "Analiza", "Żywienie 2"];
+
+    expect(
+      names
+        .map((name) => ({ name }))
+        .sort(compareModuleNames)
+        .map(({ name }) => name),
+    ).toEqual(["Analiza", "Żywienie 2", "Żywienie 10"]);
+  });
+
+  it("umieszcza przypięte moduły przed pozostałymi", () => {
+    expect(
+      [
+        ...modules,
+        { ...modules[0], id: "pinned", name: "Zoologia", isPinned: true },
+      ]
+        .sort(compareModules)
+        .map(({ id }) => id),
+    ).toEqual(["pinned", "b", "a"]);
   });
 
   it("przesuwa moduł i przelicza pozycje", () => {

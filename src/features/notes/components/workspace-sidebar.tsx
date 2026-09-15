@@ -25,14 +25,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { ManagedItem, SortMode } from "../types/workspace-types";
 import {
-  Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
-  SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
@@ -46,11 +43,9 @@ import {
 } from "@/components/ui/tooltip";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { AccountMenu } from "@/features/auth";
 import { Button } from "@/components/ui/button";
 import type { Chapter } from "../types/model";
 import { Input } from "@/components/ui/input";
-import { MobileAppSidebarHeader } from "@/layout/app-header";
 import { SidebarChapter } from "./sidebar-chapter";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -93,12 +88,7 @@ type Props = {
   onDragOver: (event: DragOverEvent) => void;
   onDragCancel: () => void;
   onDragEnd: (event: DragEndEvent) => void;
-  userEmail?: string;
   isLoading?: boolean;
-  onOpenModules?: () => void;
-  userName?: string;
-  onSignOut?: () => void;
-  onOpenAccount?: () => void;
   isSearching?: boolean;
 };
 
@@ -137,12 +127,7 @@ export function WorkspaceSidebar({
   onDragOver,
   onDragCancel,
   onDragEnd,
-  userEmail,
   isLoading,
-  onOpenModules,
-  userName,
-  onSignOut,
-  onOpenAccount,
   isSearching,
 }: Props) {
   const { isMobile, setOpen, setOpenMobile } = useSidebar();
@@ -253,16 +238,7 @@ export function WorkspaceSidebar({
   }, [isMobile, setOpen, setOpenMobile]);
 
   return (
-    <Sidebar
-      collapsible="offcanvas"
-      className="top-14 h-[calc(100svh-3.5rem)] [&_button]:cursor-default"
-    >
-      <MobileAppSidebarHeader
-        onOpenHome={() => {
-          onOpenModules?.();
-          closeMobileSidebar();
-        }}
-      />
+    <>
       <nav
         aria-label="Widoki modułu"
         className="flex h-10 shrink-0 items-center gap-1 border-b bg-sidebar px-2"
@@ -543,18 +519,7 @@ export function WorkspaceSidebar({
           className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 h-5 bg-linear-to-t from-sidebar via-sidebar/80 to-transparent transition-opacity motion-reduce:transition-none ${scrollEdges.bottom ? "opacity-100" : "opacity-0"}`}
         />
       </div>
-
-      <SidebarFooter className="min-h-16 shrink-0 justify-center border-t p-2">
-        <AccountMenu
-          userName={userName}
-          userEmail={userEmail}
-          onOpenAccount={() => onOpenAccount?.()}
-          onSignOut={() => onSignOut?.()}
-        />
-      </SidebarFooter>
-
-      <SidebarRail />
-    </Sidebar>
+    </>
   );
 }
 

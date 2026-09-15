@@ -1,16 +1,18 @@
 import {
-  ArrowDown,
-  ArrowUp,
   BookOpen,
   FileUp,
   LoaderCircle,
   Pencil,
+  Pin,
   Plus,
+  Search,
   Trash2,
+  X,
 } from "lucide-react";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -38,11 +40,10 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toast";
 import { readMemoryCache, writeMemoryCache } from "@/lib/memory-cache";
-import { AppHeaderActions, AppHeaderInfo } from "@/layout/app-header";
 import type { Module, ModulesRepository } from "./data/modules-repository";
 import {
   MODULE_NAME_MAX_LENGTH,
-  moveModule,
+  compareModules,
   normalizeModuleName,
   validateModuleName,
 } from "./lib/module-validation";
@@ -57,6 +58,8 @@ type Props = {
   onLoaded?: (modules: Module[]) => void;
 };
 
+const PAGE_SIZE = 24;
+
 export function ModulePicker({
   repository,
   onSelect,
@@ -67,9 +70,20 @@ export function ModulePicker({
   const cachedModules = cacheKey
     ? readMemoryCache<Module[]>(cacheKey)
     : undefined;
-  const [modules, setModules] = useState<Module[]>(cachedModules ?? []);
+  const [pinnedModules, setPinnedModules] = useState<Module[]>(
+    cachedModules?.filter((module) => module.isPinned) ?? [],
+  );
+  const [modules, setModules] = useState<Module[]>(
+    cachedModules?.filter((module) => !module.isPinned) ?? [],
+  );
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [hasMore, setHasMore] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(!cachedModules);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [pinningModuleId, setPinningModuleId] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [renamedModule, setRenamedModule] = useState<Module | null>(null);
   const [deletedModule, setDeletedModule] = useState<Module | null>(null);
@@ -77,60 +91,127 @@ export function ModulePicker({
     null,
   );
   const [isParsingDocx, setIsParsingDocx] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const requestIdRef = useRef(0);
+  const loadingMoreRef = useRef(false);
+  const sortedModules = useMemo(
+    () => [...pinnedModules, ...modules].sort(compareModules),
+    [modules, pinnedModules],
+  );
   const updateModules = useCallback(
     (update: Module[] | ((current: Module[]) => Module[])) => {
       setModules((current) => {
-        const next = typeof update === "function" ? update(current) : update;
-        if (cacheKey) writeMemoryCache(cacheKey, next);
-        return next;
+        return typeof update === "function" ? update(current) : update;
       });
     },
-    [cacheKey],
+    [],
   );
 
-  async function loadModules() {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const items = await repository.list();
-      updateModules(items);
-      onLoaded?.(items);
-    } catch {
-      setError("Nie udało się pobrać modułów.");
-    } finally {
-      setIsLoading(false);
-    }
+  async function getNextPosition() {
+    const loadedModules = [...pinnedModules, ...modules];
+    const allModules =
+      query || hasMore ? await repository.list() : loadedModules;
+    return Math.max(0, ...allModules.map((module) => module.position)) + 1000;
   }
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setQuery(search.trim()), 250);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
   useEffect(() => {
     let active = true;
-    void repository
-      .list()
-      .then((items) => {
-        if (active) {
-          updateModules(items);
-          onLoaded?.(items);
-        }
-      })
-      .catch(() => {
-        if (active) setError("Nie udało się pobrać modułów.");
-      })
-      .finally(() => {
-        if (active) setIsLoading(false);
-      });
+    const requestId = ++requestIdRef.current;
+    queueMicrotask(() => {
+      if (!active) return;
+      setIsLoading(true);
+      setIsLoadingMore(false);
+      loadingMoreRef.current = false;
+      setError(null);
+      void Promise.all([
+        repository.listPinned(),
+        repository.listPage(query, 0, PAGE_SIZE),
+      ])
+        .then(([pinned, page]) => {
+          if (!active || requestId !== requestIdRef.current) return;
+          setPinnedModules(pinned);
+          setModules(page.modules);
+          setHasMore(page.hasMore);
+          const loadedModules = [...pinned, ...page.modules];
+          if (!query && cacheKey) writeMemoryCache(cacheKey, loadedModules);
+          if (!query && !page.hasMore) onLoaded?.(loadedModules);
+        })
+        .catch(() => {
+          if (active && requestId === requestIdRef.current)
+            setError("Nie udało się pobrać modułów.");
+        })
+        .finally(() => {
+          if (active && requestId === requestIdRef.current) setIsLoading(false);
+        });
+    });
     return () => {
       active = false;
     };
-  }, [onLoaded, repository, updateModules]);
+  }, [cacheKey, onLoaded, query, reloadKey, repository]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMoreRef.current || !hasMore || isLoading) return;
+    loadingMoreRef.current = true;
+    setIsLoadingMore(true);
+    const requestId = requestIdRef.current;
+    try {
+      const page = await repository.listPage(query, modules.length, PAGE_SIZE);
+      if (requestId !== requestIdRef.current) return;
+      const knownIds = new Set(modules.map((module) => module.id));
+      const next = [
+        ...modules,
+        ...page.modules.filter((module) => !knownIds.has(module.id)),
+      ];
+      setModules(next);
+      setHasMore(page.hasMore);
+      const loadedModules = [...pinnedModules, ...next];
+      if (!query && cacheKey) writeMemoryCache(cacheKey, loadedModules);
+      if (!query && !page.hasMore) onLoaded?.(loadedModules);
+    } catch {
+      if (requestId === requestIdRef.current)
+        setError("Nie udało się pobrać kolejnych modułów.");
+    } finally {
+      if (requestId === requestIdRef.current) setIsLoadingMore(false);
+      loadingMoreRef.current = false;
+    }
+  }, [
+    cacheKey,
+    hasMore,
+    isLoading,
+    modules,
+    onLoaded,
+    pinnedModules,
+    query,
+    repository,
+  ]);
+
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || !hasMore || isLoading) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) void loadMore();
+      },
+      { root: mainRef.current, rootMargin: "300px 0px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isLoading, loadMore]);
 
   async function createModule(name: string) {
     setError(null);
     try {
-      const created = await repository.create(
-        name,
-        (modules.at(-1)?.position ?? 0) + 1000,
-      );
+      const created = await repository.create(name, await getNextPosition());
       updateModules((current) => [...current, created]);
+      if (!query && cacheKey)
+        writeMemoryCache(cacheKey, [...pinnedModules, ...modules, created]);
       setCreateOpen(false);
       onSelect(created);
     } catch {
@@ -148,7 +229,7 @@ export function ModulePicker({
       setImportDraft(
         await parseDocxFile(
           file,
-          modules.map((module) => module.name),
+          sortedModules.map((module) => module.name),
         ),
       );
     } catch (parseError) {
@@ -165,9 +246,11 @@ export function ModulePicker({
   async function importDocx(draft: ImportedModuleDraft) {
     const imported = await repository.importDocx(
       draft,
-      (modules.at(-1)?.position ?? 0) + 1000,
+      await getNextPosition(),
     );
     updateModules((current) => [...current, imported]);
+    if (!query && cacheKey)
+      writeMemoryCache(cacheKey, [...pinnedModules, ...modules, imported]);
     setImportDraft(null);
     toast.add({
       data: { type: "success" },
@@ -176,65 +259,131 @@ export function ModulePicker({
     onSelect(imported);
   }
 
-  async function reorder(id: string, direction: -1 | 1) {
-    const previous = modules;
-    const next = moveModule(previous, id, direction);
-    if (next === previous) return;
-    updateModules(next);
+  async function togglePinned(module: Module) {
+    if (pinningModuleId) return;
+    const nextPinned = !module.isPinned;
+    const previousPinned = pinnedModules;
+    const previousModules = modules;
+    const requestId = requestIdRef.current;
+    setPinningModuleId(module.id);
+    setError(null);
+    if (nextPinned) {
+      setModules((current) => current.filter((item) => item.id !== module.id));
+      setPinnedModules((current) => [
+        ...current,
+        { ...module, isPinned: true },
+      ]);
+    } else {
+      setPinnedModules((current) =>
+        current.filter((item) => item.id !== module.id),
+      );
+      if (!query)
+        setModules((current) => [...current, { ...module, isPinned: false }]);
+    }
+
     try {
-      await repository.reorder(next.map((module) => module.id));
+      await repository.setPinned(module.id, nextPinned);
     } catch {
-      updateModules(previous);
-      setError("Nie udało się zmienić kolejności modułów.");
+      if (requestId === requestIdRef.current) {
+        setPinnedModules(previousPinned);
+        setModules(previousModules);
+        if (!query && cacheKey)
+          writeMemoryCache(cacheKey, [...previousPinned, ...previousModules]);
+        setError("Nie udało się zmienić przypięcia modułu.");
+      }
+      setPinningModuleId(null);
+      return;
+    }
+
+    try {
+      const [pinned, page] = await Promise.all([
+        repository.listPinned(),
+        repository.listPage(query, 0, Math.max(PAGE_SIZE, modules.length)),
+      ]);
+      if (requestId === requestIdRef.current) {
+        setPinnedModules(pinned);
+        setModules(page.modules);
+        setHasMore(page.hasMore);
+        const loadedModules = [...pinned, ...page.modules];
+        if (!query && cacheKey) writeMemoryCache(cacheKey, loadedModules);
+        if (!query && !page.hasMore) onLoaded?.(loadedModules);
+      }
+    } catch {
+      if (requestId === requestIdRef.current)
+        setError("Zmieniono przypięcie, ale nie udało się odświeżyć listy.");
+    } finally {
+      setPinningModuleId(null);
     }
   }
 
   return (
     <>
-      <AppHeaderInfo>
-        <p className="hidden truncate text-sm text-muted-foreground min-[480px]:block">
-          {isLoading ? "Ładowanie modułów…" : formatModuleCount(modules.length)}
-        </p>
-      </AppHeaderInfo>
-      <AppHeaderActions>
-        <input
-          ref={fileInputRef}
-          className="sr-only"
-          type="file"
-          accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          tabIndex={-1}
-          onChange={(event) => void selectDocx(event)}
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          aria-label="Importuj dokument Word"
-          disabled={isParsingDocx}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          {isParsingDocx ? (
-            <LoaderCircle className="animate-spin" />
-          ) : (
-            <FileUp />
-          )}
-          <span className="hidden sm:inline">
-            {isParsingDocx ? "Odczytywanie…" : "Importuj Word"}
-          </span>
-        </Button>
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus />
-          <span className="hidden sm:inline">Nowy moduł</span>
-        </Button>
-      </AppHeaderActions>
-      <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+      <main
+        ref={mainRef}
+        className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12"
+      >
         <div>
-          <header>
-            <p className="text-sm font-medium text-primary">Twoja przestrzeń</p>
-            <h1 className="mt-1 text-3xl font-semibold">Moduły</h1>
-            <p className="mt-2 text-muted-foreground">
-              Moduł grupuje rozdziały należące do jednego obszaru nauki.
-            </p>
+          <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-primary">
+                Twoja przestrzeń
+              </p>
+              <h1 className="mt-1 text-3xl font-semibold">Moduły</h1>
+              <p className="mt-2 text-muted-foreground">
+                Moduł grupuje rozdziały należące do jednego obszaru nauki.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <input
+                ref={fileInputRef}
+                className="sr-only"
+                type="file"
+                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                tabIndex={-1}
+                onChange={(event) => void selectDocx(event)}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                aria-label="Importuj dokument Word"
+                disabled={isParsingDocx}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {isParsingDocx ? (
+                  <LoaderCircle className="animate-spin" />
+                ) : (
+                  <FileUp />
+                )}
+                {isParsingDocx ? "Odczytywanie…" : "Importuj Word"}
+              </Button>
+              <Button size="sm" onClick={() => setCreateOpen(true)}>
+                <Plus />
+                Nowy moduł
+              </Button>
+            </div>
           </header>
+          <div className="relative mt-6 max-w-xl">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Szukaj modułów"
+              aria-label="Szukaj modułów"
+              className="px-9"
+            />
+            {search && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                aria-label="Wyczyść wyszukiwanie"
+                className="absolute top-1/2 right-2 -translate-y-1/2 active:not-aria-[haspopup]:-translate-y-1/2!"
+                onClick={() => setSearch("")}
+              >
+                <X />
+              </Button>
+            )}
+          </div>
           {error && (
             <div className="mt-8 flex items-center gap-3 text-sm text-destructive">
               <span>{error}</span>
@@ -242,13 +391,13 @@ export function ModulePicker({
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => void loadModules()}
+                onClick={() => setReloadKey((current) => current + 1)}
               >
                 Spróbuj ponownie
               </Button>
             </div>
           )}
-          {isLoading ? (
+          {isLoading && !sortedModules.length ? (
             <div
               className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
               role="status"
@@ -275,109 +424,134 @@ export function ModulePicker({
                 </div>
               ))}
             </div>
-          ) : modules.length ? (
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {modules.map((module, index) => (
-                <article
-                  key={module.id}
-                  className="rounded-xl border bg-background p-5 transition-[border-color,box-shadow] has-[>button:first-child:focus-visible]:border-ring has-[>button:first-child:focus-visible]:ring-3 has-[>button:first-child:focus-visible]:ring-ring/50"
-                >
-                  <button
-                    type="button"
-                    className="w-full text-left outline-none"
-                    onClick={() => onSelect(module)}
+          ) : sortedModules.length ? (
+            <>
+              <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {sortedModules.map((module) => (
+                  <article
+                    key={module.id}
+                    className="rounded-xl border bg-background p-5 transition-[border-color,box-shadow] has-[>button:first-child:focus-visible]:border-ring has-[>button:first-child:focus-visible]:ring-3 has-[>button:first-child:focus-visible]:ring-ring/50 data-[pinned=true]:border-primary/40"
+                    data-pinned={module.isPinned}
                   >
-                    <BookOpen className="size-5 text-primary" />
-                    <span className="mt-4 block font-semibold">
-                      {module.name}
-                    </span>
-                    <span className="mt-1 block text-sm text-muted-foreground">
-                      {module.chaptersCount === 1
-                        ? "1 rozdział"
-                        : `${module.chaptersCount} rozdziałów`}
-                    </span>
-                    {module.topicsCount ? (
-                      <span className="mt-4 block">
-                        <span className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                          <span>
-                            {module.completedTopicsCount}/{module.topicsCount}{" "}
-                            tematów
+                    <button
+                      type="button"
+                      className="w-full text-left outline-none"
+                      onClick={() => onSelect(module)}
+                    >
+                      <BookOpen className="size-5 text-primary" />
+                      <span className="mt-4 block font-semibold">
+                        {module.name}
+                      </span>
+                      <span className="mt-1 block text-sm text-muted-foreground">
+                        {module.chaptersCount === 1
+                          ? "1 rozdział"
+                          : `${module.chaptersCount} rozdziałów`}
+                      </span>
+                      {module.topicsCount ? (
+                        <span className="mt-4 block">
+                          <span className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                            <span>
+                              {module.completedTopicsCount}/{module.topicsCount}{" "}
+                              tematów
+                            </span>
+                            <span className="font-medium text-foreground">
+                              {getModuleProgress(module)}%
+                            </span>
                           </span>
-                          <span className="font-medium text-foreground">
-                            {getModuleProgress(module)}%
-                          </span>
+                          <Progress
+                            className="mt-2"
+                            value={getModuleProgress(module)}
+                            aria-label={`Postęp modułu ${module.name}`}
+                          />
                         </span>
-                        <Progress
-                          className="mt-2"
-                          value={getModuleProgress(module)}
-                          aria-label={`Postęp modułu ${module.name}`}
-                        />
-                      </span>
-                    ) : (
-                      <span className="mt-4 block text-xs text-muted-foreground">
-                        Brak tematów
-                      </span>
-                    )}
-                  </button>
-                  <div className="mt-4 flex gap-1 border-t pt-3">
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label="Przenieś wyżej"
-                      disabled={index === 0}
-                      onClick={() => void reorder(module.id, -1)}
-                    >
-                      <ArrowUp />
-                    </Button>
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label="Przenieś niżej"
-                      disabled={index === modules.length - 1}
-                      onClick={() => void reorder(module.id, 1)}
-                    >
-                      <ArrowDown />
-                    </Button>
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label="Zmień nazwę"
-                      onClick={() => setRenamedModule(module)}
-                    >
-                      <Pencil />
-                    </Button>
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label="Usuń moduł"
-                      onClick={() => setDeletedModule(module)}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </div>
-                </article>
-              ))}
-            </div>
+                      ) : (
+                        <div>
+                          <span className="mt-4 block text-xs text-muted-foreground">
+                            Brak tematów
+                          </span>
+                          <Progress
+                            className="mt-2"
+                            value={getModuleProgress(module)}
+                            aria-label={`Postęp modułu ${module.name}`}
+                          />
+                        </div>
+                      )}
+                    </button>
+                    <div className="mt-4 flex gap-1 border-t pt-3">
+                      <Button
+                        size="icon-sm"
+                        variant={module.isPinned ? "secondary" : "ghost"}
+                        aria-label={
+                          module.isPinned ? "Odepnij moduł" : "Przypnij moduł"
+                        }
+                        aria-pressed={module.isPinned}
+                        disabled={Boolean(pinningModuleId)}
+                        onClick={() => void togglePinned(module)}
+                      >
+                        {pinningModuleId === module.id ? (
+                          <LoaderCircle className="animate-spin" />
+                        ) : (
+                          <Pin
+                            className={module.isPinned ? "fill-current" : ""}
+                          />
+                        )}
+                      </Button>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label="Zmień nazwę"
+                        onClick={() => setRenamedModule(module)}
+                      >
+                        <Pencil />
+                      </Button>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label="Usuń moduł"
+                        onClick={() => setDeletedModule(module)}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              {hasMore && (
+                <div
+                  ref={loadMoreRef}
+                  className="flex min-h-24 items-center justify-center"
+                  role="status"
+                  aria-label="Ładowanie kolejnych modułów"
+                >
+                  {isLoadingMore && (
+                    <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+              )}
+            </>
           ) : (
             <div className="mt-8 rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
-              Utwórz pierwszy moduł, aby rozpocząć.
+              {query
+                ? `Brak przypiętych modułów ani wyników dla „${query}”.`
+                : "Utwórz pierwszy moduł, aby rozpocząć."}
             </div>
           )}
         </div>
         {renamedModule && (
           <RenameModuleDialog
             module={renamedModule}
-            modules={modules}
+            modules={sortedModules}
             onClose={() => setRenamedModule(null)}
             onRename={async (nextName) => {
               await repository.rename(renamedModule.id, nextName);
-              updateModules((current) =>
-                current.map((item) =>
-                  item.id === renamedModule.id
-                    ? { ...item, name: nextName }
-                    : item,
-                ),
-              );
+              const rename = (item: Module) =>
+                item.id === renamedModule.id
+                  ? { ...item, name: nextName }
+                  : item;
+              setPinnedModules((current) => current.map(rename));
+              updateModules((current) => current.map(rename));
+              if (!query && cacheKey)
+                writeMemoryCache(cacheKey, sortedModules.map(rename));
             }}
           />
         )}
@@ -387,16 +561,24 @@ export function ModulePicker({
             onClose={() => setDeletedModule(null)}
             onDelete={async () => {
               await repository.remove(deletedModule.id);
+              setPinnedModules((current) =>
+                current.filter((item) => item.id !== deletedModule.id),
+              );
               updateModules((current) =>
                 current.filter((item) => item.id !== deletedModule.id),
               );
+              if (!query && cacheKey)
+                writeMemoryCache(
+                  cacheKey,
+                  sortedModules.filter((item) => item.id !== deletedModule.id),
+                );
               onDeleted?.(deletedModule);
             }}
           />
         )}
         {createOpen && (
           <CreateModuleDialog
-            modules={modules}
+            modules={sortedModules}
             onClose={() => setCreateOpen(false)}
             onCreate={createModule}
           />
@@ -412,18 +594,6 @@ export function ModulePicker({
       </main>
     </>
   );
-}
-
-function formatModuleCount(count: number) {
-  const lastTwo = count % 100;
-  const last = count % 10;
-  const noun =
-    count === 1
-      ? "moduł"
-      : last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)
-        ? "moduły"
-        : "modułów";
-  return `${count} ${noun}`;
 }
 
 function CreateModuleDialog({

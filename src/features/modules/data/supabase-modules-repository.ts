@@ -6,6 +6,7 @@ import type { Module, ModulesRepository } from "./modules-repository";
 import { clearMemoryCacheByPrefix } from "@/lib/memory-cache";
 import type { ImportedModuleDraft } from "../import/docx-import";
 import { createUniqueSlug } from "@/features/notes/lib/slug-utils";
+import { toModuleNameSearchPattern } from "../lib/module-search";
 
 export class SupabaseModulesRepository implements ModulesRepository {
   private readonly client: SupabaseClient<Database>;
@@ -22,6 +23,7 @@ export class SupabaseModulesRepository implements ModulesRepository {
 
   private map(row: {
     id: string;
+    is_pinned: boolean;
     slug: string;
     name: string;
     module_position: number;
@@ -32,6 +34,7 @@ export class SupabaseModulesRepository implements ModulesRepository {
   }): Module {
     return {
       id: row.id,
+      isPinned: row.is_pinned,
       slug: row.slug,
       name: row.name,
       position: row.module_position,
@@ -46,6 +49,36 @@ export class SupabaseModulesRepository implements ModulesRepository {
     const { data, error } = await this.client.rpc("get_module_summaries");
     throwIfPostgrestError(error);
     return (data ?? []).map((row) => this.map(row));
+  }
+
+  async listPinned() {
+    const { data, error } = await this.client
+      .rpc("get_module_summaries")
+      .eq("is_pinned", true)
+      .order("name", { ascending: true })
+      .order("id", { ascending: true });
+    throwIfPostgrestError(error);
+    return (data ?? []).map((row) => this.map(row));
+  }
+
+  async listPage(query: string, offset: number, limit: number) {
+    let request = this.client
+      .rpc("get_module_summaries")
+      .eq("is_pinned", false)
+      .order("name", { ascending: true })
+      .order("id", { ascending: true })
+      .range(offset, offset + limit);
+    const phrase = query.trim();
+    if (phrase)
+      request = request.ilike("name", toModuleNameSearchPattern(phrase));
+
+    const { data, error } = await request;
+    throwIfPostgrestError(error);
+    const rows = data ?? [];
+    return {
+      modules: rows.slice(0, limit).map((row) => this.map(row)),
+      hasMore: rows.length > limit,
+    };
   }
 
   async get(id: string) {
@@ -75,6 +108,7 @@ export class SupabaseModulesRepository implements ModulesRepository {
     this.clearStatisticsCache();
     return {
       ...data,
+      isPinned: false,
       chaptersCount: 0,
       completedChaptersCount: 0,
       topicsCount: 0,
@@ -132,6 +166,17 @@ export class SupabaseModulesRepository implements ModulesRepository {
       .single();
     throwIfPostgrestError(error);
     this.clearStatisticsCache();
+  }
+
+  async setPinned(id: string, isPinned: boolean) {
+    const { error } = await this.client
+      .from("modules")
+      .update({ is_pinned: isPinned })
+      .eq("id", id)
+      .eq("user_id", this.userId)
+      .select("id")
+      .single();
+    throwIfPostgrestError(error);
   }
 
   async remove(id: string) {

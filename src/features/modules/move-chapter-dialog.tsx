@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import type { Chapter } from "@/features/notes/types/model";
 import type { Module, ModulesRepository } from "./data/modules-repository";
+import { compareModules } from "./lib/module-validation";
 
 export function MoveChapterDialog({
   chapter,
@@ -33,7 +34,11 @@ export function MoveChapterDialog({
     void repository
       .list()
       .then((items) =>
-        setModules(items.filter((item) => item.id !== currentModuleId)),
+        setModules(
+          items
+            .filter((item) => item.id !== currentModuleId)
+            .sort(compareModules),
+        ),
       )
       .catch(() => setError("Nie udało się pobrać modułów."))
       .finally(() => setIsLoading(false));

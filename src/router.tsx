@@ -2,11 +2,11 @@ import { AuthPage, PasswordRecoveryPage, useAuth } from "@/features/auth";
 import { Navigate, RouterProvider, createBrowserRouter } from "react-router";
 
 import { AppLoading } from "@/components/app-loading";
-import { GlobalLayout } from "@/layout/global-layout";
+import { GlobalRoutes } from "@/layout/global-routes";
 
 const router = createBrowserRouter([
   {
-    element: <GlobalLayout />,
+    element: <GlobalRoutes />,
     children: [
       {
         index: true,

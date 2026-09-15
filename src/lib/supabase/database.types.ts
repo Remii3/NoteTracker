@@ -12,6 +12,7 @@ export type Database = {
       modules: {
         Row: {
           id: string;
+          is_pinned: boolean;
           user_id: string;
           slug: string;
           name: string;
@@ -21,6 +22,7 @@ export type Database = {
         };
         Insert: {
           id?: string;
+          is_pinned?: boolean;
           user_id: string;
           slug?: string;
           name: string;
@@ -29,6 +31,7 @@ export type Database = {
           trash_id?: string | null;
         };
         Update: {
+          is_pinned?: boolean;
           slug?: string;
           name?: string;
           position?: number;
@@ -326,6 +329,7 @@ export type Database = {
         };
         Returns: {
           id: string;
+          is_pinned: boolean;
           slug: string;
           name: string;
           module_position: number;

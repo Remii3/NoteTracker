@@ -9,7 +9,6 @@ import {
 import { toast } from "@/components/ui/toast";
 
 import { Button } from "@/components/ui/button";
-import { AppHeaderInfo } from "@/layout/app-header";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -148,20 +147,20 @@ export function TrashPage() {
 
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
-      <AppHeaderInfo>
-        <p className="hidden truncate text-sm text-muted-foreground min-[480px]:block">
-          {loading
-            ? "Ładowanie kosza…"
-            : `${totalCount} ${totalCount === 1 ? "element" : "elementów"}`}
-        </p>
-      </AppHeaderInfo>
       <div>
-        <p className="text-sm font-medium text-primary">Kosz</p>
-        <h1 className="mt-1 text-3xl font-semibold">Usunięte elementy</h1>
-        <p className="mt-2 text-muted-foreground">
-          Każda operacja usunięcia jest osobnym drzewem. Elementy są
-          automatycznie trwale usuwane po 24 godzinach.
-        </p>
+        <header>
+          <p className="text-sm font-medium text-primary">Kosz</p>
+          <h1 className="mt-1 text-3xl font-semibold">Usunięte elementy</h1>
+          <p className="mt-2 text-muted-foreground">
+            Każda operacja usunięcia jest osobnym drzewem. Elementy są
+            automatycznie trwale usuwane po 24 godzinach.
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {loading
+              ? "Ładowanie kosza…"
+              : `${totalCount} ${totalCount === 1 ? "element" : "elementów"}`}
+          </p>
+        </header>
         {loading ? (
           <div className="mt-16 flex justify-center">
             <LoaderCircle className="animate-spin" />

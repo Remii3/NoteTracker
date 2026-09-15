@@ -175,6 +175,22 @@ do $$ begin
  end;
 end; $$;
 select pg_temp.assert_true((select count(*) = 1 and bool_and(user_id = '10000000-0000-4000-8000-000000000000') from public.modules), 'modules: user 1 sees only own rows');
+update public.modules set is_pinned = true
+where id = '10000001-0000-4000-8000-000000000000';
+select pg_temp.assert_true(
+  (select count(*) = 1 and bool_and(is_pinned)
+   from public.get_module_summaries()),
+  'module pinning: owner can pin a module and read it in summaries'
+);
+do $$ declare affected integer; begin
+ update public.modules set is_pinned = true
+ where id = '20000001-0000-4000-8000-000000000000';
+ get diagnostics affected = row_count;
+ perform pg_temp.assert_true(
+  affected = 0,
+  'module pinning: cannot pin another user module'
+ );
+end; $$;
 do $$ declare affected integer; begin
  delete from public.modules where user_id = '20000000-0000-4000-8000-000000000000';
  get diagnostics affected = row_count;

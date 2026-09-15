@@ -801,7 +801,7 @@ $$;
 ALTER FUNCTION "public"."get_module_image_keys"("target_module_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_module_summaries"("target_module_id" "uuid" DEFAULT NULL::"uuid", "target_module_slug" "text" DEFAULT NULL::"text") RETURNS TABLE("id" "uuid", "slug" "text", "name" "text", "module_position" integer, "chapters_count" integer, "completed_chapters_count" integer, "topics_count" integer, "completed_topics_count" integer)
+CREATE OR REPLACE FUNCTION "public"."get_module_summaries"("target_module_id" "uuid" DEFAULT NULL::"uuid", "target_module_slug" "text" DEFAULT NULL::"text") RETURNS TABLE("id" "uuid", "slug" "text", "name" "text", "is_pinned" boolean, "module_position" integer, "chapters_count" integer, "completed_chapters_count" integer, "topics_count" integer, "completed_topics_count" integer)
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
     AS $$
@@ -819,7 +819,7 @@ CREATE OR REPLACE FUNCTION "public"."get_module_summaries"("target_module_id" "u
       and chapter.trash_id is null
     group by chapter.id, chapter.module_id
   )
-  select module.id, module.slug, module.name,
+  select module.id, module.slug, module.name, module.is_pinned,
     module.position as module_position,
     count(chapter.id)::integer as chapters_count,
     count(chapter.id) filter (
@@ -835,8 +835,9 @@ CREATE OR REPLACE FUNCTION "public"."get_module_summaries"("target_module_id" "u
     and module.trash_id is null
     and (target_module_id is null or module.id = target_module_id)
     and (target_module_slug is null or module.slug = target_module_slug)
-  group by module.id, module.slug, module.name, module.position
-  order by module.position, module.id;
+  group by module.id, module.slug, module.name, module.is_pinned,
+    module.position
+  order by module.is_pinned desc, lower(module.name), module.name, module.id;
 $$;
 
 
@@ -1907,6 +1908,7 @@ CREATE TABLE IF NOT EXISTS "public"."modules" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "trash_id" "uuid",
     "slug" "text" DEFAULT ''::"text" NOT NULL,
+    "is_pinned" boolean DEFAULT false NOT NULL,
     CONSTRAINT "modules_name_check" CHECK ((("length"("btrim"("name")) >= 1) AND ("length"("btrim"("name")) <= 120))),
     CONSTRAINT "modules_slug_check" CHECK (("slug" ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::"text"))
 );
@@ -2212,6 +2214,9 @@ CREATE UNIQUE INDEX "chapters_user_title_unique_idx" ON "public"."chapters" USIN
 
 
 CREATE INDEX "modules_active_idx" ON "public"."modules" USING "btree" ("user_id", "position", "id") WHERE ("trash_id" IS NULL);
+
+
+CREATE INDEX "modules_user_pinned_name_idx" ON "public"."modules" USING "btree" ("user_id", "is_pinned" DESC, "lower"("name"), "id") WHERE ("trash_id" IS NULL);
 
 
 
@@ -3037,7 +3042,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
 
 
 

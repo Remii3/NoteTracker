@@ -29,7 +29,6 @@ import {
 } from "@/lib/memory-cache";
 import type { StatisticsRepository } from "../data/statistics-repository";
 import { MaterialProgressDashboard } from "./material-progress-dashboard";
-import { AppHeaderActions, AppHeaderInfo } from "@/layout/app-header";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -162,295 +161,291 @@ export function StatisticsPage({
     }
   }
 
-  return (
-    <>
-      {!moduleId && (
-        <AppHeaderInfo>
-          <p className="hidden truncate text-sm text-muted-foreground min-[480px]:block">
-            {data
-              ? `${data.progress.summary.completedTopics}/${data.progress.summary.totalTopics} ukończonych tematów`
-              : "Ładowanie podsumowania…"}
-          </p>
-        </AppHeaderInfo>
+  const controls = (
+    <div className="flex flex-wrap items-center gap-2">
+      <Select
+        value={String(range)}
+        onValueChange={(value) => setRange(Number(value) as StatisticsRange)}
+      >
+        <SelectTrigger size="sm" aria-label="Zakres statystyk">
+          <CalendarDays />
+          <SelectValue className="hidden sm:flex">
+            {RANGE_LABELS[range]}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent align="end">
+          {([7, 30, 90, 0] as const).map((value) => (
+            <SelectItem key={value} value={String(value)}>
+              {RANGE_LABELS[value]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        value={mode}
+        onValueChange={(value) => setMode(value as StatisticsMode)}
+      >
+        <SelectTrigger
+          size="sm"
+          className="max-[360px]:hidden"
+          aria-label="Rodzaj powtórek"
+        >
+          <ListFilter />
+          <SelectValue className="hidden sm:flex">
+            {mode === "all"
+              ? "Wszystkie powtórki"
+              : mode === "test"
+                ? "Testy"
+                : "Fiszki"}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent align="end">
+          <SelectItem value="all">Wszystkie powtórki</SelectItem>
+          <SelectItem value="test">Testy</SelectItem>
+          <SelectItem value="flashcards">Fiszki</SelectItem>
+        </SelectContent>
+      </Select>
+      {onOpenHistory && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="max-[360px]:hidden"
+          aria-label="Historia nauki"
+          onClick={onOpenHistory}
+        >
+          <History />
+          <span className="hidden sm:inline">Historia</span>
+        </Button>
       )}
-      <AppHeaderActions>
-        <Select
-          value={String(range)}
-          onValueChange={(value) => setRange(Number(value) as StatisticsRange)}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="outline"
+              className="min-[361px]:hidden"
+              aria-label="Więcej filtrów statystyk"
+            />
+          }
         >
-          <SelectTrigger size="sm" aria-label="Zakres statystyk">
-            <CalendarDays />
-            <SelectValue className="hidden sm:flex">
-              {RANGE_LABELS[range]}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent align="end">
-            {([7, 30, 90, 0] as const).map((value) => (
-              <SelectItem key={value} value={String(value)}>
-                {RANGE_LABELS[value]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={mode}
-          onValueChange={(value) => setMode(value as StatisticsMode)}
-        >
-          <SelectTrigger
-            size="sm"
-            className="max-[360px]:hidden"
-            aria-label="Rodzaj powtórek"
+          <MoreHorizontal />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>Rodzaj powtórek</DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={mode}
+            onValueChange={(value) => setMode(value as StatisticsMode)}
           >
-            <ListFilter />
-            <SelectValue className="hidden sm:flex">
-              {mode === "all"
-                ? "Wszystkie powtórki"
-                : mode === "test"
-                  ? "Testy"
-                  : "Fiszki"}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent align="end">
-            <SelectItem value="all">Wszystkie powtórki</SelectItem>
-            <SelectItem value="test">Testy</SelectItem>
-            <SelectItem value="flashcards">Fiszki</SelectItem>
-          </SelectContent>
-        </Select>
-        {onOpenHistory && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="max-[360px]:hidden"
-            aria-label="Historia nauki"
-            onClick={onOpenHistory}
-          >
-            <History />
-            <span className="hidden sm:inline">Historia</span>
-          </Button>
-        )}
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                type="button"
-                size="icon-sm"
-                variant="outline"
-                className="min-[361px]:hidden"
-                aria-label="Więcej filtrów statystyk"
-              />
-            }
-          >
-            <MoreHorizontal />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Rodzaj powtórek</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={mode}
-              onValueChange={(value) => setMode(value as StatisticsMode)}
-            >
-              <DropdownMenuRadioItem value="all">
-                Wszystkie powtórki
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="test">Testy</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="flashcards">
-                Fiszki
-              </DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-            {onOpenHistory && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onOpenHistory}>
-                  <History /> Historia nauki
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </AppHeaderActions>
-      <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
-        <div className="mx-auto max-w-6xl space-y-8">
-          <header>
-            <div>
-              <p className="mb-2 text-sm font-medium text-primary">
-                Twoja nauka
-              </p>
-              <h1 className="text-3xl font-semibold">Statystyki</h1>
-              <p className="mt-2 text-muted-foreground">
-                {moduleId ? moduleName : "Wszystkie moduły"}
-              </p>
-            </div>
-          </header>
-
-          {!data ? (
-            <LoadingState />
-          ) : (
+            <DropdownMenuRadioItem value="all">
+              Wszystkie powtórki
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="test">Testy</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="flashcards">
+              Fiszki
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+          {onOpenHistory && (
             <>
-              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <SummaryCard
-                  icon={<Target />}
-                  label="Ukończone tematy"
-                  value={`${data.progress.summary.completedTopics}/${data.progress.summary.totalTopics}`}
-                  note={`${data.progress.summary.remainingTopics} tematów pozostało`}
-                />
-                <SummaryCard
-                  icon={<BarChart3 />}
-                  label="Ukończone rozdziały"
-                  value={`${data.progress.summary.completedChapters}/${data.progress.summary.totalChapters}`}
-                  note="Rozdział zalicza się po ukończeniu wszystkich tematów"
-                />
-                {moduleId ? (
-                  <SummaryCard
-                    icon={<Medal />}
-                    label="Postęp modułu"
-                    value={`${getPercent(data.progress.summary.completedTopics, data.progress.summary.totalTopics)}%`}
-                    note={`${data.progress.summary.remainingTopics} tematów pozostało do ukończenia`}
-                  />
-                ) : (
-                  <SummaryCard
-                    icon={<Medal />}
-                    label="Ukończone moduły"
-                    value={`${data.progress.summary.completedModules}/${data.progress.summary.totalModules}`}
-                    note="Moduł zalicza się po ukończeniu całego materiału"
-                  />
-                )}
-                <SummaryCard
-                  icon={<Flame />}
-                  label="Seria zaliczeń"
-                  value={`${data.progress.summary.currentStreak} dni`}
-                  note={`Rekord: ${data.progress.summary.longestStreak} dni`}
-                />
-              </section>
-
-              <MaterialProgressDashboard
-                data={data}
-                moduleId={moduleId}
-                repository={repository}
-              />
-
-              <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-                <div className="rounded-2xl border p-5 sm:p-6">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-lg font-semibold">Aktywność</h2>
-                      <p className="text-sm text-muted-foreground">
-                        Dzień po dniu w wybranym okresie
-                      </p>
-                    </div>
-                    <div className="flex rounded-lg bg-muted p-1">
-                      {(["completed", "answers", "sessions"] as const).map(
-                        (value) => (
-                          <Button
-                            key={value}
-                            size="sm"
-                            variant={metric === value ? "secondary" : "ghost"}
-                            onClick={() => setMetric(value)}
-                          >
-                            {value === "completed"
-                              ? "Zaliczenia"
-                              : value === "answers"
-                                ? "Odpowiedzi"
-                                : "Powtórki"}
-                          </Button>
-                        ),
-                      )}
-                    </div>
-                  </div>
-                  <ActivityChart
-                    daily={data.daily}
-                    progressDaily={data.progress.daily}
-                    metric={metric}
-                  />
-                </div>
-                <WeeklyGoal
-                  data={data}
-                  goal={goal}
-                  saving={savingGoal}
-                  onChange={(value) => setGoalDraft({ key: requestKey, value })}
-                  onSave={() => void saveGoal()}
-                />
-              </section>
-
-              <section className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl border p-5 sm:p-6">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="size-5 text-primary" />
-                    <h2 className="text-lg font-semibold">
-                      Trend wyników powtórek
-                    </h2>
-                  </div>
-                  <SessionTrendChart sessions={data.sessionTrend} mode={mode} />
-                </div>
-                <div className="rounded-2xl border p-5 sm:p-6">
-                  <div className="flex items-center gap-2">
-                    <Medal className="size-5 text-primary" />
-                    <h2 className="text-lg font-semibold">Jakość powtórek</h2>
-                  </div>
-                  <ReviewQualityChart data={data} />
-                  <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-                    <Record
-                      value={`${data.records.bestAccuracy}%`}
-                      label="Najlepsza sesja"
-                    />
-                    <Record
-                      value={data.records.mostAnswersInDay}
-                      label="Odpowiedzi w dzień"
-                    />
-                    <Record
-                      value={
-                        data.records.mostActiveDate
-                          ? formatShortDate(data.records.mostActiveDate)
-                          : "—"
-                      }
-                      label="Najaktywniejszy dzień"
-                    />
-                  </div>
-                </div>
-              </section>
-
-              {moduleId ? (
-                <AreasTable data={data} />
-              ) : (
-                <ModulesTable data={data} />
-              )}
-
-              <section className="rounded-2xl border p-5 sm:p-6">
-                <h2 className="text-lg font-semibold">
-                  Ostatnie sesje powtórek
-                </h2>
-                <div className="mt-4 divide-y">
-                  {data.recentSessions.length ? (
-                    data.recentSessions.map((session) => (
-                      <div
-                        key={session.id}
-                        className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                      >
-                        <div>
-                          <p className="font-medium">
-                            {session.mode === "test" ? "Test" : "Fiszki"}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {!moduleId && `${session.moduleName} · `}
-                            {formatDateTime(session.startedAt)}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold">{session.accuracy}%</p>
-                          <p className="text-xs text-muted-foreground">
-                            {session.answers} odpowiedzi
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <EmptyState />
-                  )}
-                </div>
-              </section>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onOpenHistory}>
+                <History /> Historia nauki
+              </DropdownMenuItem>
             </>
           )}
-        </div>
-      </main>
-    </>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+
+  return (
+    <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+      <div className="mx-auto max-w-6xl space-y-8">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="mb-2 text-sm font-medium text-primary">Twoja nauka</p>
+            <h1 className="text-3xl font-semibold">Statystyki</h1>
+            <p className="mt-2 text-muted-foreground">
+              {moduleId ? moduleName : "Wszystkie moduły"}
+            </p>
+            {!moduleId && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {data
+                  ? `${data.progress.summary.completedTopics}/${data.progress.summary.totalTopics} ukończonych tematów`
+                  : "Ładowanie podsumowania…"}
+              </p>
+            )}
+          </div>
+          {controls}
+        </header>
+
+        {!data ? (
+          <LoadingState />
+        ) : (
+          <>
+            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <SummaryCard
+                icon={<Target />}
+                label="Ukończone tematy"
+                value={`${data.progress.summary.completedTopics}/${data.progress.summary.totalTopics}`}
+                note={`${data.progress.summary.remainingTopics} tematów pozostało`}
+              />
+              <SummaryCard
+                icon={<BarChart3 />}
+                label="Ukończone rozdziały"
+                value={`${data.progress.summary.completedChapters}/${data.progress.summary.totalChapters}`}
+                note="Rozdział zalicza się po ukończeniu wszystkich tematów"
+              />
+              {moduleId ? (
+                <SummaryCard
+                  icon={<Medal />}
+                  label="Postęp modułu"
+                  value={`${getPercent(data.progress.summary.completedTopics, data.progress.summary.totalTopics)}%`}
+                  note={`${data.progress.summary.remainingTopics} tematów pozostało do ukończenia`}
+                />
+              ) : (
+                <SummaryCard
+                  icon={<Medal />}
+                  label="Ukończone moduły"
+                  value={`${data.progress.summary.completedModules}/${data.progress.summary.totalModules}`}
+                  note="Moduł zalicza się po ukończeniu całego materiału"
+                />
+              )}
+              <SummaryCard
+                icon={<Flame />}
+                label="Seria zaliczeń"
+                value={`${data.progress.summary.currentStreak} dni`}
+                note={`Rekord: ${data.progress.summary.longestStreak} dni`}
+              />
+            </section>
+
+            <MaterialProgressDashboard
+              data={data}
+              moduleId={moduleId}
+              repository={repository}
+            />
+
+            <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+              <div className="rounded-2xl border p-5 sm:p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold">Aktywność</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Dzień po dniu w wybranym okresie
+                    </p>
+                  </div>
+                  <div className="flex rounded-lg bg-muted p-1">
+                    {(["completed", "answers", "sessions"] as const).map(
+                      (value) => (
+                        <Button
+                          key={value}
+                          size="sm"
+                          variant={metric === value ? "secondary" : "ghost"}
+                          onClick={() => setMetric(value)}
+                        >
+                          {value === "completed"
+                            ? "Zaliczenia"
+                            : value === "answers"
+                              ? "Odpowiedzi"
+                              : "Powtórki"}
+                        </Button>
+                      ),
+                    )}
+                  </div>
+                </div>
+                <ActivityChart
+                  daily={data.daily}
+                  progressDaily={data.progress.daily}
+                  metric={metric}
+                />
+              </div>
+              <WeeklyGoal
+                data={data}
+                goal={goal}
+                saving={savingGoal}
+                onChange={(value) => setGoalDraft({ key: requestKey, value })}
+                onSave={() => void saveGoal()}
+              />
+            </section>
+
+            <section className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-2xl border p-5 sm:p-6">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="size-5 text-primary" />
+                  <h2 className="text-lg font-semibold">
+                    Trend wyników powtórek
+                  </h2>
+                </div>
+                <SessionTrendChart sessions={data.sessionTrend} mode={mode} />
+              </div>
+              <div className="rounded-2xl border p-5 sm:p-6">
+                <div className="flex items-center gap-2">
+                  <Medal className="size-5 text-primary" />
+                  <h2 className="text-lg font-semibold">Jakość powtórek</h2>
+                </div>
+                <ReviewQualityChart data={data} />
+                <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+                  <Record
+                    value={`${data.records.bestAccuracy}%`}
+                    label="Najlepsza sesja"
+                  />
+                  <Record
+                    value={data.records.mostAnswersInDay}
+                    label="Odpowiedzi w dzień"
+                  />
+                  <Record
+                    value={
+                      data.records.mostActiveDate
+                        ? formatShortDate(data.records.mostActiveDate)
+                        : "—"
+                    }
+                    label="Najaktywniejszy dzień"
+                  />
+                </div>
+              </div>
+            </section>
+
+            {moduleId ? (
+              <AreasTable data={data} />
+            ) : (
+              <ModulesTable data={data} />
+            )}
+
+            <section className="rounded-2xl border p-5 sm:p-6">
+              <h2 className="text-lg font-semibold">Ostatnie sesje powtórek</h2>
+              <div className="mt-4 divide-y">
+                {data.recentSessions.length ? (
+                  data.recentSessions.map((session) => (
+                    <div
+                      key={session.id}
+                      className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          {session.mode === "test" ? "Test" : "Fiszki"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {!moduleId && `${session.moduleName} · `}
+                          {formatDateTime(session.startedAt)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">{session.accuracy}%</p>
+                        <p className="text-xs text-muted-foreground">
+                          {session.answers} odpowiedzi
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <EmptyState />
+                )}
+              </div>
+            </section>
+          </>
+        )}
+      </div>
+    </main>
   );
 }
 
