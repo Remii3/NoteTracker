@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { BookOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/features/theme";
 import {
   SidebarInset,
   SidebarProvider,
@@ -81,6 +82,7 @@ export function AppHeader({
           ref={onTrailingActionsTargetChange}
           className="flex shrink-0 items-center empty:hidden"
         />
+        <ThemeToggle />
       </div>
     </header>
   );

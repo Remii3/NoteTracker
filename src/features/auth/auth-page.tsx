@@ -16,6 +16,7 @@ import {
 import { BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ThemeToggle } from "@/features/theme";
 import { getAuthErrorMessage } from "./auth-error";
 import { useAuth } from "./auth-context";
 import { useState } from "react";
@@ -136,6 +137,7 @@ export function AuthPage() {
 
   return (
     <main className="grid min-h-svh place-items-center bg-muted/30 px-5 py-10">
+      <ThemeToggle className="fixed top-4 right-4 z-10 border bg-background shadow-xs" />
       <div className="w-full max-w-sm">
         <div className="mb-8 flex items-center justify-center gap-3">
           <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">

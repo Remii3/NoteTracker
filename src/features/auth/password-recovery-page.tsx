@@ -10,6 +10,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ThemeToggle } from "@/features/theme";
 import { getAuthErrorMessage } from "./auth-error";
 import { passwordSchema } from "@/features/auth/auth-schema";
 import { useAuth } from "./auth-context";
@@ -50,6 +51,7 @@ export function PasswordRecoveryPage() {
 
   return (
     <main className="grid min-h-svh place-items-center bg-muted/30 px-5">
+      <ThemeToggle className="fixed top-4 right-4 z-10 border bg-background shadow-xs" />
       <section className="w-full max-w-sm rounded-2xl border bg-background p-6 shadow-sm">
         <h1 className="text-2xl font-semibold">Ustaw nowe hasło</h1>
         <p className="mt-1 text-sm text-muted-foreground">

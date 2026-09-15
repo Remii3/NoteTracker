@@ -9,6 +9,24 @@
       name="description"
       content="NoteTracker pomaga porządkować rozdziały, notatki i postępy w nauce."
     />
+    <script>
+      (() => {
+        try {
+          const storedTheme = localStorage.getItem("notetracker-theme");
+          const isDark =
+            storedTheme === "dark" ||
+            (storedTheme !== "light" &&
+              matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.classList.toggle("dark", isDark);
+          document.documentElement.dataset.theme = isDark ? "dark" : "light";
+          document.documentElement.style.colorScheme = isDark
+            ? "dark"
+            : "light";
+        } catch {
+          // ThemeProvider applies the fallback once the application starts.
+        }
+      })();
+    </script>
     <title>NoteTracker</title>
   </head>
   <body>
