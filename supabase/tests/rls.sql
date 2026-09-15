@@ -581,6 +581,98 @@ do $$ declare test_question_id uuid; test_session_id uuid; test_trash_id uuid; b
  perform public.purge_trash_item(test_trash_id);
  perform pg_temp.assert_true(not exists(select 1 from public.trash_items where id = test_trash_id), 'Purged trash removed');
 end; $$;
+do $$
+declare
+ tree_chapter_trash_id uuid;
+ tree_module_trash_id uuid;
+ module_tree jsonb;
+ chapter_source_path text[];
+ first_page_ids uuid[];
+ second_page_ids uuid[];
+ page_cursor_deleted_at timestamptz;
+ page_cursor_id uuid;
+begin
+ insert into public.modules(id,user_id,name,position)
+ values ('30000001-0000-4000-8000-000000000000','10000000-0000-4000-8000-000000000000','Tree module',6000);
+ insert into public.chapters(id,user_id,module_id,slug,title,position) values
+  ('30000002-0000-4000-8000-000000000000','10000000-0000-4000-8000-000000000000','30000001-0000-4000-8000-000000000000','separate-chapter','Separate chapter',1000),
+  ('30000003-0000-4000-8000-000000000000','10000000-0000-4000-8000-000000000000','30000001-0000-4000-8000-000000000000','restored-chapter','Restored chapter',2000),
+  ('30000006-0000-4000-8000-000000000000','10000000-0000-4000-8000-000000000000','30000001-0000-4000-8000-000000000000','remaining-chapter','Remaining chapter',3000);
+ insert into public.topics(id,user_id,chapter_id,slug,title,position) values
+  ('30000004-0000-4000-8000-000000000000','10000000-0000-4000-8000-000000000000','30000002-0000-4000-8000-000000000000','separate-topic','Separate topic',1000),
+  ('30000005-0000-4000-8000-000000000000','10000000-0000-4000-8000-000000000000','30000003-0000-4000-8000-000000000000','restored-topic','Restored topic',1000),
+  ('30000007-0000-4000-8000-000000000000','10000000-0000-4000-8000-000000000000','30000006-0000-4000-8000-000000000000','remaining-topic','Remaining topic',1000);
+
+ tree_chapter_trash_id := public.move_to_trash('chapter', '30000002-0000-4000-8000-000000000000');
+ tree_module_trash_id := public.move_to_trash('module', '30000001-0000-4000-8000-000000000000');
+
+ select page.tree
+ into module_tree
+ from public.list_trash_items_page(requested_page_size => 50) as page
+ where page.id = tree_module_trash_id;
+ select page.source_path
+ into chapter_source_path
+ from public.list_trash_items_page(requested_page_size => 50) as page
+ where page.id = tree_chapter_trash_id;
+
+ perform pg_temp.assert_true(
+  jsonb_array_length(module_tree->'children') = 2,
+  'trash tree: a later module deletion does not absorb an earlier chapter deletion'
+ );
+ perform pg_temp.assert_true(
+  chapter_source_path = array['Tree module']::text[],
+  'trash tree: a separately deleted chapter includes its source module'
+ );
+
+ select page.deleted_at, page.id
+ into page_cursor_deleted_at, page_cursor_id
+ from public.list_trash_items_page(requested_page_size => 1) as page
+ order by page.deleted_at desc, page.id desc
+ limit 1;
+ first_page_ids := array[page_cursor_id];
+ select array_agg(page.id order by page.deleted_at desc, page.id desc)
+ into second_page_ids
+ from public.list_trash_items_page(page_cursor_deleted_at, page_cursor_id, 1) as page;
+ perform pg_temp.assert_true(
+  cardinality(first_page_ids) = 1 and cardinality(second_page_ids) > 0
+   and not (second_page_ids && first_page_ids),
+  'trash tree: cursor pagination returns a non-overlapping next page'
+ );
+
+ perform public.restore_trash_node(
+  tree_module_trash_id,
+  'chapter',
+  '30000003-0000-4000-8000-000000000000'
+ );
+ perform pg_temp.assert_true(
+  exists (select 1 from public.modules where id = '30000001-0000-4000-8000-000000000000')
+   and exists (select 1 from public.chapters where id = '30000003-0000-4000-8000-000000000000')
+   and exists (select 1 from public.topics where id = '30000005-0000-4000-8000-000000000000'),
+  'trash tree: restoring a chapter also restores its module and topics'
+ );
+ perform pg_temp.assert_true(
+  not exists (select 1 from public.chapters where id = '30000002-0000-4000-8000-000000000000')
+   and exists (select 1 from public.trash_items where id = tree_chapter_trash_id),
+  'trash tree: an earlier chapter deletion remains a separate event'
+ );
+ perform pg_temp.assert_true(
+  not exists (select 1 from public.chapters where id = '30000006-0000-4000-8000-000000000000')
+   and exists (select 1 from public.trash_items where id = tree_module_trash_id),
+  'trash tree: unselected sibling chapters remain in the module event'
+ );
+
+ select page.tree
+ into module_tree
+ from public.list_trash_items_page(requested_page_size => 50) as page
+ where page.id = tree_module_trash_id;
+ perform pg_temp.assert_true(
+  module_tree->>'is_deleted' = 'false'
+   and jsonb_array_length(module_tree->'children') = 1
+   and module_tree #>> '{children,0,id}' = '30000006-0000-4000-8000-000000000000',
+  'trash tree: after partial restore it shows the active parent and remaining branch'
+ );
+end;
+$$;
 -- Ordering is atomic: an inaccessible id must leave all positions unchanged.
 set local request.jwt.claim.sub = '10000000-0000-4000-8000-000000000000';
 do $$ declare before_position integer; original jsonb; affected integer; begin

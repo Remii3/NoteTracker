@@ -394,6 +394,38 @@ export type Database = {
         Args: { target_trash_id: string };
         Returns: { storage_key: string }[];
       };
+      list_trash_items_page: {
+        Args: {
+          page_cursor_deleted_at?: string | null;
+          page_cursor_id?: string | null;
+          requested_page_size?: number;
+        };
+        Returns: Array<{
+          id: string;
+          item_type:
+            | "module"
+            | "chapter"
+            | "topic"
+            | "image"
+            | "question"
+            | "study_session";
+          item_id: string;
+          title: string;
+          deleted_at: string;
+          purge_after: string;
+          source_path: string[];
+          tree: Json;
+          total_count: number;
+        }>;
+      };
+      restore_trash_node: {
+        Args: {
+          target_trash_id: string;
+          target_node_type: string;
+          target_node_id: string;
+        };
+        Returns: undefined;
+      };
       delete_notes_bulk: {
         Args: {
           chapter_ids: string[];

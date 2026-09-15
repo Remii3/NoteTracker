@@ -3,36 +3,89 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 import { throwIfPostgrestError } from "@/features/notes/data/supabase-error";
 
-export type TrashItem = Database["public"]["Tables"]["trash_items"]["Row"];
+export type TrashItemType =
+  Database["public"]["Tables"]["trash_items"]["Row"]["item_type"];
+
+export type TrashTreeNode = {
+  id: string;
+  type: TrashItemType;
+  title: string;
+  is_deleted: boolean;
+  children: TrashTreeNode[];
+};
+
+type TrashPageRow =
+  Database["public"]["Functions"]["list_trash_items_page"]["Returns"][number];
+
+export type TrashItem = Omit<TrashPageRow, "tree" | "total_count"> & {
+  tree: TrashTreeNode;
+};
+
+export type TrashCursor = {
+  deletedAt: string;
+  id: string;
+};
+
+export type TrashPage = {
+  items: TrashItem[];
+  totalCount: number;
+  nextCursor: TrashCursor | null;
+};
 
 export class TrashRepository {
   private readonly client: SupabaseClient<Database>;
-  private readonly userId: string;
   private readonly imagesApiUrl?: string;
 
-  constructor(
-    client: SupabaseClient<Database>,
-    userId: string,
-    imagesApiUrl?: string,
-  ) {
+  constructor(client: SupabaseClient<Database>, imagesApiUrl?: string) {
     this.client = client;
-    this.userId = userId;
     this.imagesApiUrl = imagesApiUrl;
   }
 
-  async list() {
-    const { data, error } = await this.client
-      .from("trash_items")
-      .select("id,user_id,item_type,item_id,title,deleted_at,purge_after")
-      .eq("user_id", this.userId)
-      .order("deleted_at", { ascending: false });
+  async listPage(
+    cursor: TrashCursor | null = null,
+    pageSize = 10,
+  ): Promise<TrashPage> {
+    const { data, error } = await this.client.rpc("list_trash_items_page", {
+      page_cursor_deleted_at: cursor?.deletedAt ?? null,
+      page_cursor_id: cursor?.id ?? null,
+      requested_page_size: pageSize,
+    });
     throwIfPostgrestError(error);
-    return data ?? [];
+    const rows = data ?? [];
+    const visibleRows = rows.slice(0, pageSize);
+    const lastItem = visibleRows.at(-1);
+
+    return {
+      items: visibleRows.map((row) => ({
+        id: row.id,
+        item_type: row.item_type,
+        item_id: row.item_id,
+        title: row.title,
+        deleted_at: row.deleted_at,
+        purge_after: row.purge_after,
+        source_path: row.source_path,
+        tree: row.tree as unknown as TrashTreeNode,
+      })),
+      totalCount: Number(rows[0]?.total_count ?? 0),
+      nextCursor:
+        rows.length > pageSize && lastItem
+          ? { deletedAt: lastItem.deleted_at, id: lastItem.id }
+          : null,
+    };
   }
 
   async restore(id: string) {
     const { error } = await this.client.rpc("restore_trash_item", {
       target_trash_id: id,
+    });
+    throwIfPostgrestError(error);
+  }
+
+  async restoreNode(trashId: string, node: Pick<TrashTreeNode, "id" | "type">) {
+    const { error } = await this.client.rpc("restore_trash_node", {
+      target_trash_id: trashId,
+      target_node_type: node.type,
+      target_node_id: node.id,
     });
     throwIfPostgrestError(error);
   }
