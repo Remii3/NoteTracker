@@ -122,6 +122,7 @@ function GlobalSidebar({
           if (isMobile) setOpenMobile(false);
         }}
       />
+
       <SidebarContent className="gap-0">
         <nav aria-label="Główna nawigacja">
           <SidebarGroup>

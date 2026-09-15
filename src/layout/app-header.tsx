@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { BookOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/features/theme";
 import {
   SidebarInset,
   SidebarProvider,
@@ -17,6 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/features/theme";
 
 type Props = {
   children?: ReactNode;
@@ -43,7 +43,7 @@ export function AppHeader({
     <header className="relative z-30 flex h-14 shrink-0 border-b bg-background/95 backdrop-blur">
       <div
         className={cn(
-          "hidden shrink-0 items-center overflow-hidden border-r transition-[width,padding] duration-200 motion-reduce:transition-none md:flex",
+          "hidden shrink-0 items-center overflow-hidden justify-between border-r transition-[width,padding] duration-200 motion-reduce:transition-none md:flex",
           state === "expanded" ? "w-(--sidebar-width) px-3" : "w-0 px-0",
         )}
       >
@@ -64,6 +64,7 @@ export function AppHeader({
           </TooltipTrigger>
           <TooltipContent side="bottom">Przejdź do modułów</TooltipContent>
         </Tooltip>
+        <ThemeToggle />
       </div>
       <div className="flex min-w-0 flex-1 items-center gap-2 px-2 sm:gap-3 sm:px-6">
         <SidebarTrigger className="shrink-0 focus-visible:ring-2 focus-visible:ring-ring/70" />
@@ -82,7 +83,6 @@ export function AppHeader({
           ref={onTrailingActionsTargetChange}
           className="flex shrink-0 items-center empty:hidden"
         />
-        <ThemeToggle />
       </div>
     </header>
   );
@@ -118,7 +118,7 @@ export function MobileAppSidebarHeader({
   onOpenHome,
 }: Pick<Props, "onOpenHome">) {
   return (
-    <div className="flex h-14 shrink-0 items-center border-b px-3 md:hidden">
+    <div className="flex h-14 shrink-0 items-center border-b px-3 md:hidden justify-between">
       <Tooltip>
         <TooltipTrigger
           render={
@@ -136,6 +136,7 @@ export function MobileAppSidebarHeader({
         </TooltipTrigger>
         <TooltipContent side="bottom">Przejdź do modułów</TooltipContent>
       </Tooltip>
+      <ThemeToggle />
     </div>
   );
 }
