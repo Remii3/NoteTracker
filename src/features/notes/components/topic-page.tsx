@@ -11,6 +11,7 @@ import { TopicQuestionsSection } from "@/features/questions/components/topic-que
 type RichTextModule = typeof import("./rich-text-editor");
 
 type Props = {
+  moduleName?: string;
   chapter?: Chapter;
   topic?: Topic;
   isEditing: boolean;
@@ -29,6 +30,7 @@ type Props = {
 };
 
 export function TopicPage({
+  moduleName,
   chapter,
   topic,
   isEditing,
@@ -51,8 +53,8 @@ export function TopicPage({
         <div className="mx-auto max-w-6xl space-y-10">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="mb-2 text-sm font-medium text-primary">
-                {chapter.title}
+              <p className="mb-2 text-sm font-medium text-primary/90">
+                {moduleName} <span>/</span> {chapter.title}
               </p>
               <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
                 {topic.title}

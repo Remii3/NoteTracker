@@ -77,7 +77,7 @@ function AppSidebarHeader({ onOpenHome }: { onOpenHome: () => void }) {
   };
 
   return (
-    <SidebarHeader className="h-14 shrink-0 flex-row items-center justify-between border-b px-3 py-0">
+    <SidebarHeader className="h-14 shrink-0 flex-row items-center justify-between border-b px-2 py-0">
       <Tooltip>
         <TooltipTrigger
           render={

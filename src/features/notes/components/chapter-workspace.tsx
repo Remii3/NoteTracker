@@ -1,14 +1,3 @@
-import { useCallback, useEffect } from "react";
-
-import { LoadError } from "@/components/load-error";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { QuestionsRepository } from "@/features/questions/data/questions-repository";
-import { StudyNavigation } from "./study-navigation";
-import { TopicPage } from "./topic-page";
-import type { TopicImagesService } from "../data/topic-images-service";
-import { useStudyKeyboardNavigation } from "../hooks/use-study-keyboard-navigation";
-import type { RichTextModule } from "../hooks/use-rich-text-module";
-import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
 import type {
   Chapter,
   NoteContent,
@@ -16,8 +5,20 @@ import type {
   TopicNavigation,
   TopicNavigationItem,
 } from "../types/model";
+import { useCallback, useEffect } from "react";
+
+import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
+import { LoadError } from "@/components/load-error";
+import type { QuestionsRepository } from "@/features/questions/data/questions-repository";
+import type { RichTextModule } from "../hooks/use-rich-text-module";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StudyNavigation } from "./study-navigation";
+import type { TopicImagesService } from "../data/topic-images-service";
+import { TopicPage } from "./topic-page";
+import { useStudyKeyboardNavigation } from "../hooks/use-study-keyboard-navigation";
 
 type Props = {
+  moduleName?: string;
   chapter?: Chapter;
   topic?: Topic;
   chapterId: string;
@@ -51,6 +52,7 @@ type Props = {
 };
 
 export function ChapterWorkspace({
+  moduleName,
   chapter,
   topic,
   chapterId,
@@ -87,7 +89,6 @@ export function ChapterWorkspace({
     },
     [expandChapter, loadChapterTopics, navigateToChapter],
   );
-
   useEffect(() => {
     if (
       !chapter ||
@@ -150,6 +151,7 @@ export function ChapterWorkspace({
         />
       ) : (
         <TopicPage
+          moduleName={moduleName}
           chapter={chapter}
           topic={topic}
           isEditing={isEditing}

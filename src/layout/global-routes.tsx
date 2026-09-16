@@ -6,7 +6,7 @@ import {
   LayoutGrid,
   Trash2,
 } from "lucide-react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import { NavLink, Outlet, useNavigate } from "react-router";
 
 import {
   SidebarContent,
@@ -37,17 +37,9 @@ const navigation = [
   { to: "/trash", label: "Kosz", icon: Trash2, end: false },
 ] as const;
 
-const pageTitles: Record<string, string> = {
-  "/": "Moduły",
-  "/statistics": "Statystyki",
-  "/trash": "Kosz",
-  "/settings": "Ustawienia konta",
-};
-
 export function GlobalRoutes() {
   const user = useUser();
   const userId = user.id;
-  const location = useLocation();
   const navigate = useNavigate();
   const [recentModules, setRecentModules] = useState<RecentModule[]>(() =>
     userId ? readRecentModules(userId) : [],
@@ -68,11 +60,6 @@ export function GlobalRoutes() {
   return (
     <AppLayout
       accountMenu={accountMenu}
-      header={
-        <span className="min-w-0 flex-1 truncate px-1 text-sm font-medium">
-          {pageTitles[location.pathname] ?? "NoteTracker"}
-        </span>
-      }
       onOpenHome={() => navigate("/")}
       sidebar={<GlobalNavigation recentModules={recentModules} />}
     >

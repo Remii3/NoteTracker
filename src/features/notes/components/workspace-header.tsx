@@ -27,15 +27,6 @@ type Props = {
 };
 
 export function WorkspaceHeader({
-  moduleName,
-  isChapters,
-  isGallery,
-  isQuestions,
-  isStatistics,
-  isQuestionHistory,
-  studyMode,
-  chapterTitle,
-  topicTitle,
   showEditingMode,
   isEditing,
   isSaving,
@@ -43,25 +34,6 @@ export function WorkspaceHeader({
   onChangeEditingMode,
   onPreloadEditor,
 }: Props) {
-  const viewTitle = isChapters
-    ? "Wszystkie rozdziały"
-    : isGallery
-      ? "Galeria"
-      : isStatistics
-        ? "Statystyki"
-        : isQuestions
-          ? studyMode === "test"
-            ? "Test"
-            : studyMode === "flashcards"
-              ? "Fiszki"
-              : isQuestionHistory
-                ? "Historia nauki"
-                : "Baza pytań"
-          : `${chapterTitle ?? "Rozdział"} / ${topicTitle ?? "Wybierz temat"}`;
-  const compactViewTitle =
-    !isChapters && !isGallery && !isStatistics && !isQuestions && topicTitle
-      ? topicTitle
-      : viewTitle;
   const [showSaved, setShowSaved] = useState(false);
   const wasSaving = useRef(false);
 
@@ -91,20 +63,6 @@ export function WorkspaceHeader({
 
   return (
     <>
-      <div
-        className="min-w-0 flex-1 overflow-hidden"
-        aria-label={`${moduleName ?? "Moduł"}: ${viewTitle}`}
-      >
-        <p className="hidden truncate text-xs font-medium text-primary min-[480px]:block dark:text-chart-2">
-          {moduleName ?? "Moduł"}
-        </p>
-        <h1 className="truncate text-sm font-semibold min-[480px]:hidden">
-          {moduleName ?? "Moduł"} · {compactViewTitle}
-        </h1>
-        <h1 className="hidden truncate font-semibold min-[480px]:block">
-          {viewTitle}
-        </h1>
-      </div>
       {showEditingMode && isEditing && saveStatus ? (
         <div className="flex h-8 shrink-0 items-center gap-2">
           <span role="status" aria-live="polite" className="sr-only">
