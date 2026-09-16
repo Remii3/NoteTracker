@@ -142,6 +142,17 @@ it("loads the complete summary and saves a weekly goal", async () => {
   expect(
     screen.getByRole("img", { name: "Skuteczność odpowiedzi 80%" }),
   ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Pokaż linię trendu" }));
+  expect(
+    screen.getByRole("img", {
+      name: "Wykres aktywności z linią trendu",
+    }),
+  ).toBeTruthy();
+  expect(
+    screen
+      .getByRole("button", { name: "Ukryj linię trendu" })
+      .getAttribute("aria-pressed"),
+  ).toBe("true");
   expect(
     screen.getByText("Najlepszy tydzień: 4 ukończonych tematów"),
   ).toBeTruthy();

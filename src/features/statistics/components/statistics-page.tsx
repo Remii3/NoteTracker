@@ -23,6 +23,12 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
+import {
   clearMemoryCacheByPrefix,
   readMemoryCache,
   writeMemoryCache,
@@ -46,6 +52,14 @@ import {
   type StatisticsRange,
   type StudyStatistics,
 } from "../model/types";
+import {
+  Bar,
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 type Metric = "completed" | "answers" | "sessions";
 
@@ -96,6 +110,7 @@ export function StatisticsPage({
       ? goalDraft.value
       : String(data?.progress.weeklyGoal.topics ?? 5);
   const [metric, setMetric] = useState<Metric>("completed");
+  const [showActivityTrend, setShowActivityTrend] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
 
   const load = useCallback(async () => {
@@ -334,29 +349,49 @@ export function StatisticsPage({
                       Dzień po dniu w wybranym okresie
                     </p>
                   </div>
-                  <div className="flex rounded-lg bg-muted p-1">
-                    {(["completed", "answers", "sessions"] as const).map(
-                      (value) => (
-                        <Button
-                          key={value}
-                          size="sm"
-                          variant={metric === value ? "secondary" : "ghost"}
-                          onClick={() => setMetric(value)}
-                        >
-                          {value === "completed"
-                            ? "Zaliczenia"
-                            : value === "answers"
-                              ? "Odpowiedzi"
-                              : "Powtórki"}
-                        </Button>
-                      ),
-                    )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex rounded-lg bg-muted p-1">
+                      {(["completed", "answers", "sessions"] as const).map(
+                        (value) => (
+                          <Button
+                            key={value}
+                            size="sm"
+                            variant={metric === value ? "secondary" : "ghost"}
+                            onClick={() => setMetric(value)}
+                          >
+                            {value === "completed"
+                              ? "Zaliczenia"
+                              : value === "answers"
+                                ? "Odpowiedzi"
+                                : "Powtórki"}
+                          </Button>
+                        ),
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={showActivityTrend ? "secondary" : "outline"}
+                      className={showActivityTrend ? "shadow-sm" : undefined}
+                      aria-pressed={showActivityTrend}
+                      aria-label={
+                        showActivityTrend
+                          ? "Ukryj linię trendu"
+                          : "Pokaż linię trendu"
+                      }
+                      onClick={() =>
+                        setShowActivityTrend((current) => !current)
+                      }
+                    >
+                      <TrendingUp />
+                      Trend
+                    </Button>
                   </div>
                 </div>
                 <ActivityChart
                   daily={data.daily}
                   progressDaily={data.progress.daily}
                   metric={metric}
+                  showTrend={showActivityTrend}
                 />
               </div>
               <WeeklyGoal
@@ -476,10 +511,12 @@ function ActivityChart({
   daily,
   progressDaily,
   metric,
+  showTrend,
 }: {
   daily: DailyStatistics[];
   progressDaily: StudyStatistics["progress"]["daily"];
   metric: Metric;
+  showTrend: boolean;
 }) {
   const studyByDate = new Map(daily.map((item) => [item.date, item]));
   const progressByDate = new Map(
@@ -499,44 +536,94 @@ function ActivityChart({
         ? (item.study?.answers ?? 0)
         : (item.study?.sessions ?? 0);
   const values = rows.map(getValue);
-  const max = Math.max(1, ...values);
-  const visible =
-    rows.length > 45
-      ? rows.filter(
+
+  const TREND_WINDOW = 7;
+
+  const allChartData = rows.map((item, index) => {
+    const start = Math.max(0, index - TREND_WINDOW + 1);
+    const window = values.slice(start, index + 1);
+
+    const trend = window.reduce((sum, value) => sum + value, 0) / window.length;
+
+    return {
+      date: item.date,
+      value: values[index],
+      trend: Number(trend.toFixed(2)),
+    };
+  });
+  const chartData =
+    allChartData.length > 45
+      ? allChartData.filter(
           (_, index) =>
-            index % Math.ceil(rows.length / 45) === 0 ||
-            index === rows.length - 1,
+            index % Math.ceil(allChartData.length / 45) === 0 ||
+            index === allChartData.length - 1,
         )
-      : rows;
+      : allChartData;
+  const metricLabel =
+    metric === "completed"
+      ? "Zaliczenia"
+      : metric === "answers"
+        ? "Odpowiedzi"
+        : "Powtórki";
+  const chartConfig = {
+    value: { label: metricLabel, color: "var(--primary)" },
+    trend: { label: "Trend", color: "var(--chart-4)" },
+  } satisfies ChartConfig;
   return (
-    <div className="mt-6">
-      <div
-        className="flex h-44 items-end gap-1"
+    <div>
+      <ChartContainer
+        config={chartConfig}
+        className="mt-6 h-48 w-full aspect-auto"
         role="img"
-        aria-label="Wykres aktywności"
+        aria-label={
+          showTrend ? "Wykres aktywności z linią trendu" : "Wykres aktywności"
+        }
       >
-        {visible.map((item) => {
-          const value = getValue(item);
-          return (
-            <div key={item.date} className="group relative min-w-0 flex-1">
-              <div
-                className="w-full rounded-t bg-primary/75 transition-colors hover:bg-primary"
-                style={{
-                  height: `${Math.max(value ? 6 : 2, (value / max) * 160)}px`,
-                  opacity: value ? 1 : 0.18,
-                }}
+        <ComposedChart
+          accessibilityLayer
+          data={chartData}
+          margin={{ top: 8, right: 8, left: -24, bottom: 0 }}
+        >
+          <CartesianGrid vertical={false} />
+          <XAxis
+            dataKey="date"
+            axisLine={false}
+            tickLine={false}
+            minTickGap={28}
+            tickFormatter={formatShortDate}
+          />
+          <YAxis allowDecimals={showTrend} axisLine={false} tickLine={false} />
+          <ChartTooltip
+            cursor={false}
+            isAnimationActive={false}
+            content={
+              <ChartTooltipContent
+                indicator="line"
+                labelFormatter={(label) => formatShortDate(String(label))}
               />
-              <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-xs text-background group-hover:block">
-                {formatShortDate(item.date)}: {value}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-        <span>{rows[0] ? formatShortDate(rows[0].date) : ""}</span>
-        <span>{rows.at(-1) ? formatShortDate(rows.at(-1)!.date) : ""}</span>
-      </div>
+            }
+          />
+          <Bar
+            dataKey="value"
+            fill="var(--color-value)"
+            fillOpacity={showTrend ? 0.28 : 0.72}
+            radius={[4, 4, 0, 0]}
+            tooltipType={showTrend ? "none" : undefined}
+            isAnimationActive={false}
+          />
+          {showTrend && (
+            <Line
+              dataKey="trend"
+              type="monotone"
+              stroke="var(--color-trend)"
+              strokeWidth={2.5}
+              dot={false}
+              activeDot={{ r: 4, strokeWidth: 2, fill: "var(--background)" }}
+              isAnimationActive={false}
+            />
+          )}
+        </ComposedChart>
+      </ChartContainer>
     </div>
   );
 }
