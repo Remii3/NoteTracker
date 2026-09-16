@@ -52,6 +52,7 @@ import {
   type StatisticsRange,
   type StudyStatistics,
 } from "../model/types";
+import { calculateMovingAverage } from "../lib/moving-average";
 import {
   Bar,
   CartesianGrid,
@@ -540,21 +541,12 @@ function ActivityChart({
         ? (item.study?.answers ?? 0)
         : (item.study?.sessions ?? 0);
   const values = rows.map(getValue);
-
-  const TREND_WINDOW = 7;
-
-  const allChartData = rows.map((item, index) => {
-    const start = Math.max(0, index - TREND_WINDOW + 1);
-    const window = values.slice(start, index + 1);
-
-    const trend = window.reduce((sum, value) => sum + value, 0) / window.length;
-
-    return {
-      date: item.date,
-      value: values[index],
-      trend: Number(trend.toFixed(2)),
-    };
-  });
+  const movingAverage = calculateMovingAverage(values, 7);
+  const allChartData = rows.map((item, index) => ({
+    date: item.date,
+    value: values[index],
+    trend: movingAverage[index],
+  }));
   const chartData =
     allChartData.length > 45
       ? allChartData.filter(
@@ -571,7 +563,10 @@ function ActivityChart({
         : "Powtórki";
   const chartConfig = {
     value: { label: metricLabel, color: "var(--primary)" },
-    trend: { label: "Trend", color: "var(--chart-4)" },
+    trend: {
+      label: "Trend · średnia z 7 dni",
+      color: "var(--chart-4)",
+    },
   } satisfies ChartConfig;
   return (
     <div>
@@ -596,7 +591,23 @@ function ActivityChart({
             minTickGap={28}
             tickFormatter={formatShortDate}
           />
-          <YAxis allowDecimals={showTrend} axisLine={false} tickLine={false} />
+          <YAxis
+            yAxisId="activity"
+            allowDecimals={false}
+            axisLine={false}
+            tickLine={false}
+          />
+          {showTrend && (
+            <YAxis
+              yAxisId="trend"
+              orientation="right"
+              allowDecimals
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={formatTrendValue}
+              width={38}
+            />
+          )}
           <ChartTooltip
             cursor={false}
             isAnimationActive={false}
@@ -604,11 +615,26 @@ function ActivityChart({
               <ChartTooltipContent
                 indicator="line"
                 labelFormatter={(label) => formatShortDate(String(label))}
+                formatter={(value, name) => (
+                  <>
+                    <span className="text-muted-foreground">
+                      {name === "trend"
+                        ? "Trend · średnia z 7 dni"
+                        : metricLabel}
+                    </span>
+                    <span className="ml-auto font-mono font-medium text-foreground tabular-nums">
+                      {name === "trend"
+                        ? `${formatTrendValue(Number(value))} ${trendUnit(metric)}`
+                        : Number(value).toLocaleString("pl-PL")}
+                    </span>
+                  </>
+                )}
               />
             }
           />
           <Bar
             dataKey="value"
+            yAxisId="activity"
             fill="var(--color-value)"
             fillOpacity={showTrend ? 0.28 : 0.72}
             radius={[4, 4, 0, 0]}
@@ -618,6 +644,7 @@ function ActivityChart({
           {showTrend && (
             <Line
               dataKey="trend"
+              yAxisId="trend"
               type="monotone"
               stroke="var(--color-trend)"
               strokeWidth={2.5}
@@ -630,6 +657,18 @@ function ActivityChart({
       </ChartContainer>
     </div>
   );
+}
+
+function formatTrendValue(value: number) {
+  return value.toLocaleString("pl-PL", {
+    maximumFractionDigits: 1,
+  });
+}
+
+function trendUnit(metric: Metric) {
+  if (metric === "completed") return "tematów / dzień";
+  if (metric === "answers") return "odpowiedzi / dzień";
+  return "powtórek / dzień";
 }
 
 function WeeklyGoal({
