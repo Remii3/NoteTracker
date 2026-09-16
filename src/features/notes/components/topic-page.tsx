@@ -1,12 +1,12 @@
-import { Plus } from "lucide-react";
+import type { Chapter, NoteContent, Topic } from "../types/model";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { TopicImagesService } from "../data/topic-images-service";
-import type { Chapter, NoteContent, Topic } from "../types/model";
-import { TopicImagesSection } from "./topic-images-section";
-import { TopicQuestionsSection } from "@/features/questions/components/topic-questions-section";
+import { Plus } from "lucide-react";
 import type { QuestionsRepository } from "@/features/questions/data/questions-repository";
+import { TopicImagesSection } from "./topic-images-section";
+import type { TopicImagesService } from "../data/topic-images-service";
+import { TopicQuestionsSection } from "@/features/questions/components/topic-questions-section";
 
 type RichTextModule = typeof import("./rich-text-editor");
 
@@ -102,7 +102,7 @@ export function TopicPage({
             ) : (
               <div>
                 <div className="mb-4 flex items-center gap-3">
-                  <h3 className="text-sm font-medium">Notatka</h3>
+                  <h3 className="font-semibold">Notatka</h3>
                   <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                     Podgląd
                   </span>
