@@ -5,11 +5,7 @@ import {
   CheckCircle2,
   Search,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
+import type { Chapter, LearningSummary } from "../types/model";
 import {
   Select,
   SelectContent,
@@ -22,7 +18,11 @@ import {
   getProgress,
   selectDashboardSummary,
 } from "../lib/chapter-selectors";
-import type { Chapter, LearningSummary } from "../types/model";
+import { useMemo, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 
 const CHAPTERS_PER_PAGE = 20;
 type OverviewSortMode =
@@ -103,7 +103,7 @@ export function ChaptersOverview({
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
             <p className="mb-2 text-sm font-medium text-primary">
-              Twój plan nauki
+              {moduleName}
             </p>
             <h1 className="text-3xl font-semibold tracking-tight">
               Wszystkie rozdziały
@@ -155,9 +155,7 @@ export function ChaptersOverview({
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="truncate font-semibold">
-                    Postęp modułu{moduleName ? ` „${moduleName}”` : ""}
-                  </p>
+                  <p className="truncate font-semibold">Postęp modułu</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {totalTopics
                       ? `${completedTopics} z ${totalTopics} tematów ukończonych`

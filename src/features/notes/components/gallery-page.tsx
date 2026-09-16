@@ -1,7 +1,4 @@
 import { ArrowUpDown, ArrowUpRight, Images, LoaderCircle } from "lucide-react";
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
-
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,14 +8,17 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
 import type {
   GalleryChapterSection,
   TopicImagesService,
 } from "../data/topic-images-service";
 import type { GalleryImage, TopicImage } from "../types/topic-image";
-import type { SortMode } from "../types/workspace-types";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+
+import { Button } from "@/components/ui/button";
 import { ImagePreviewDialog } from "./image-preview-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { SortMode } from "../types/workspace-types";
 
 const SECTION_PAGE_SIZE = 4;
 const CHAPTER_PAGE_SIZE = 6;
@@ -32,6 +32,7 @@ const SORT_LABELS: Record<SortMode, string> = {
 
 type Props = {
   moduleId: string;
+  moduleName?: string;
   sortMode: SortMode;
   service?: TopicImagesService;
   onOpenTopic: (chapterId: string, topicId: string) => void;
@@ -39,6 +40,7 @@ type Props = {
 
 export function GalleryPage({
   moduleId,
+  moduleName,
   sortMode,
   service,
   onOpenTopic,
@@ -249,7 +251,7 @@ export function GalleryPage({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="mb-2 text-sm font-medium text-primary">
-              Twoje materiały
+              {moduleName}
             </p>
             <h1 className="text-3xl font-semibold tracking-tight">Galeria</h1>
             <p className="mt-2 text-muted-foreground">

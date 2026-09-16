@@ -9,7 +9,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  ArrowLeft,
   BookOpenCheck,
   CheckCircle2,
   Clock3,
@@ -40,12 +39,16 @@ import { toast } from "@/components/ui/toast";
 const PAGE_SIZE = 20;
 
 type Props = {
+  moduleName?: string;
   repository: QuestionsRepository;
-  onBack: () => void;
   onOpenSession: (mode: StudyMode, id: string) => void;
 };
 
-export function StudyHistoryPage({ repository, onBack, onOpenSession }: Props) {
+export function StudyHistoryPage({
+  moduleName,
+  repository,
+  onOpenSession,
+}: Props) {
   const [sessions, setSessions] = useState<StudySessionSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -83,11 +86,8 @@ export function StudyHistoryPage({ repository, onBack, onOpenSession }: Props) {
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
       <div className="mx-auto max-w-5xl">
-        <Button variant="ghost" className="mb-5 -ml-3" onClick={onBack}>
-          <ArrowLeft /> Baza pytań
-        </Button>
         <div>
-          <p className="mb-2 text-sm font-medium text-primary">Nauka</p>
+          <p className="mb-2 text-sm font-medium text-primary">{moduleName}</p>
           <h1 className="text-3xl font-semibold">Historia nauki</h1>
           <p className="mt-2 text-muted-foreground">
             Wyniki testów i sesji z fiszkami.

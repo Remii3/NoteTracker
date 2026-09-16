@@ -2,15 +2,15 @@ import { StudyHistoryPage } from "@/features/questions/components/study-history-
 import { useModuleContext } from "../components/module-context";
 
 export function QuestionHistoryPage() {
-  const { questionsRepository, navigateQuestions, navigateStudySession } =
+  const { questionsRepository, navigateStudySession, moduleName } =
     useModuleContext();
 
   if (!questionsRepository) return null;
 
   return (
     <StudyHistoryPage
+      moduleName={moduleName}
       repository={questionsRepository}
-      onBack={navigateQuestions}
       onOpenSession={navigateStudySession}
     />
   );

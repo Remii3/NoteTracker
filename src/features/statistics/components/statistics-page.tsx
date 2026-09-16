@@ -278,10 +278,14 @@ export function StatisticsPage({
       <div className="mx-auto max-w-6xl space-y-8">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="mb-2 text-sm font-medium text-primary">Twoja nauka</p>
+            <p className="mb-2 text-sm font-medium text-primary">
+              {moduleName ? moduleName : "Wszystkie moduły"}
+            </p>
             <h1 className="text-3xl font-semibold">Statystyki</h1>
             <p className="mt-2 text-muted-foreground">
-              {moduleId ? moduleName : "Wszystkie moduły"}
+              {moduleId
+                ? "Dokładne dane o module"
+                : "Dokładne ogólne dane o modułach"}
             </p>
             {!moduleId && (
               <p className="mt-1 text-sm text-muted-foreground">

@@ -8,6 +8,7 @@ export function QuestionsPage() {
     loadChapterTopics,
     navigateStudySession,
     navigateQuestionHistory,
+    moduleName,
   } = useModuleContext();
 
   if (!questionsRepository) return null;
@@ -15,6 +16,7 @@ export function QuestionsPage() {
   return (
     <Questions
       chapters={orderedChapters}
+      moduleName={moduleName}
       repository={questionsRepository}
       loadTopics={loadChapterTopics}
       onOpenSession={navigateStudySession}

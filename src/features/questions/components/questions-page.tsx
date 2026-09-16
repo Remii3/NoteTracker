@@ -39,6 +39,7 @@ type FilterOption = { value: string; label: string };
 
 type Props = {
   chapters: Chapter[];
+  moduleName?: string;
   repository: QuestionsRepository;
   loadTopics: (chapterId: string) => Promise<Topic[] | null>;
   onOpenSession: (mode: StudyMode, id: string) => void;
@@ -46,6 +47,7 @@ type Props = {
 };
 
 export function QuestionsPage({
+  moduleName,
   chapters,
   repository,
   loadTopics,
@@ -134,7 +136,9 @@ export function QuestionsPage({
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div>
-            <p className="mb-2 text-sm font-medium text-primary">Nauka</p>
+            <p className="mb-2 text-sm font-medium text-primary">
+              {moduleName}
+            </p>
             <h1 className="text-3xl font-semibold">Baza pytań</h1>
             <p className="mt-2 text-muted-foreground">
               {total} pytań przygotowanych do nauki.
