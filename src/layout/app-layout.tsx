@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Sidebar,
   SidebarFooter,
@@ -7,18 +7,13 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 import { AppHeader } from "@/layout/app-header";
 import { AppHeaderActionsProvider } from "@/layout/app-header-actions";
 import { BookOpen } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { InAppReviewReminder } from "@/features/preferences/components/in-app-review-reminder";
+import { NavLink } from "react-router";
 
 type AppLayoutProps = {
   accountMenu: ReactNode;
@@ -41,25 +36,13 @@ export function AppLayout({
     useState<HTMLDivElement | null>(null);
 
   return (
-    <TooltipProvider>
+    <>
       <InAppReviewReminder />
-      <SidebarProvider
-        style={
-          {
-            "--sidebar-width": "clamp(17rem, 25vw, 20rem)",
-          } as CSSProperties
-        }
-      >
-        <Sidebar
-          side="left"
-          collapsible="offcanvas"
-          className="[&_a]:cursor-default [&_button]:cursor-default"
-        >
+      <SidebarProvider>
+        <Sidebar>
           <AppSidebarHeader onOpenHome={onOpenHome} />
           {sidebar}
-          <SidebarFooter className="min-h-16 shrink-0 justify-center border-t p-2">
-            {accountMenu}
-          </SidebarFooter>
+          <SidebarFooter className="border-t">{accountMenu}</SidebarFooter>
         </Sidebar>
         <AppHeaderActionsProvider target={headerActionsTarget}>
           <SidebarInset className="h-svh max-h-svh min-w-0 overflow-hidden">
@@ -75,7 +58,7 @@ export function AppLayout({
         </AppHeaderActionsProvider>
         {overlay}
       </SidebarProvider>
-    </TooltipProvider>
+    </>
   );
 }
 
@@ -89,23 +72,14 @@ function AppSidebarHeader({ onOpenHome }: { onOpenHome: () => void }) {
 
   return (
     <SidebarHeader className="h-14 shrink-0 flex-row items-center border-b px-2 py-0">
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              type="button"
-              variant="ghost"
-              className="min-w-0 justify-start px-2 font-semibold focus-visible:ring-2 focus-visible:ring-ring/70"
-              aria-label="Przejdź do modułów"
-              onClick={handleOpenHome}
-            />
-          }
-        >
-          <BookOpen className="text-primary" />
-          <span className="truncate">NoteTracker</span>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">Przejdź do modułów</TooltipContent>
-      </Tooltip>
+      <NavLink
+        to={"/"}
+        className={`${buttonVariants({ variant: "ghost" })} "min-w-0 justify-start px-2 font-semibold focus-visible:ring-2 focus-visible:ring-ring/70"`}
+        onClick={handleOpenHome}
+      >
+        <BookOpen className="text-primary" />
+        <span className="truncate">NoteTracker</span>
+      </NavLink>
     </SidebarHeader>
   );
 }
