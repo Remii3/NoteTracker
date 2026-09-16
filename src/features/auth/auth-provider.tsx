@@ -115,6 +115,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const deleteAccount = useCallback(async () => {
+    const imagesApiUrl = import.meta.env.VITE_R2_IMAGES_API_URL as
+      string | undefined;
+    if (!imagesApiUrl) {
+      throw new Error("Usuwanie konta nie jest skonfigurowane.");
+    }
+
+    const { data, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !data.session) {
+      throw new Error("Sesja wygasła. Zaloguj się ponownie.", {
+        cause: sessionError,
+      });
+    }
+
+    const response = await fetch(`${imagesApiUrl.replace(/\/$/, "")}/account`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${data.session.access_token}` },
+    });
+    if (!response.ok) {
+      throw new Error(
+        response.status === 401
+          ? "Sesja wygasła. Zaloguj się ponownie."
+          : "Nie udało się usunąć konta. Spróbuj ponownie.",
+      );
+    }
+  }, []);
+
   const completePasswordRecovery = useCallback(async (password: string) => {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) throw error;
@@ -127,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       completePasswordRecovery,
+      deleteAccount,
       isLoading,
       isPasswordRecovery,
       requestPasswordReset,
@@ -139,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [
       completePasswordRecovery,
+      deleteAccount,
       isLoading,
       isPasswordRecovery,
       requestPasswordReset,

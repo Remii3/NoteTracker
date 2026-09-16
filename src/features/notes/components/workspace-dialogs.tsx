@@ -34,7 +34,6 @@ export type WorkspaceDialogsProps = {
   deleteItem: ComponentProps<typeof DeleteItemDialog> | null;
   bulkDelete: ComponentProps<typeof BulkDeleteDialog> | null;
   navigation: ComponentProps<typeof UnsavedChangesDialog> | null;
-  signOut: ComponentProps<typeof UnsavedChangesDialog> | null;
   preview: ComponentProps<typeof UnsavedChangesDialog> | null;
   moveChapter: ComponentProps<typeof MoveChapterDialog> | null;
 };
@@ -45,7 +44,6 @@ export function WorkspaceDialogs({
   deleteItem,
   bulkDelete,
   navigation,
-  signOut,
   preview,
   moveChapter,
 }: WorkspaceDialogsProps) {
@@ -66,7 +64,6 @@ export function WorkspaceDialogs({
       )}
       {bulkDelete && <BulkDeleteDialog {...bulkDelete} />}
       {navigation && <UnsavedChangesDialog {...navigation} />}
-      {signOut && <UnsavedChangesDialog {...signOut} />}
       {preview && <UnsavedChangesDialog {...preview} />}
       {moveChapter && <MoveChapterDialog {...moveChapter} />}
     </Suspense>

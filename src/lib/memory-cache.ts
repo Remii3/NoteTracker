@@ -53,6 +53,22 @@ export function clearUserMemoryCache(userId: string) {
   clearMemoryCacheByPrefix(`statistics:${userId}:`);
 }
 
+export function clearDeletedUserLocalData(userId: string) {
+  clearUserMemoryCache(userId);
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.removeItem(recentModulesKey(userId));
+    const draftPrefix = `notetracker:drafts:v2:${userId}:`;
+    for (let index = window.sessionStorage.length - 1; index >= 0; index--) {
+      const key = window.sessionStorage.key(index);
+      if (key?.startsWith(draftPrefix)) window.sessionStorage.removeItem(key);
+    }
+  } catch {
+    // Dane lokalne są tylko pamięcią podręczną aplikacji.
+  }
+}
+
 export function readRecentModules(userId: string): RecentModule[] {
   if (typeof window === "undefined") return [];
 

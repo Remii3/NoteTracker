@@ -42,7 +42,6 @@ type Props = {
   moduleName?: string;
   moduleNameLoading?: boolean;
   onOpenModules?: () => void;
-  onSignOut?: () => void;
   onOpenAccount?: () => void;
   onModuleProgressChange?: (progress: {
     completedTopicsCount: number;
@@ -65,7 +64,6 @@ export function ModuleProvider({
   userEmail,
   moduleName,
   onOpenModules,
-  onSignOut,
   onOpenAccount,
   onModuleProgressChange,
 }: Props) {
@@ -112,11 +110,9 @@ export function ModuleProvider({
     searchChapters,
     searchResults,
   } = notesStore;
-  const [signOutPending, setSignOutPending] = useState(false);
   const {
     acknowledgeSave,
     clearDraft,
-    clearAllDrafts,
     flushDrafts,
     getBaseContent: getDraftBase,
     storageError,
@@ -442,18 +438,6 @@ export function ModuleProvider({
     isSearching: isSearchPending || notesStore.isSearching,
   };
 
-  const requestSignOut = () => {
-    if (notesStore.isSaving) {
-      toast.add({
-        data: { type: "info" },
-        description: "Poczekaj na zakończenie zapisywania.",
-      });
-      return;
-    }
-    if (hasDirtyDrafts) setSignOutPending(true);
-    else onSignOut?.();
-  };
-
   const header = !showHeader
     ? null
     : {
@@ -514,18 +498,6 @@ export function ModuleProvider({
             onSave: saveDraftAndContinueNavigation,
           }
         : null,
-    signOut: signOutPending
-      ? {
-          description: "Wylogowanie odrzuci niezapisane zmiany w notatkach.",
-          discardLabel: "Odrzuć i wyloguj",
-          onCancel: () => setSignOutPending(false),
-          onDiscard: () => {
-            setSignOutPending(false);
-            clearAllDrafts();
-            onSignOut?.();
-          },
-        }
-      : null,
     preview: previewPending
       ? {
           description:
@@ -558,7 +530,6 @@ export function ModuleProvider({
             userName={userName}
             userEmail={userEmail}
             onOpenAccount={() => onOpenAccount?.()}
-            onSignOut={requestSignOut}
           />
         }
         header={header ? <WorkspaceHeader {...header} /> : undefined}

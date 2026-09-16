@@ -21,6 +21,7 @@ export type AuthContextValue = {
     currentPassword: string,
     newPassword: string,
   ) => Promise<void>;
+  deleteAccount: () => Promise<void>;
   completePasswordRecovery: (password: string) => Promise<void>;
 };
 

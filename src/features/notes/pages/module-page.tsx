@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "@/components/ui/toast";
+import { useCallback, useEffect, useMemo } from "react";
 
-import { AccountDialog, getUserDisplayName, useAuth } from "@/features/auth";
+import { getUserDisplayName, useAuth } from "@/features/auth";
 import { supabase } from "@/lib/supabase/client";
 import { R2TopicImagesService } from "../data/r2-topic-images-service";
 import { SupabaseNotesRepository } from "../data/supabase-notes-repository";
@@ -14,7 +13,6 @@ import { SupabaseModulesRepository } from "@/features/modules/data/supabase-modu
 import { SupabaseStatisticsRepository } from "@/features/statistics/data/supabase-statistics-repository";
 import { ModuleProvider } from "../components/module-provider";
 import {
-  clearUserMemoryCache,
   readMemoryCache,
   rememberRecentModule,
   updateRecentModuleProgress,
@@ -26,7 +24,7 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function ModulePage() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const userId = user?.id;
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,7 +34,6 @@ export function ModulePage() {
     typeof navigationState?.moduleId === "string"
       ? navigationState.moduleId
       : undefined;
-  const [accountOpen, setAccountOpen] = useState(false);
   const modulesCacheKey = `modules:${userId ?? "anonymous"}`;
   const cachedModule = moduleSlug
     ? readMemoryCache<Module[]>(modulesCacheKey)?.find(
@@ -135,20 +132,6 @@ export function ModulePage() {
     selectedModule,
   ]);
 
-  const handleSignOut = useCallback(() => {
-    void signOut()
-      .then(() => {
-        if (userId) clearUserMemoryCache(userId);
-        navigate("/");
-      })
-      .catch(() => {
-        toast.add({
-          data: { type: "error" },
-          description: "Nie udało się wylogować. Spróbuj ponownie.",
-        });
-      });
-  }, [signOut, navigate, userId]);
-
   const repository = useMemo(
     () => new SupabaseNotesRepository(supabase, userId ?? "", moduleId ?? ""),
     [moduleId, userId],
@@ -184,29 +167,25 @@ export function ModulePage() {
     );
 
   return (
-    <>
-      <ModuleProvider
-        moduleId={moduleId ?? ""}
-        key={`${user.id}:${moduleId}`}
-        draftScope={`${user.id}:${moduleId}`}
-        repository={repository}
-        imagesService={imagesService}
-        questionsRepository={questionsRepository}
-        modulesRepository={modulesRepository}
-        statisticsRepository={statisticsRepository}
-        statisticsCacheScope={user.id}
-        initialChapters={[]}
-        loadOnMount
-        userName={getUserDisplayName(user)}
-        userEmail={user.email}
-        moduleName={selectedModule?.name}
-        moduleNameLoading={moduleResource.loading}
-        onOpenModules={() => navigate("/")}
-        onOpenAccount={() => setAccountOpen(true)}
-        onModuleProgressChange={handleModuleProgressChange}
-        onSignOut={handleSignOut}
-      />
-      {accountOpen && <AccountDialog onClose={() => setAccountOpen(false)} />}
-    </>
+    <ModuleProvider
+      moduleId={moduleId ?? ""}
+      key={`${user.id}:${moduleId}`}
+      draftScope={`${user.id}:${moduleId}`}
+      repository={repository}
+      imagesService={imagesService}
+      questionsRepository={questionsRepository}
+      modulesRepository={modulesRepository}
+      statisticsRepository={statisticsRepository}
+      statisticsCacheScope={user.id}
+      initialChapters={[]}
+      loadOnMount
+      userName={getUserDisplayName(user)}
+      userEmail={user.email}
+      moduleName={selectedModule?.name}
+      moduleNameLoading={moduleResource.loading}
+      onOpenModules={() => navigate("/")}
+      onOpenAccount={() => navigate("/settings")}
+      onModuleProgressChange={handleModuleProgressChange}
+    />
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BarChart3,
   BookOpen,
@@ -18,17 +18,9 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { toast } from "@/components/ui/toast";
-import {
-  AccountDialog,
-  AccountMenu,
-  getUserDisplayName,
-  useAuth,
-  useUser,
-} from "@/features/auth";
+import { AccountMenu, getUserDisplayName, useUser } from "@/features/auth";
 import { AppLayout } from "@/layout/app-layout";
 import {
-  clearUserMemoryCache,
   readRecentModules,
   subscribeToRecentModules,
   type RecentModule,
@@ -49,15 +41,14 @@ const pageTitles: Record<string, string> = {
   "/": "Moduły",
   "/statistics": "Statystyki",
   "/trash": "Kosz",
+  "/settings": "Ustawienia konta",
 };
 
 export function GlobalRoutes() {
-  const { signOut } = useAuth();
   const user = useUser();
   const userId = user.id;
   const location = useLocation();
   const navigate = useNavigate();
-  const [accountOpen, setAccountOpen] = useState(false);
   const [recentModules, setRecentModules] = useState<RecentModule[]>(() =>
     userId ? readRecentModules(userId) : [],
   );
@@ -66,45 +57,27 @@ export function GlobalRoutes() {
     return subscribeToRecentModules(userId, setRecentModules);
   }, [userId]);
 
-  const handleSignOut = useCallback(() => {
-    void signOut()
-      .then(() => {
-        clearUserMemoryCache(userId);
-        navigate("/");
-      })
-      .catch(() => {
-        toast.add({
-          data: { type: "error" },
-          description: "Nie udało się wylogować. Spróbuj ponownie.",
-        });
-      });
-  }, [navigate, signOut, userId]);
-
   const accountMenu = (
     <AccountMenu
       userName={getUserDisplayName(user)}
       userEmail={user.email}
-      onOpenAccount={() => setAccountOpen(true)}
-      onSignOut={handleSignOut}
+      onOpenAccount={() => navigate("/settings")}
     />
   );
 
   return (
-    <>
-      <AppLayout
-        accountMenu={accountMenu}
-        header={
-          <span className="min-w-0 flex-1 truncate px-1 text-sm font-medium">
-            {pageTitles[location.pathname] ?? "NoteTracker"}
-          </span>
-        }
-        onOpenHome={() => navigate("/")}
-        sidebar={<GlobalNavigation recentModules={recentModules} />}
-      >
-        <Outlet />
-      </AppLayout>
-      {accountOpen && <AccountDialog onClose={() => setAccountOpen(false)} />}
-    </>
+    <AppLayout
+      accountMenu={accountMenu}
+      header={
+        <span className="min-w-0 flex-1 truncate px-1 text-sm font-medium">
+          {pageTitles[location.pathname] ?? "NoteTracker"}
+        </span>
+      }
+      onOpenHome={() => navigate("/")}
+      sidebar={<GlobalNavigation recentModules={recentModules} />}
+    >
+      <Outlet />
+    </AppLayout>
   );
 }
 

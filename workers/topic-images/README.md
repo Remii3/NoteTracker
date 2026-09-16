@@ -3,6 +3,11 @@
 Worker udostępnia prywatne zdjęcia z Cloudflare R2 wyłącznie użytkownikom
 zweryfikowanym przez Supabase Auth.
 
+Endpoint `DELETE /account` trwale usuwa użytkownika Supabase Auth, dane objęte
+kaskadą oraz wszystkie obiekty R2 z prefiksem użytkownika. Prywatny znacznik w
+R2 pozwala godzinowemu cronowi dokończyć czyszczenie zdjęć po przerwanym
+żądaniu.
+
 Liczba zdjęć użytkownika nie jest limitowana. Worker ogranicza jedynie tempo
 żądań (300 żądań uwierzytelnianych i 120 operacji zapisu na minutę), aby
 utrudnić nadużycia i niekontrolowany wzrost kosztów.

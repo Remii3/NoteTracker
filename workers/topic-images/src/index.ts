@@ -35,6 +35,7 @@ type GalleryRow = Omit<ImageRow, "position"> & {
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_UPLOAD_BODY_BYTES = MAX_FILE_BYTES + 64 * 1024;
 const MAX_FILENAME_LENGTH = 255;
+const ACCOUNT_DELETION_PREFIX = "account-deletions/";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -129,6 +130,74 @@ async function adminDatabaseRequest(
       ...init?.headers,
     },
   });
+}
+
+async function adminAuthRequest(env: Env, path: string, init?: RequestInit) {
+  return fetch(`${env.SUPABASE_URL}/auth/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: env.SUPABASE_SECRET_KEY,
+      Authorization: `Bearer ${env.SUPABASE_SECRET_KEY}`,
+      "Content-Type": "application/json",
+      ...init?.headers,
+    },
+  });
+}
+
+async function deleteUserImages(env: Env, userId: string) {
+  const prefix = `${userId}/`;
+  while (true) {
+    const result = await env.IMAGES.list({ prefix, limit: 1000 });
+    if (result.objects.length === 0) return;
+    await env.IMAGES.delete(result.objects.map((object) => object.key));
+  }
+}
+
+async function deleteAccount(request: Request, env: Env, user: User) {
+  const markerKey = `${ACCOUNT_DELETION_PREFIX}${user.id}`;
+  await env.IMAGES.put(markerKey, "pending", {
+    httpMetadata: { contentType: "text/plain" },
+  });
+
+  const response = await adminAuthRequest(env, `admin/users/${user.id}`, {
+    method: "DELETE",
+    body: JSON.stringify({ should_soft_delete: false }),
+  });
+  if (!response.ok) {
+    await env.IMAGES.delete(markerKey);
+    throw new Error("Auth user deletion failed");
+  }
+
+  await env.IMAGES.put(markerKey, "confirmed", {
+    httpMetadata: { contentType: "text/plain" },
+  });
+  await deleteUserImages(env, user.id);
+  await env.IMAGES.delete(markerKey);
+  return json(request, env, { success: true });
+}
+
+async function purgeDeletedAccountImages(env: Env) {
+  const result = await env.IMAGES.list({
+    prefix: ACCOUNT_DELETION_PREFIX,
+    limit: 1000,
+  });
+  for (const marker of result.objects) {
+    const userId = marker.key.slice(ACCOUNT_DELETION_PREFIX.length);
+    if (!UUID_PATTERN.test(userId)) {
+      await env.IMAGES.delete(marker.key);
+      continue;
+    }
+
+    const userResponse = await adminAuthRequest(env, `admin/users/${userId}`);
+    if (userResponse.ok) {
+      await env.IMAGES.delete(marker.key);
+      continue;
+    }
+    if (userResponse.status !== 404) continue;
+
+    await deleteUserImages(env, userId);
+    await env.IMAGES.delete(marker.key);
+  }
 }
 
 function imageResponse(row: ImageRow) {
@@ -465,15 +534,17 @@ export default {
     const topicMatch = url.pathname.match(/^\/topics\/([^/]+)\/images$/);
     const imageMatch = url.pathname.match(/^\/images\/([^/]+)$/);
     const trashMatch = url.pathname.match(/^\/trash\/([^/]+)$/);
+    const accountMatch = url.pathname === "/account";
     const allowedMethod =
       (galleryMatch && request.method === "GET") ||
       (topicMatch && ["GET", "POST"].includes(request.method)) ||
       (imageMatch && ["GET", "DELETE"].includes(request.method)) ||
-      (trashMatch && request.method === "DELETE");
+      (trashMatch && request.method === "DELETE") ||
+      (accountMatch && request.method === "DELETE");
     if (!allowedMethod) return json(request, env, { error: "Not found" }, 404);
 
     let resourceId = "";
-    if (!galleryMatch) {
+    if (!galleryMatch && !accountMatch) {
       try {
         resourceId = decodeURIComponent(
           (topicMatch ?? imageMatch ?? trashMatch)?.[1] ?? "",
@@ -511,6 +582,9 @@ export default {
       if (trashMatch && request.method === "DELETE") {
         return await purgeTrash(request, env, resourceId);
       }
+      if (accountMatch) {
+        return await deleteAccount(request, env, user);
+      }
       if (topicMatch && request.method === "GET") {
         return await listImages(request, env, resourceId);
       }
@@ -538,5 +612,6 @@ export default {
   },
   async scheduled(_controller, env, ctx): Promise<void> {
     ctx.waitUntil(purgeExpiredTrash(env));
+    ctx.waitUntil(purgeDeletedAccountImages(env));
   },
 } satisfies ExportedHandler<Env>;
