@@ -36,6 +36,13 @@ const statistics: StudyStatistics = {
         topics: 2,
         completedTopics: 1,
       },
+      ...Array.from({ length: 6 }, (_, index) => ({
+        id: `chapter-${index + 2}`,
+        moduleId: "module",
+        title: `Rozdział ${index + 2}`,
+        topics: 3,
+        completedTopics: 1,
+      })),
     ],
     weeklyGoal: { topics: 5, completedTopics: 1, bestCompletedTopics: 4 },
   },
@@ -140,24 +147,37 @@ it("loads the complete summary and saves a weekly goal", async () => {
   ).toBeTruthy();
   expect(screen.getByText("1 z 2 tematów ukończonych")).toBeTruthy();
   expect(screen.getAllByText("Układ krążenia").length).toBeGreaterThan(0);
+  expect(screen.queryByText("Rozdział 7")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Pokaż więcej" }));
+  expect(screen.getByText("Rozdział 7")).toBeTruthy();
   await waitFor(() =>
     expect(repository.getTopicsPage).toHaveBeenCalledWith({
       moduleId: "module",
       sort: "chapter",
       filter: "all",
       cursor: null,
+      pageSize: 6,
     }),
   );
 
-  fireEvent.click(screen.getByRole("button", { name: "Tylko nieukończone" }));
+  const incompleteFilter = screen.getByRole("button", {
+    name: "Tylko nieukończone",
+  });
+  fireEvent.click(incompleteFilter);
+  expect(incompleteFilter.className).toContain("shadow-sm");
   await waitFor(() =>
     expect(repository.getTopicsPage).toHaveBeenCalledWith({
       moduleId: "module",
       sort: "chapter",
       filter: "incomplete",
       cursor: null,
+      pageSize: 6,
     }),
   );
+
+  expect(
+    screen.queryByRole("combobox", { name: "Sortowanie tematów" }),
+  ).toBeNull();
 
   fireEvent.change(
     screen.getByLabelText("Tygodniowy cel ukończonych tematów"),

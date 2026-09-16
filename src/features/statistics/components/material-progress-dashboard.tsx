@@ -33,6 +33,8 @@ const TOPIC_SORT_LABELS: Record<ProgressTopicSort, string> = {
   incomplete: "Nieukończone najpierw",
 };
 
+const PROGRESS_PAGE_SIZE = 6;
+
 export function MaterialProgressDashboard({
   data,
   moduleId,
@@ -146,6 +148,7 @@ function ModuleProgress({ data }: { data: StudyStatistics }) {
 }
 
 function ChapterProgress({ data }: { data: StudyStatistics }) {
+  const [visibleCount, setVisibleCount] = useState(PROGRESS_PAGE_SIZE);
   const chapters = [...data.progress.chapters].sort(
     (a, b) =>
       getPercent(b.completedTopics, b.topics) -
@@ -158,7 +161,7 @@ function ChapterProgress({ data }: { data: StudyStatistics }) {
       description="Każdy ukończony temat przybliża rozdział do zaliczenia."
     >
       <div className="grid gap-3 md:grid-cols-2">
-        {chapters.map((chapter) => {
+        {chapters.slice(0, visibleCount).map((chapter) => {
           const progress = getPercent(chapter.completedTopics, chapter.topics);
           return (
             <ProgressCard
@@ -172,6 +175,18 @@ function ChapterProgress({ data }: { data: StudyStatistics }) {
         })}
         {!chapters.length && <EmptyProgress />}
       </div>
+      {visibleCount < chapters.length && (
+        <div className="mt-4 text-center">
+          <Button
+            variant="outline"
+            onClick={() =>
+              setVisibleCount((current) => current + PROGRESS_PAGE_SIZE)
+            }
+          >
+            Pokaż więcej
+          </Button>
+        </div>
+      )}
     </ProgressSection>
   );
 }
@@ -195,7 +210,13 @@ function TopicProgress({
   useEffect(() => {
     let active = true;
     void repository
-      .getTopicsPage({ moduleId, sort, filter, cursor: null })
+      .getTopicsPage({
+        moduleId,
+        sort,
+        filter,
+        cursor: null,
+        pageSize: PROGRESS_PAGE_SIZE,
+      })
       .then((page) => {
         if (!active) return;
         setTopics(page.items);
@@ -222,6 +243,7 @@ function TopicProgress({
         sort,
         filter,
         cursor,
+        pageSize: PROGRESS_PAGE_SIZE,
       });
       setTopics((current) => [...current, ...page.items]);
       setCursor(page.nextCursor);
@@ -261,6 +283,10 @@ function TopicProgress({
                 type="button"
                 size="sm"
                 variant={filter === value ? "secondary" : "ghost"}
+                className={cn(
+                  filter === value &&
+                    "shadow-sm ring-1 ring-border/60 dark:ring-border",
+                )}
                 aria-pressed={filter === value}
                 onClick={() => {
                   if (value === filter) return;
@@ -268,6 +294,7 @@ function TopicProgress({
                   setCursor(null);
                   setError(false);
                   setLoading(true);
+                  if (value !== "all") setSort("chapter");
                   setFilter(value);
                 }}
               >
@@ -275,35 +302,40 @@ function TopicProgress({
               </Button>
             ))}
           </div>
-          <Select
-            value={sort}
-            onValueChange={(value) => {
-              const nextSort = value as ProgressTopicSort;
-              if (nextSort === sort) return;
-              setTopics([]);
-              setCursor(null);
-              setError(false);
-              setLoading(true);
-              setSort(nextSort);
-            }}
-          >
-            <SelectTrigger className="w-full sm:w-60">
-              <ArrowUpDown />
-              <SelectValue>{TOPIC_SORT_LABELS[sort]}</SelectValue>
-            </SelectTrigger>
-            <SelectContent align="end">
-              {(
-                Object.entries(TOPIC_SORT_LABELS) as [
-                  ProgressTopicSort,
-                  string,
-                ][]
-              ).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {filter === "all" && (
+            <Select
+              value={sort}
+              onValueChange={(value) => {
+                const nextSort = value as ProgressTopicSort;
+                if (nextSort === sort) return;
+                setTopics([]);
+                setCursor(null);
+                setError(false);
+                setLoading(true);
+                setSort(nextSort);
+              }}
+            >
+              <SelectTrigger
+                className="w-full sm:w-60"
+                aria-label="Sortowanie tematów"
+              >
+                <ArrowUpDown />
+                <SelectValue>{TOPIC_SORT_LABELS[sort]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent align="end">
+                {(
+                  Object.entries(TOPIC_SORT_LABELS) as [
+                    ProgressTopicSort,
+                    string,
+                  ][]
+                ).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
       <div className="divide-y">
