@@ -68,6 +68,12 @@ select pg_temp.assert_true(
 );
 select pg_temp.assert_true((select count(*) = 1 and min(weekly_minutes) = 180 from public.study_goals), 'study_goals: user 1 sees only own goal');
 select pg_temp.assert_true(
+  (select weekly_topics_enabled and not review_reminders_enabled
+   and review_reminder_interval_days = 7
+   from public.study_goals),
+  'study_goals: preference defaults are available to the owner'
+);
+select pg_temp.assert_true(
   jsonb_array_length(public.get_study_statistics(null, 30, null, 'UTC')->'modules') = 1,
   'statistics RPC: global response contains only the current user modules'
 );

@@ -188,20 +188,32 @@ export type Database = {
       };
       study_goals: {
         Row: {
+          last_review_reminder_at: string | null;
+          review_reminder_interval_days: number;
+          review_reminders_enabled: boolean;
           user_id: string;
           weekly_minutes: number;
           weekly_topics: number;
+          weekly_topics_enabled: boolean;
           updated_at: string;
         };
         Insert: {
+          last_review_reminder_at?: string | null;
+          review_reminder_interval_days?: number;
+          review_reminders_enabled?: boolean;
           user_id: string;
           weekly_minutes?: number;
           weekly_topics?: number;
+          weekly_topics_enabled?: boolean;
           updated_at?: string;
         };
         Update: {
+          last_review_reminder_at?: string | null;
+          review_reminder_interval_days?: number;
+          review_reminders_enabled?: boolean;
           weekly_minutes?: number;
           weekly_topics?: number;
+          weekly_topics_enabled?: boolean;
           updated_at?: string;
         };
         Relationships: [];

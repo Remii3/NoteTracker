@@ -5,6 +5,7 @@ import type { StatisticsRepository } from "./statistics-repository";
 import type {
   ProgressTopic,
   ProgressTopicCursor,
+  ProgressStatistics,
   StudyStatistics,
 } from "../model/types";
 
@@ -18,7 +19,7 @@ export class SupabaseStatisticsRepository implements StatisticsRepository {
   }
 
   async get(options: Parameters<StatisticsRepository["get"]>[0]) {
-    const [study, progress] = await Promise.all([
+    const [study, progress, goal] = await Promise.all([
       this.client.rpc("get_study_statistics", {
         target_module_id: options.moduleId,
         range_days: options.range,
@@ -30,12 +31,25 @@ export class SupabaseStatisticsRepository implements StatisticsRepository {
         range_days: options.range,
         timezone_name: options.timezone,
       }),
+      this.client
+        .from("study_goals")
+        .select("weekly_topics_enabled")
+        .eq("user_id", this.userId)
+        .maybeSingle(),
     ]);
     throwIfPostgrestError(study.error);
     throwIfPostgrestError(progress.error);
+    throwIfPostgrestError(goal.error);
+    const progressData = progress.data as unknown as ProgressStatistics;
     return {
       ...(study.data as unknown as Omit<StudyStatistics, "progress">),
-      progress: progress.data,
+      progress: {
+        ...progressData,
+        weeklyGoal: {
+          ...progressData.weeklyGoal,
+          enabled: goal.data?.weekly_topics_enabled ?? true,
+        },
+      },
     } as unknown as StudyStatistics;
   }
 
@@ -76,17 +90,5 @@ export class SupabaseStatisticsRepository implements StatisticsRepository {
           }
         : null;
     return { items, nextCursor };
-  }
-
-  async saveWeeklyGoal(topics: number) {
-    const { error } = await this.client.from("study_goals").upsert(
-      {
-        user_id: this.userId,
-        weekly_topics: topics,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id" },
-    );
-    throwIfPostgrestError(error);
   }
 }

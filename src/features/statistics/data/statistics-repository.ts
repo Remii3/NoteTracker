@@ -22,5 +22,4 @@ export interface StatisticsRepository {
     cursor: ProgressTopicCursor | null;
     pageSize?: number;
   }): Promise<ProgressTopicsPage>;
-  saveWeeklyGoal(topics: number): Promise<void>;
 }

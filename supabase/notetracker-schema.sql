@@ -1956,6 +1956,11 @@ CREATE TABLE IF NOT EXISTS "public"."study_goals" (
     "weekly_minutes" integer DEFAULT 150 NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "weekly_topics" integer DEFAULT 5 NOT NULL,
+    "weekly_topics_enabled" boolean DEFAULT true NOT NULL,
+    "review_reminders_enabled" boolean DEFAULT false NOT NULL,
+    "review_reminder_interval_days" integer DEFAULT 7 NOT NULL,
+    "last_review_reminder_at" timestamp with time zone,
+    CONSTRAINT "study_goals_review_reminder_interval_days_check" CHECK (("review_reminder_interval_days" = ANY (ARRAY[1, 2, 3, 7, 14, 30]))),
     CONSTRAINT "study_goals_weekly_minutes_check" CHECK ((("weekly_minutes" >= 15) AND ("weekly_minutes" <= 10080))),
     CONSTRAINT "study_goals_weekly_topics_check" CHECK ((("weekly_topics" >= 1) AND ("weekly_topics" <= 1000)))
 );
@@ -3042,7 +3047,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
 
 
 

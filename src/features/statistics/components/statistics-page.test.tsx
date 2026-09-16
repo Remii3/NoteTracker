@@ -44,7 +44,12 @@ const statistics: StudyStatistics = {
         completedTopics: 1,
       })),
     ],
-    weeklyGoal: { topics: 5, completedTopics: 1, bestCompletedTopics: 4 },
+    weeklyGoal: {
+      enabled: true,
+      topics: 5,
+      completedTopics: 1,
+      bestCompletedTopics: 4,
+    },
   },
   summary: {
     completedSessions: 4,
@@ -101,7 +106,7 @@ const statistics: StudyStatistics = {
   weeklyGoal: { minutes: 150, completedSeconds: 3600 },
 };
 
-it("loads the complete summary and saves a weekly goal", async () => {
+it("loads the complete statistics summary", async () => {
   const repository: StatisticsRepository = {
     get: vi.fn().mockResolvedValue(statistics),
     getTopicsPage: vi.fn().mockResolvedValue({
@@ -117,7 +122,6 @@ it("loads the complete summary and saves a weekly goal", async () => {
       ],
       nextCursor: null,
     }),
-    saveWeeklyGoal: vi.fn().mockResolvedValue(undefined),
   };
   render(
     <StatisticsPage
@@ -189,16 +193,4 @@ it("loads the complete summary and saves a weekly goal", async () => {
   expect(
     screen.queryByRole("combobox", { name: "Sortowanie tematów" }),
   ).toBeNull();
-
-  fireEvent.change(
-    screen.getByLabelText("Tygodniowy cel ukończonych tematów"),
-    {
-      target: { value: "8" },
-    },
-  );
-  fireEvent.click(screen.getByRole("button", { name: "Zapisz" }));
-
-  await waitFor(() =>
-    expect(repository.saveWeeklyGoal).toHaveBeenCalledWith(8),
-  );
 });

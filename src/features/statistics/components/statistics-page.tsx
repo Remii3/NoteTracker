@@ -13,7 +13,6 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { toast } from "@/components/ui/toast";
 import { AppHeaderActions } from "@/layout/app-header-actions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -29,11 +28,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import {
-  clearMemoryCacheByPrefix,
-  readMemoryCache,
-  writeMemoryCache,
-} from "@/lib/memory-cache";
+import { readMemoryCache, writeMemoryCache } from "@/lib/memory-cache";
 import type { StatisticsRepository } from "../data/statistics-repository";
 import { MaterialProgressDashboard } from "./material-progress-dashboard";
 import {
@@ -103,17 +98,8 @@ export function StatisticsPage({
     value: StudyStatistics;
   } | null>(null);
   const data = result?.key === requestKey ? result.value : cachedData;
-  const [goalDraft, setGoalDraft] = useState<{
-    key: string;
-    value: string;
-  } | null>(null);
-  const goal =
-    goalDraft?.key === requestKey
-      ? goalDraft.value
-      : String(data?.progress.weeklyGoal.topics ?? 5);
   const [metric, setMetric] = useState<Metric>("completed");
   const [showActivityTrend, setShowActivityTrend] = useState(false);
-  const [savingGoal, setSavingGoal] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -136,47 +122,6 @@ export function StatisticsPage({
   useEffect(() => {
     queueMicrotask(() => void load());
   }, [load]);
-
-  async function saveGoal() {
-    const topics = Number(goal);
-    if (!Number.isInteger(topics) || topics < 1 || topics > 1000) {
-      toast.add({
-        data: { type: "error" },
-        description: "Cel musi wynosić od 1 do 1000 tematów.",
-      });
-      return;
-    }
-    setSavingGoal(true);
-    try {
-      await repository.saveWeeklyGoal(topics);
-      if (data) {
-        const next = {
-          ...data,
-          progress: {
-            ...data.progress,
-            weeklyGoal: { ...data.progress.weeklyGoal, topics },
-          },
-        };
-        setResult({ key: requestKey, value: next });
-        setGoalDraft(null);
-        if (cacheScope) {
-          clearMemoryCacheByPrefix(`statistics:${cacheScope}:`);
-          if (cacheKey) writeMemoryCache(cacheKey, next);
-        }
-      }
-      toast.add({
-        data: { type: "success" },
-        description: "Cel tygodniowy został zapisany.",
-      });
-    } catch {
-      toast.add({
-        data: { type: "error" },
-        description: "Nie udało się zapisać celu.",
-      });
-    } finally {
-      setSavingGoal(false);
-    }
-  }
 
   const controls = (
     <div className="flex flex-wrap items-center gap-2">
@@ -401,13 +346,7 @@ export function StatisticsPage({
                     showTrend={showActivityTrend}
                   />
                 </div>
-                <WeeklyGoal
-                  data={data}
-                  goal={goal}
-                  saving={savingGoal}
-                  onChange={(value) => setGoalDraft({ key: requestKey, value })}
-                  onSave={() => void saveGoal()}
-                />
+                <WeeklyGoal data={data} />
               </section>
 
               <section className="grid gap-4 lg:grid-cols-2">
@@ -676,19 +615,7 @@ function trendUnit(metric: Metric) {
   return "powtórek / dzień";
 }
 
-function WeeklyGoal({
-  data,
-  goal,
-  saving,
-  onChange,
-  onSave,
-}: {
-  data: StudyStatistics;
-  goal: string;
-  saving: boolean;
-  onChange: (value: string) => void;
-  onSave: () => void;
-}) {
+function WeeklyGoal({ data }: { data: StudyStatistics }) {
   const completedTopics = data.progress.weeklyGoal.completedTopics;
   const progress = Math.min(
     100,
@@ -700,33 +627,25 @@ function WeeklyGoal({
         <Target className="size-5 text-primary" />
         <h2 className="text-lg font-semibold">Cel tygodniowy</h2>
       </div>
-      <p className="mt-5 text-3xl font-semibold">
-        {completedTopics}{" "}
-        <span className="text-base font-normal text-muted-foreground">
-          / {data.progress.weeklyGoal.topics} tematów
-        </span>
-      </p>
-      <Progress className="mt-3" value={progress} />
-      <p className="mt-3 text-sm text-muted-foreground">
-        Najlepszy tydzień: {data.progress.weeklyGoal.bestCompletedTopics}{" "}
-        ukończonych tematów
-      </p>
-      <div className="mt-5 flex gap-2">
-        <Input
-          type="number"
-          min={1}
-          max={1000}
-          value={goal}
-          onChange={(event) => onChange(event.target.value)}
-          aria-label="Tygodniowy cel ukończonych tematów"
-        />
-        <Button
-          disabled={saving || goal === String(data.progress.weeklyGoal.topics)}
-          onClick={onSave}
-        >
-          {saving ? "Zapisuję…" : "Zapisz"}
-        </Button>
-      </div>
+      {!data.progress.weeklyGoal.enabled ? (
+        <p className="mt-5 text-sm text-muted-foreground">
+          Cel jest wyłączony. Możesz go włączyć i ustawić w preferencjach konta.
+        </p>
+      ) : (
+        <>
+          <p className="mt-5 text-3xl font-semibold">
+            {completedTopics}{" "}
+            <span className="text-base font-normal text-muted-foreground">
+              / {data.progress.weeklyGoal.topics} tematów
+            </span>
+          </p>
+          <Progress className="mt-3" value={progress} />
+          <p className="mt-3 text-sm text-muted-foreground">
+            Najlepszy tydzień: {data.progress.weeklyGoal.bestCompletedTopics}{" "}
+            ukończonych tematów
+          </p>
+        </>
+      )}
     </div>
   );
 }

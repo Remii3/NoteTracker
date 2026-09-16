@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
+import { PreferencesPanel } from "@/features/preferences/components/preferences-panel";
 import {
   clearDeletedUserLocalData,
   clearUserMemoryCache,
@@ -54,6 +55,9 @@ export function AccountPage() {
     useAuth();
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"account" | "preferences">(
+    "account",
+  );
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -150,7 +154,7 @@ export function AccountPage() {
             </span>
             <div className="min-w-0">
               <h1 className="text-2xl font-semibold tracking-tight">
-                Ustawienia konta
+                Ustawienia
               </h1>
               <p className="truncate text-sm text-muted-foreground">
                 {user.email}
@@ -159,175 +163,210 @@ export function AccountPage() {
           </div>
         </header>
 
-        <section className="rounded-xl border bg-card p-5 shadow-sm sm:p-6">
-          <div className="mb-5">
-            <h2 className="font-semibold">Profil</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              To imię jest widoczne w interfejsie aplikacji.
-            </p>
-          </div>
-          <form
-            className="space-y-4"
-            onSubmit={profileForm.handleSubmit(submitProfile)}
+        <div
+          className="grid grid-cols-2 rounded-lg bg-muted p-1"
+          role="tablist"
+          aria-label="Ustawienia użytkownika"
+        >
+          <Button
+            type="button"
+            variant={activeTab === "account" ? "secondary" : "ghost"}
+            className={activeTab === "account" ? "shadow-sm" : undefined}
+            role="tab"
+            aria-selected={activeTab === "account"}
+            onClick={() => setActiveTab("account")}
           >
-            <Controller
-              name="name"
-              control={profileForm.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor={field.name}>Imię</FieldLabel>
-                  <Input
-                    {...field}
-                    id={field.name}
-                    type="text"
-                    autoComplete="name"
-                    aria-invalid={fieldState.invalid}
-                    disabled={isSubmitting}
-                    placeholder="Jak mamy się do Ciebie zwracać?"
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
+            Konto
+          </Button>
+          <Button
+            type="button"
+            variant={activeTab === "preferences" ? "secondary" : "ghost"}
+            className={activeTab === "preferences" ? "shadow-sm" : undefined}
+            role="tab"
+            aria-selected={activeTab === "preferences"}
+            onClick={() => setActiveTab("preferences")}
+          >
+            Preferencje
+          </Button>
+        </div>
+
+        {activeTab === "account" ? (
+          <>
+            <section className="rounded-xl border bg-card p-5 shadow-sm sm:p-6">
+              <div className="mb-5">
+                <h2 className="font-semibold">Profil</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  To imię jest widoczne w interfejsie aplikacji.
+                </p>
+              </div>
+              <form
+                className="space-y-4"
+                onSubmit={profileForm.handleSubmit(submitProfile)}
+              >
+                <Controller
+                  name="name"
+                  control={profileForm.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor={field.name}>Imię</FieldLabel>
+                      <Input
+                        {...field}
+                        id={field.name}
+                        type="text"
+                        autoComplete="name"
+                        aria-invalid={fieldState.invalid}
+                        disabled={isSubmitting}
+                        placeholder="Jak mamy się do Ciebie zwracać?"
+                      />
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
                   )}
-                </Field>
-              )}
-            />
-            {profileForm.formState.errors.root && (
-              <FieldError errors={[profileForm.formState.errors.root]} />
-            )}
-            <Button
-              type="submit"
-              disabled={!profileForm.formState.isDirty || isSubmitting}
-            >
-              {profileForm.formState.isSubmitting
-                ? "Zapisywanie…"
-                : "Zapisz imię"}
-            </Button>
-          </form>
-        </section>
-
-        <section className="rounded-xl border bg-card p-5 shadow-sm sm:p-6">
-          <div className="mb-5">
-            <h2 className="font-semibold">Hasło</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Ustaw nowe hasło do logowania na konto.
-            </p>
-          </div>
-          <form
-            className="space-y-4"
-            onSubmit={passwordForm.handleSubmit(submitPassword)}
-          >
-            <FieldGroup>
-              <Controller
-                name="oldPassword"
-                control={passwordForm.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={field.name}>Obecne hasło</FieldLabel>
-                    <Input
-                      {...field}
-                      id={field.name}
-                      type="password"
-                      aria-invalid={fieldState.invalid}
-                      autoComplete="current-password"
-                      disabled={isSubmitting}
-                    />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
+                />
+                {profileForm.formState.errors.root && (
+                  <FieldError errors={[profileForm.formState.errors.root]} />
                 )}
-              />
-              <Controller
-                name="newPassword"
-                control={passwordForm.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={field.name}>Nowe hasło</FieldLabel>
-                    <Input
-                      {...field}
-                      id={field.name}
-                      type="password"
-                      aria-invalid={fieldState.invalid}
-                      autoComplete="new-password"
-                      disabled={isSubmitting}
-                    />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-              <Controller
-                name="newPasswordConfirmation"
-                control={passwordForm.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={field.name}>
-                      Powtórz nowe hasło
-                    </FieldLabel>
-                    <Input
-                      {...field}
-                      id={field.name}
-                      type="password"
-                      aria-invalid={fieldState.invalid}
-                      autoComplete="new-password"
-                      disabled={isSubmitting}
-                    />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-            </FieldGroup>
-            {passwordForm.formState.errors.root && (
-              <FieldError errors={[passwordForm.formState.errors.root]} />
-            )}
-            <Button
-              type="submit"
-              disabled={!passwordForm.formState.isDirty || isSubmitting}
-            >
-              {passwordForm.formState.isSubmitting
-                ? "Zapisywanie…"
-                : "Zmień hasło"}
-            </Button>
-          </form>
-        </section>
+                <Button
+                  type="submit"
+                  disabled={!profileForm.formState.isDirty || isSubmitting}
+                >
+                  {profileForm.formState.isSubmitting
+                    ? "Zapisywanie…"
+                    : "Zapisz imię"}
+                </Button>
+              </form>
+            </section>
 
-        <section className="rounded-xl border bg-card p-5 shadow-sm sm:p-6">
-          <h2 className="font-semibold">Sesja</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Zakończ bieżącą sesję na tym urządzeniu.
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-5"
-            disabled={isSubmitting}
-            onClick={() => void handleSignOut()}
-          >
-            <LogOut /> Wyloguj
-          </Button>
-        </section>
+            <section className="rounded-xl border bg-card p-5 shadow-sm sm:p-6">
+              <div className="mb-5">
+                <h2 className="font-semibold">Hasło</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Ustaw nowe hasło do logowania na konto.
+                </p>
+              </div>
+              <form
+                className="space-y-4"
+                onSubmit={passwordForm.handleSubmit(submitPassword)}
+              >
+                <FieldGroup>
+                  <Controller
+                    name="oldPassword"
+                    control={passwordForm.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor={field.name}>
+                          Obecne hasło
+                        </FieldLabel>
+                        <Input
+                          {...field}
+                          id={field.name}
+                          type="password"
+                          aria-invalid={fieldState.invalid}
+                          autoComplete="current-password"
+                          disabled={isSubmitting}
+                        />
+                        {fieldState.invalid && (
+                          <FieldError errors={[fieldState.error]} />
+                        )}
+                      </Field>
+                    )}
+                  />
+                  <Controller
+                    name="newPassword"
+                    control={passwordForm.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor={field.name}>Nowe hasło</FieldLabel>
+                        <Input
+                          {...field}
+                          id={field.name}
+                          type="password"
+                          aria-invalid={fieldState.invalid}
+                          autoComplete="new-password"
+                          disabled={isSubmitting}
+                        />
+                        {fieldState.invalid && (
+                          <FieldError errors={[fieldState.error]} />
+                        )}
+                      </Field>
+                    )}
+                  />
+                  <Controller
+                    name="newPasswordConfirmation"
+                    control={passwordForm.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor={field.name}>
+                          Powtórz nowe hasło
+                        </FieldLabel>
+                        <Input
+                          {...field}
+                          id={field.name}
+                          type="password"
+                          aria-invalid={fieldState.invalid}
+                          autoComplete="new-password"
+                          disabled={isSubmitting}
+                        />
+                        {fieldState.invalid && (
+                          <FieldError errors={[fieldState.error]} />
+                        )}
+                      </Field>
+                    )}
+                  />
+                </FieldGroup>
+                {passwordForm.formState.errors.root && (
+                  <FieldError errors={[passwordForm.formState.errors.root]} />
+                )}
+                <Button
+                  type="submit"
+                  disabled={!passwordForm.formState.isDirty || isSubmitting}
+                >
+                  {passwordForm.formState.isSubmitting
+                    ? "Zapisywanie…"
+                    : "Zmień hasło"}
+                </Button>
+              </form>
+            </section>
 
-        <section className="rounded-xl border border-destructive/40 bg-destructive/5 p-5 sm:p-6">
-          <h2 className="font-semibold text-destructive">
-            Strefa niebezpieczna
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Usunięcie konta jest trwałe. Wszystkie moduły, rozdziały, tematy,
-            statystyki oraz zdjęcia zostaną bezpowrotnie usunięte.
-          </p>
-          <Button
-            type="button"
-            variant="destructive"
-            className="mt-5"
-            disabled={isSubmitting}
-            onClick={() => setDeleteOpen(true)}
-          >
-            <Trash2 /> Usuń konto
-          </Button>
-        </section>
+            <section className="rounded-xl border bg-card p-5 shadow-sm sm:p-6">
+              <h2 className="font-semibold">Sesja</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Zakończ bieżącą sesję na tym urządzeniu.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-5"
+                disabled={isSubmitting}
+                onClick={() => void handleSignOut()}
+              >
+                <LogOut /> Wyloguj
+              </Button>
+            </section>
+
+            <section className="rounded-xl border border-destructive/40 bg-destructive/5 p-5 sm:p-6">
+              <h2 className="font-semibold text-destructive">
+                Strefa niebezpieczna
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Usunięcie konta jest trwałe. Wszystkie moduły, rozdziały,
+                tematy, statystyki oraz zdjęcia zostaną bezpowrotnie usunięte.
+              </p>
+              <Button
+                type="button"
+                variant="destructive"
+                className="mt-5"
+                disabled={isSubmitting}
+                onClick={() => setDeleteOpen(true)}
+              >
+                <Trash2 /> Usuń konto
+              </Button>
+            </section>
+          </>
+        ) : (
+          <PreferencesPanel userId={userId} />
+        )}
       </div>
 
       <AlertDialog

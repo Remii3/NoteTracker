@@ -18,7 +18,7 @@ import { AppHeader } from "@/layout/app-header";
 import { AppHeaderActionsProvider } from "@/layout/app-header-actions";
 import { BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/features/theme";
+import { InAppReviewReminder } from "@/features/preferences/components/in-app-review-reminder";
 
 type AppLayoutProps = {
   accountMenu: ReactNode;
@@ -42,6 +42,7 @@ export function AppLayout({
 
   return (
     <TooltipProvider>
+      <InAppReviewReminder />
       <SidebarProvider
         style={
           {
@@ -87,7 +88,7 @@ function AppSidebarHeader({ onOpenHome }: { onOpenHome: () => void }) {
   };
 
   return (
-    <SidebarHeader className="h-14 shrink-0 flex-row items-center justify-between border-b px-2 py-0">
+    <SidebarHeader className="h-14 shrink-0 flex-row items-center border-b px-2 py-0">
       <Tooltip>
         <TooltipTrigger
           render={
@@ -105,7 +106,6 @@ function AppSidebarHeader({ onOpenHome }: { onOpenHome: () => void }) {
         </TooltipTrigger>
         <TooltipContent side="bottom">Przejdź do modułów</TooltipContent>
       </Tooltip>
-      <ThemeToggle />
     </SidebarHeader>
   );
 }

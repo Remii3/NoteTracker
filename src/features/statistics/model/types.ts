@@ -117,6 +117,7 @@ export type ProgressStatistics = {
     completedTopics: number;
   }>;
   weeklyGoal: {
+    enabled: boolean;
     topics: number;
     completedTopics: number;
     bestCompletedTopics: number;
