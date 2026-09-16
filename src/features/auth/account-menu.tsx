@@ -1,6 +1,10 @@
-import { Settings } from "lucide-react";
+import { LoaderCircle, LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { clearUserMemoryCache } from "@/lib/memory-cache";
+import { toast } from "@/components/ui/toast";
+import { useAuth } from "./auth-context";
+import { useState } from "react";
 
 type Props = {
   userName?: string;
@@ -9,30 +13,58 @@ type Props = {
 };
 
 export function AccountMenu({ userName, userEmail, onOpenAccount }: Props) {
+  const { signOut, user } = useAuth();
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const initial = (userName?.[0] ?? userEmail?.[0] ?? "U").toLocaleUpperCase(
     "pl",
   );
 
+  async function handleSignOut() {
+    setIsSigningOut(true);
+    try {
+      await signOut();
+      if (user) clearUserMemoryCache(user.id);
+    } catch {
+      toast.add({
+        data: { type: "error" },
+        description: "Nie udało się wylogować. Spróbuj ponownie.",
+      });
+      setIsSigningOut(false);
+    }
+  }
+
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      className="group h-auto w-full min-w-0 justify-start gap-3 px-2 py-1.5 text-left focus-visible:ring-2 focus-visible:ring-sidebar-ring/70"
-      aria-label="Przejdź do ustawień konta"
-      onClick={onOpenAccount}
-    >
-      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">
-        {initial}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium leading-5">
-          {userName ?? "Użytkownik"}
+    <div className="flex w-full items-center justify-between gap-2">
+      <Button
+        type="button"
+        variant="ghost"
+        className="group h-auto min-w-0 flex-1 justify-start gap-3 px-2 py-1.5 text-left focus-visible:ring-2 focus-visible:ring-sidebar-ring/70"
+        aria-label="Przejdź do ustawień konta"
+        onClick={onOpenAccount}
+      >
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">
+          {initial}
         </span>
-        <span className="block truncate text-xs font-normal leading-4 text-muted-foreground">
-          {userEmail ?? "konto prywatne"}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium leading-5">
+            {userName ?? "Użytkownik"}
+          </span>
+          <span className="block truncate text-xs font-normal leading-4 text-muted-foreground">
+            {userEmail ?? "konto prywatne"}
+          </span>
         </span>
-      </span>
-      <Settings className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
-    </Button>
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        aria-label={isSigningOut ? "Wylogowywanie…" : "Wyloguj"}
+        title="Wyloguj"
+        disabled={isSigningOut}
+        onClick={() => void handleSignOut()}
+        className={"h-full aspect-square"}
+      >
+        {isSigningOut ? <LoaderCircle className="animate-spin" /> : <LogOut />}
+      </Button>
+    </div>
   );
 }

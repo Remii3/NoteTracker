@@ -5,7 +5,6 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarProvider,
-  SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
@@ -60,7 +59,6 @@ export function AppLayout({
           <SidebarFooter className="min-h-16 shrink-0 justify-center border-t p-2">
             {accountMenu}
           </SidebarFooter>
-          <SidebarRail />
         </Sidebar>
         <AppHeaderActionsProvider target={headerActionsTarget}>
           <SidebarInset className="h-svh max-h-svh min-w-0 overflow-hidden">
