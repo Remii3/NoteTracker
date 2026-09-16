@@ -2,7 +2,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { throwIfPostgrestError } from "@/features/notes/data/supabase-error";
-import type { Module, ModulesRepository } from "./modules-repository";
+import type {
+  Module,
+  ModuleExportChapter,
+  ModulesRepository,
+} from "./modules-repository";
 import { clearMemoryCacheByPrefix } from "@/lib/memory-cache";
 import type { ImportedModuleDraft } from "../import/docx-import";
 import { createUniqueSlug } from "@/features/notes/lib/slug-utils";
@@ -95,6 +99,61 @@ export class SupabaseModulesRepository implements ModulesRepository {
     });
     throwIfPostgrestError(error);
     return data?.[0] ? this.map(data[0]) : null;
+  }
+
+  async getExportData(id: string) {
+    const [moduleResult, chaptersResult, topicsResult] = await Promise.all([
+      this.client
+        .from("modules")
+        .select("id,name")
+        .eq("id", id)
+        .eq("user_id", this.userId)
+        .is("trash_id", null)
+        .single(),
+      this.client
+        .from("chapters")
+        .select("id,title,position")
+        .eq("module_id", id)
+        .eq("user_id", this.userId)
+        .is("trash_id", null)
+        .order("position")
+        .order("id"),
+      this.client
+        .from("topics")
+        .select(
+          "id,chapter_id,title,completed,position,content,chapters!inner(module_id)",
+        )
+        .eq("chapters.module_id", id)
+        .eq("user_id", this.userId)
+        .is("trash_id", null)
+        .is("chapters.trash_id", null)
+        .order("position")
+        .order("id"),
+    ]);
+    throwIfPostgrestError(moduleResult.error);
+    throwIfPostgrestError(chaptersResult.error);
+    throwIfPostgrestError(topicsResult.error);
+    if (!moduleResult.data) throw new Error("Nie znaleziono modułu.");
+
+    const chapters: ModuleExportChapter[] = (chaptersResult.data ?? []).map(
+      (chapter) => ({ ...chapter, topics: [] }),
+    );
+    const chaptersById = new Map(
+      chapters.map((chapter) => [chapter.id, chapter]),
+    );
+    for (const topic of topicsResult.data ?? []) {
+      const chapter = chaptersById.get(topic.chapter_id);
+      if (!chapter) continue;
+      chapter.topics.push({
+        id: topic.id,
+        title: topic.title,
+        completed: topic.completed,
+        position: topic.position,
+        content:
+          topic.content as import("@/features/notes/types/model").NoteContent,
+      });
+    }
+    return { ...moduleResult.data, chapters };
   }
 
   async create(name: string, position: number) {

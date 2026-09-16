@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  Download,
   FileUp,
   LoaderCircle,
   Pencil,
@@ -49,9 +50,12 @@ import {
 } from "./lib/module-validation";
 import { parseDocxFile, type ImportedModuleDraft } from "./import/docx-import";
 import { DocxImportDialog } from "./import/docx-import-dialog";
+import type { TopicImagesService } from "@/features/notes/data/topic-images-service";
+import type { TopicImage } from "@/features/notes/types/topic-image";
 
 type Props = {
   repository: ModulesRepository;
+  imagesService?: TopicImagesService;
   onSelect: (module: Module) => void;
   cacheKey?: string;
   onDeleted?: (module: Module) => void;
@@ -62,6 +66,7 @@ const PAGE_SIZE = 24;
 
 export function ModulePicker({
   repository,
+  imagesService,
   onSelect,
   cacheKey,
   onDeleted,
@@ -83,6 +88,9 @@ export function ModulePicker({
   const [isLoading, setIsLoading] = useState(!cachedModules);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [pinningModuleId, setPinningModuleId] = useState<string | null>(null);
+  const [exportingModuleId, setExportingModuleId] = useState<string | null>(
+    null,
+  );
   const [reloadKey, setReloadKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [renamedModule, setRenamedModule] = useState<Module | null>(null);
@@ -316,6 +324,43 @@ export function ModulePicker({
     }
   }
 
+  async function exportModule(module: Module) {
+    if (exportingModuleId) return;
+    setExportingModuleId(module.id);
+    setError(null);
+    try {
+      const data = await repository.getExportData(module.id);
+      const imagesByTopic = new Map<string, TopicImage[]>();
+      let omittedImages = false;
+      if (imagesService) {
+        const topics = data.chapters.flatMap((chapter) => chapter.topics);
+        const results = await Promise.allSettled(
+          topics.map((topic) => imagesService.list(topic.id)),
+        );
+        results.forEach((result, index) => {
+          if (result.status === "fulfilled")
+            imagesByTopic.set(topics[index].id, result.value);
+          else omittedImages = true;
+        });
+      }
+      const { downloadModuleDocx } = await import("./export/docx-export");
+      await downloadModuleDocx(data, imagesByTopic);
+      toast.add({
+        data: { type: omittedImages ? "warning" : "success" },
+        description: omittedImages
+          ? `Wyeksportowano „${module.name}”, ale części materiałów nie udało się dołączyć.`
+          : `Wyeksportowano moduł „${module.name}”.`,
+      });
+    } catch {
+      toast.add({
+        data: { type: "error" },
+        description: `Nie udało się wyeksportować modułu „${module.name}”.`,
+      });
+    } finally {
+      setExportingModuleId(null);
+    }
+  }
+
   return (
     <>
       <main
@@ -506,6 +551,19 @@ export function ModulePicker({
                         onClick={() => setRenamedModule(module)}
                       >
                         <Pencil />
+                      </Button>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label={`Eksportuj moduł ${module.name} do Worda`}
+                        disabled={Boolean(exportingModuleId)}
+                        onClick={() => void exportModule(module)}
+                      >
+                        {exportingModuleId === module.id ? (
+                          <LoaderCircle className="animate-spin" />
+                        ) : (
+                          <Download />
+                        )}
                       </Button>
                       <Button
                         size="icon-sm"
