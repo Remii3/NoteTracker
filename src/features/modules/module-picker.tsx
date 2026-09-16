@@ -37,9 +37,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toast";
+import { AppHeaderActions } from "@/layout/app-header-actions";
 import { readMemoryCache, writeMemoryCache } from "@/lib/memory-cache";
 import type { Module, ModulesRepository } from "./data/modules-repository";
 import {
@@ -361,14 +367,93 @@ export function ModulePicker({
     }
   }
 
+  const searchInput = (className?: string, autoFocus = false) => (
+    <div className={`relative ${className ?? ""}`}>
+      <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        placeholder="Szukaj modułów"
+        aria-label="Szukaj modułów"
+        className="h-8 px-9"
+        autoFocus={autoFocus}
+      />
+      {search && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          aria-label="Wyczyść wyszukiwanie"
+          className="absolute top-1/2 right-1 -translate-y-1/2 active:not-aria-[haspopup]:-translate-y-1/2!"
+          onClick={() => setSearch("")}
+        >
+          <X />
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <>
+      <AppHeaderActions>
+        {searchInput("hidden w-56 sm:block lg:w-64")}
+        <Popover>
+          <PopoverTrigger
+            render={
+              <Button
+                type="button"
+                size="icon-sm"
+                variant={search ? "secondary" : "outline"}
+                className="sm:hidden"
+                aria-label="Szukaj modułów"
+              />
+            }
+          >
+            <Search />
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-72 p-3 sm:hidden">
+            {searchInput(undefined, true)}
+          </PopoverContent>
+        </Popover>
+        <input
+          ref={fileInputRef}
+          className="sr-only"
+          type="file"
+          accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          tabIndex={-1}
+          onChange={(event) => void selectDocx(event)}
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          aria-label="Importuj dokument Word"
+          disabled={isParsingDocx}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {isParsingDocx ? (
+            <LoaderCircle className="animate-spin" />
+          ) : (
+            <FileUp />
+          )}
+          <span className="hidden lg:inline">
+            {isParsingDocx ? "Odczytywanie…" : "Importuj Word"}
+          </span>
+        </Button>
+        <Button
+          size="sm"
+          aria-label="Nowy moduł"
+          onClick={() => setCreateOpen(true)}
+        >
+          <Plus />
+          <span className="hidden lg:inline">Nowy moduł</span>
+        </Button>
+      </AppHeaderActions>
       <main
         ref={mainRef}
         className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12"
       >
         <div>
-          <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <header>
             <div>
               <p className="text-sm font-medium text-primary">
                 Twoja przestrzeń
@@ -378,57 +463,7 @@ export function ModulePicker({
                 Moduł grupuje rozdziały należące do jednego obszaru nauki.
               </p>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <input
-                ref={fileInputRef}
-                className="sr-only"
-                type="file"
-                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                tabIndex={-1}
-                onChange={(event) => void selectDocx(event)}
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                aria-label="Importuj dokument Word"
-                disabled={isParsingDocx}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {isParsingDocx ? (
-                  <LoaderCircle className="animate-spin" />
-                ) : (
-                  <FileUp />
-                )}
-                {isParsingDocx ? "Odczytywanie…" : "Importuj Word"}
-              </Button>
-              <Button size="sm" onClick={() => setCreateOpen(true)}>
-                <Plus />
-                Nowy moduł
-              </Button>
-            </div>
           </header>
-          <div className="relative mt-6 max-w-xl">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Szukaj modułów"
-              aria-label="Szukaj modułów"
-              className="px-9"
-            />
-            {search && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                aria-label="Wyczyść wyszukiwanie"
-                className="absolute top-1/2 right-2 -translate-y-1/2 active:not-aria-[haspopup]:-translate-y-1/2!"
-                onClick={() => setSearch("")}
-              >
-                <X />
-              </Button>
-            )}
-          </div>
           {error && (
             <div className="mt-8 flex items-center gap-3 text-sm text-destructive">
               <span>{error}</span>

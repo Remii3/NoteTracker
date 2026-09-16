@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import {
   Sidebar,
   SidebarFooter,
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/tooltip";
 
 import { AppHeader } from "@/layout/app-header";
+import { AppHeaderActionsProvider } from "@/layout/app-header-actions";
 import { BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/features/theme";
@@ -37,6 +38,9 @@ export function AppLayout({
   overlay,
   sidebar,
 }: AppLayoutProps) {
+  const [headerActionsTarget, setHeaderActionsTarget] =
+    useState<HTMLDivElement | null>(null);
+
   return (
     <TooltipProvider>
       <SidebarProvider
@@ -58,10 +62,18 @@ export function AppLayout({
           </SidebarFooter>
           <SidebarRail />
         </Sidebar>
-        <SidebarInset className="h-svh max-h-svh min-w-0 overflow-hidden">
-          <AppHeader>{header}</AppHeader>
-          {children}
-        </SidebarInset>
+        <AppHeaderActionsProvider target={headerActionsTarget}>
+          <SidebarInset className="h-svh max-h-svh min-w-0 overflow-hidden">
+            <AppHeader>
+              {header}
+              <div
+                ref={setHeaderActionsTarget}
+                className="flex min-w-0 items-center gap-2 sm:gap-3"
+              />
+            </AppHeader>
+            {children}
+          </SidebarInset>
+        </AppHeaderActionsProvider>
         {overlay}
       </SidebarProvider>
     </TooltipProvider>

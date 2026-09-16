@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { QuestionDialog } from "./question-dialog";
 import type { QuestionsRepository } from "../data/questions-repository";
 import { toast } from "@/components/ui/toast";
+import { AppHeaderActions } from "@/layout/app-header-actions";
 
 const PAGE_SIZE = 20;
 type FilterOption = { value: string; label: string };
@@ -132,9 +133,58 @@ export function QuestionsPage({
   }
 
   return (
-    <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
-      <div className="mx-auto max-w-6xl">
-        <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
+    <>
+      <AppHeaderActions>
+        <Button
+          size="sm"
+          variant="outline"
+          aria-label="Historia nauki"
+          onClick={onOpenHistory}
+        >
+          <History />
+          <span className="hidden sm:inline">Historia</span>
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          aria-label="Sprawdź się w fiszkach"
+          disabled={!availability || availability.flashcardsCount === 0}
+          title={
+            availability?.flashcardsCount === 0
+              ? "Dodaj przynajmniej jedno pytanie."
+              : undefined
+          }
+          onClick={() => setStudyMode("flashcards")}
+        >
+          <Layers3 />
+          <span className="hidden sm:inline">Fiszki</span>
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          aria-label="Rozpocznij test"
+          disabled={!availability || availability.testQuestionsCount === 0}
+          title={
+            availability?.testQuestionsCount === 0
+              ? "Test wymaga pytania z co najmniej dwiema odpowiedziami."
+              : undefined
+          }
+          onClick={() => setStudyMode("test")}
+        >
+          <BookOpenCheck />
+          <span className="hidden sm:inline">Test</span>
+        </Button>
+        <Button
+          size="sm"
+          aria-label="Dodaj pytanie"
+          onClick={() => setEditing(null)}
+        >
+          <Plus />
+          <span className="hidden sm:inline">Dodaj</span>
+        </Button>
+      </AppHeaderActions>
+      <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+        <div className="mx-auto max-w-6xl">
           <div>
             <p className="mb-2 text-sm font-medium text-primary">
               {moduleName}
@@ -144,259 +194,232 @@ export function QuestionsPage({
               {total} pytań przygotowanych do nauki.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={onOpenHistory}>
-              <History /> Historia
-            </Button>
-            <Button
-              variant="outline"
-              disabled={!availability || availability.flashcardsCount === 0}
-              title={
-                availability?.flashcardsCount === 0
-                  ? "Dodaj przynajmniej jedno pytanie."
-                  : undefined
-              }
-              onClick={() => setStudyMode("flashcards")}
-            >
-              <Layers3 /> Sprawdź się w fiszkach
-            </Button>
-            <Button
-              variant="outline"
-              disabled={!availability || availability.testQuestionsCount === 0}
-              title={
-                availability?.testQuestionsCount === 0
-                  ? "Test wymaga pytania z co najmniej dwiema odpowiedziami."
-                  : undefined
-              }
-              onClick={() => setStudyMode("test")}
-            >
-              <BookOpenCheck /> Rozpocznij test
-            </Button>
-            <Button onClick={() => setEditing(null)}>
-              <Plus /> Dodaj pytanie
-            </Button>
-          </div>
-        </div>
-        {availability && availability.flashcardsCount === 0 && (
-          <p className="mt-3 text-sm text-muted-foreground">
-            Dodaj pierwsze pytanie, aby rozpocząć naukę z fiszkami.
-          </p>
-        )}
-        {availability &&
-          availability.flashcardsCount > 0 &&
-          availability.testQuestionsCount === 0 && (
+          {availability && availability.flashcardsCount === 0 && (
             <p className="mt-3 text-sm text-muted-foreground">
-              Aby rozpocząć test, dodaj do pytania przynajmniej drugą odpowiedź.
+              Dodaj pierwsze pytanie, aby rozpocząć naukę z fiszkami.
             </p>
           )}
-        <div className="mt-8 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,16rem)_minmax(0,16rem)]">
-          <div className="relative">
-            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
+          {availability &&
+            availability.flashcardsCount > 0 &&
+            availability.testQuestionsCount === 0 && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Aby rozpocząć test, dodaj do pytania przynajmniej drugą
+                odpowiedź.
+              </p>
+            )}
+          <div className="mt-8 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,16rem)_minmax(0,16rem)]">
+            <div className="relative">
+              <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setPage(1);
+                }}
+                placeholder="Szukaj pytania"
+                className="pl-9"
+              />
+            </div>
+            <Combobox
+              items={chapterOptions}
+              value={selectedChapterOption}
+              onValueChange={selectChapter}
+              itemToStringLabel={(option) => option.label}
+              itemToStringValue={(option) => option.value}
+              isItemEqualToValue={(option, value) =>
+                option.value === value.value
+              }
+            >
+              <ComboboxInput
+                className="w-full"
+                placeholder="Wszystkie rozdziały"
+                showClear={Boolean(selectedChapterOption)}
+                aria-label="Filtruj według rozdziału"
+              />
+              <ComboboxContent>
+                <ComboboxEmpty>Nie znaleziono rozdziału.</ComboboxEmpty>
+                <ComboboxList>
+                  <ComboboxCollection>
+                    {(option: FilterOption) => (
+                      <ComboboxItem key={option.value} value={option}>
+                        {option.label}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxCollection>
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+            <Combobox
+              items={topicOptions}
+              value={selectedTopicOption}
+              onValueChange={(option) => {
+                setTopicFilter(option?.value ?? "");
                 setPage(1);
               }}
-              placeholder="Szukaj pytania"
-              className="pl-9"
-            />
-          </div>
-          <Combobox
-            items={chapterOptions}
-            value={selectedChapterOption}
-            onValueChange={selectChapter}
-            itemToStringLabel={(option) => option.label}
-            itemToStringValue={(option) => option.value}
-            isItemEqualToValue={(option, value) => option.value === value.value}
-          >
-            <ComboboxInput
-              className="w-full"
-              placeholder="Wszystkie rozdziały"
-              showClear={Boolean(selectedChapterOption)}
-              aria-label="Filtruj według rozdziału"
-            />
-            <ComboboxContent>
-              <ComboboxEmpty>Nie znaleziono rozdziału.</ComboboxEmpty>
-              <ComboboxList>
-                <ComboboxCollection>
-                  {(option: FilterOption) => (
-                    <ComboboxItem key={option.value} value={option}>
-                      {option.label}
-                    </ComboboxItem>
-                  )}
-                </ComboboxCollection>
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
-          <Combobox
-            items={topicOptions}
-            value={selectedTopicOption}
-            onValueChange={(option) => {
-              setTopicFilter(option?.value ?? "");
-              setPage(1);
-            }}
-            itemToStringLabel={(option) => option.label}
-            itemToStringValue={(option) => option.value}
-            isItemEqualToValue={(option, value) => option.value === value.value}
-          >
-            <ComboboxInput
-              className={`w-full ${
-                !chapterFilter || filterTopicsLoading || filterTopicsError
-                  ? "cursor-not-allowed opacity-60"
-                  : ""
-              }`}
-              disabled={
-                !chapterFilter || filterTopicsLoading || filterTopicsError
+              itemToStringLabel={(option) => option.label}
+              itemToStringValue={(option) => option.value}
+              isItemEqualToValue={(option, value) =>
+                option.value === value.value
               }
-              showClear={Boolean(selectedTopicOption)}
-              placeholder={
-                !chapterFilter
-                  ? "Najpierw wybierz rozdział"
-                  : filterTopicsLoading
-                    ? "Ładowanie tematów…"
-                    : filterTopicsError
-                      ? "Nie udało się pobrać tematów"
-                      : "Wszystkie tematy"
-              }
-              aria-label="Filtruj według tematu"
-            />
-            <ComboboxContent>
-              <ComboboxEmpty>Nie znaleziono tematu.</ComboboxEmpty>
-              <ComboboxList>
-                <ComboboxCollection>
-                  {(option: FilterOption) => (
-                    <ComboboxItem key={option.value} value={option}>
-                      {option.label}
-                    </ComboboxItem>
-                  )}
-                </ComboboxCollection>
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
-        </div>
-        <div className="mt-6 space-y-3">
-          {questions.map((question) => {
-            const chapter = chapters.find(
-              (item) => item.id === question.chapterId,
-            );
-            return (
-              <article key={question.id} className="rounded-xl border p-5">
-                <div className="flex gap-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold">{question.content}</p>
-                    <ol className="mt-3 space-y-1 text-sm">
-                      {question.options.map((option, index) => (
-                        <li
-                          key={option.id ?? index}
-                          className={
-                            option.isCorrect
-                              ? "text-primary"
-                              : "text-muted-foreground"
-                          }
-                        >
-                          {String.fromCharCode(65 + index)}. {option.content}
-                          {option.isCorrect ? " ✓" : ""}
-                        </li>
-                      ))}
-                    </ol>
-                    {question.explanation && (
-                      <p className="mt-3 text-sm text-muted-foreground">
-                        {question.explanation}
-                      </p>
+            >
+              <ComboboxInput
+                className={`w-full ${
+                  !chapterFilter || filterTopicsLoading || filterTopicsError
+                    ? "cursor-not-allowed opacity-60"
+                    : ""
+                }`}
+                disabled={
+                  !chapterFilter || filterTopicsLoading || filterTopicsError
+                }
+                showClear={Boolean(selectedTopicOption)}
+                placeholder={
+                  !chapterFilter
+                    ? "Najpierw wybierz rozdział"
+                    : filterTopicsLoading
+                      ? "Ładowanie tematów…"
+                      : filterTopicsError
+                        ? "Nie udało się pobrać tematów"
+                        : "Wszystkie tematy"
+                }
+                aria-label="Filtruj według tematu"
+              />
+              <ComboboxContent>
+                <ComboboxEmpty>Nie znaleziono tematu.</ComboboxEmpty>
+                <ComboboxList>
+                  <ComboboxCollection>
+                    {(option: FilterOption) => (
+                      <ComboboxItem key={option.value} value={option}>
+                        {option.label}
+                      </ComboboxItem>
                     )}
-                    <div className="mt-3 flex gap-2 text-xs">
-                      <span className="rounded-full bg-muted px-2 py-1">
-                        {question.options.length >= 2
-                          ? "Fiszki i test"
-                          : "Tylko fiszki"}
-                      </span>
-                      <span className="rounded-full bg-muted px-2 py-1">
-                        {chapter || question.chapterTitle
-                          ? `${chapter?.title ?? question.chapterTitle}${question.topicTitle ? ` · ${question.topicTitle}` : ""}`
-                          : "Nieprzypisane"}
-                      </span>
+                  </ComboboxCollection>
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+          </div>
+          <div className="mt-6 space-y-3">
+            {questions.map((question) => {
+              const chapter = chapters.find(
+                (item) => item.id === question.chapterId,
+              );
+              return (
+                <article key={question.id} className="rounded-xl border p-5">
+                  <div className="flex gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold">{question.content}</p>
+                      <ol className="mt-3 space-y-1 text-sm">
+                        {question.options.map((option, index) => (
+                          <li
+                            key={option.id ?? index}
+                            className={
+                              option.isCorrect
+                                ? "text-primary"
+                                : "text-muted-foreground"
+                            }
+                          >
+                            {String.fromCharCode(65 + index)}. {option.content}
+                            {option.isCorrect ? " ✓" : ""}
+                          </li>
+                        ))}
+                      </ol>
+                      {question.explanation && (
+                        <p className="mt-3 text-sm text-muted-foreground">
+                          {question.explanation}
+                        </p>
+                      )}
+                      <div className="mt-3 flex gap-2 text-xs">
+                        <span className="rounded-full bg-muted px-2 py-1">
+                          {question.options.length >= 2
+                            ? "Fiszki i test"
+                            : "Tylko fiszki"}
+                        </span>
+                        <span className="rounded-full bg-muted px-2 py-1">
+                          {chapter || question.chapterTitle
+                            ? `${chapter?.title ?? question.chapterTitle}${question.topicTitle ? ` · ${question.topicTitle}` : ""}`
+                            : "Nieprzypisane"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => setEditing(question)}
+                      >
+                        <Pencil />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() =>
+                          void repository
+                            .remove(question.id)
+                            .then(load)
+                            .catch(() =>
+                              toast.add({
+                                data: { type: "error" },
+                                description: "Nie udało się usunąć pytania.",
+                              }),
+                            )
+                        }
+                      >
+                        <Trash2 />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => setEditing(question)}
-                    >
-                      <Pencil />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() =>
-                        void repository
-                          .remove(question.id)
-                          .then(load)
-                          .catch(() =>
-                            toast.add({
-                              data: { type: "error" },
-                              description: "Nie udało się usunąć pytania.",
-                            }),
-                          )
-                      }
-                    >
-                      <Trash2 />
-                    </Button>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-          {!questions.length && (
-            <div className="rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
-              Brak pytań.
+                </article>
+              );
+            })}
+            {!questions.length && (
+              <div className="rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
+                Brak pytań.
+              </div>
+            )}
+          </div>
+          {pages > 1 && (
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <Button
+                variant="outline"
+                disabled={page === 1}
+                onClick={() => setPage((value) => value - 1)}
+              >
+                Poprzednia
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {page} / {pages}
+              </span>
+              <Button
+                variant="outline"
+                disabled={page === pages}
+                onClick={() => setPage((value) => value + 1)}
+              >
+                Następna
+              </Button>
             </div>
           )}
+          {editing !== undefined && (
+            <QuestionDialog
+              question={editing}
+              chapters={chapters}
+              repository={repository}
+              loadTopics={loadTopics}
+              onClose={() => setEditing(undefined)}
+              onSaved={load}
+            />
+          )}
+          {studyMode && (
+            <StudySetup
+              mode={studyMode}
+              chapters={chapters}
+              repository={repository}
+              loadTopics={loadTopics}
+              onClose={() => setStudyMode(null)}
+              onOpenSession={onOpenSession}
+            />
+          )}
         </div>
-        {pages > 1 && (
-          <div className="mt-6 flex items-center justify-center gap-3">
-            <Button
-              variant="outline"
-              disabled={page === 1}
-              onClick={() => setPage((value) => value - 1)}
-            >
-              Poprzednia
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              {page} / {pages}
-            </span>
-            <Button
-              variant="outline"
-              disabled={page === pages}
-              onClick={() => setPage((value) => value + 1)}
-            >
-              Następna
-            </Button>
-          </div>
-        )}
-        {editing !== undefined && (
-          <QuestionDialog
-            question={editing}
-            chapters={chapters}
-            repository={repository}
-            loadTopics={loadTopics}
-            onClose={() => setEditing(undefined)}
-            onSaved={load}
-          />
-        )}
-        {studyMode && (
-          <StudySetup
-            mode={studyMode}
-            chapters={chapters}
-            repository={repository}
-            loadTopics={loadTopics}
-            onClose={() => setStudyMode(null)}
-            onOpenSession={onOpenSession}
-          />
-        )}
-      </div>
-    </main>
+      </main>
+    </>
   );
 }
 

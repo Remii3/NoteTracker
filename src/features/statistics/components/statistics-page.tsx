@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { toast } from "@/components/ui/toast";
+import { AppHeaderActions } from "@/layout/app-header-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -275,217 +276,221 @@ export function StatisticsPage({
   );
 
   return (
-    <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
-      <div className="mx-auto max-w-6xl space-y-8">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="mb-2 text-sm font-medium text-primary">
-              {moduleName ? moduleName : "Wszystkie moduły"}
-            </p>
-            <h1 className="text-3xl font-semibold">Statystyki</h1>
-            <p className="mt-2 text-muted-foreground">
-              {moduleId
-                ? "Dokładne dane o module"
-                : "Dokładne ogólne dane o modułach"}
-            </p>
-            {!moduleId && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                {data
-                  ? `${data.progress.summary.completedTopics}/${data.progress.summary.totalTopics} ukończonych tematów`
-                  : "Ładowanie podsumowania…"}
+    <>
+      <AppHeaderActions>{controls}</AppHeaderActions>
+      <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+        <div className="mx-auto max-w-6xl space-y-8">
+          <header>
+            <div>
+              <p className="mb-2 text-sm font-medium text-primary">
+                {moduleName ? moduleName : "Wszystkie moduły"}
               </p>
-            )}
-          </div>
-          {controls}
-        </header>
-
-        {!data ? (
-          <LoadingState />
-        ) : (
-          <>
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <SummaryCard
-                icon={<Target />}
-                label="Ukończone tematy"
-                value={`${data.progress.summary.completedTopics}/${data.progress.summary.totalTopics}`}
-                note={`${data.progress.summary.remainingTopics} tematów pozostało`}
-              />
-              <SummaryCard
-                icon={<BarChart3 />}
-                label="Ukończone rozdziały"
-                value={`${data.progress.summary.completedChapters}/${data.progress.summary.totalChapters}`}
-                note="Rozdział zalicza się po ukończeniu wszystkich tematów"
-              />
-              {moduleId ? (
-                <SummaryCard
-                  icon={<Medal />}
-                  label="Postęp modułu"
-                  value={`${getPercent(data.progress.summary.completedTopics, data.progress.summary.totalTopics)}%`}
-                  note={`${data.progress.summary.remainingTopics} tematów pozostało do ukończenia`}
-                />
-              ) : (
-                <SummaryCard
-                  icon={<Medal />}
-                  label="Ukończone moduły"
-                  value={`${data.progress.summary.completedModules}/${data.progress.summary.totalModules}`}
-                  note="Moduł zalicza się po ukończeniu całego materiału"
-                />
+              <h1 className="text-3xl font-semibold">Statystyki</h1>
+              <p className="mt-2 text-muted-foreground">
+                {moduleId
+                  ? "Dokładne dane o module"
+                  : "Dokładne ogólne dane o modułach"}
+              </p>
+              {!moduleId && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {data
+                    ? `${data.progress.summary.completedTopics}/${data.progress.summary.totalTopics} ukończonych tematów`
+                    : "Ładowanie podsumowania…"}
+                </p>
               )}
-              <SummaryCard
-                icon={<Flame />}
-                label="Seria zaliczeń"
-                value={`${data.progress.summary.currentStreak} dni`}
-                note={`Rekord: ${data.progress.summary.longestStreak} dni`}
-              />
-            </section>
+            </div>
+          </header>
 
-            <MaterialProgressDashboard
-              data={data}
-              moduleId={moduleId}
-              repository={repository}
-            />
-
-            <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-              <div className="rounded-2xl border p-5 sm:p-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-semibold">Aktywność</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Dzień po dniu w wybranym okresie
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex rounded-lg bg-muted p-1">
-                      {(["completed", "answers", "sessions"] as const).map(
-                        (value) => (
-                          <Button
-                            key={value}
-                            size="sm"
-                            variant={metric === value ? "secondary" : "ghost"}
-                            onClick={() => setMetric(value)}
-                          >
-                            {value === "completed"
-                              ? "Zaliczenia"
-                              : value === "answers"
-                                ? "Odpowiedzi"
-                                : "Powtórki"}
-                          </Button>
-                        ),
-                      )}
-                    </div>
-                    <Button
-                      size="sm"
-                      variant={showActivityTrend ? "secondary" : "outline"}
-                      className={showActivityTrend ? "shadow-sm" : undefined}
-                      aria-pressed={showActivityTrend}
-                      aria-label={
-                        showActivityTrend
-                          ? "Ukryj linię trendu"
-                          : "Pokaż linię trendu"
-                      }
-                      onClick={() =>
-                        setShowActivityTrend((current) => !current)
-                      }
-                    >
-                      <TrendingUp />
-                      Trend
-                    </Button>
-                  </div>
-                </div>
-                <ActivityChart
-                  daily={data.daily}
-                  progressDaily={data.progress.daily}
-                  metric={metric}
-                  showTrend={showActivityTrend}
+          {!data ? (
+            <LoadingState />
+          ) : (
+            <>
+              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <SummaryCard
+                  icon={<Target />}
+                  label="Ukończone tematy"
+                  value={`${data.progress.summary.completedTopics}/${data.progress.summary.totalTopics}`}
+                  note={`${data.progress.summary.remainingTopics} tematów pozostało`}
                 />
-              </div>
-              <WeeklyGoal
-                data={data}
-                goal={goal}
-                saving={savingGoal}
-                onChange={(value) => setGoalDraft({ key: requestKey, value })}
-                onSave={() => void saveGoal()}
-              />
-            </section>
-
-            <section className="grid gap-4 lg:grid-cols-2">
-              <div className="rounded-2xl border p-5 sm:p-6">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="size-5 text-primary" />
-                  <h2 className="text-lg font-semibold">
-                    Trend wyników powtórek
-                  </h2>
-                </div>
-                <SessionTrendChart sessions={data.sessionTrend} mode={mode} />
-              </div>
-              <div className="rounded-2xl border p-5 sm:p-6">
-                <div className="flex items-center gap-2">
-                  <Medal className="size-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Jakość powtórek</h2>
-                </div>
-                <ReviewQualityChart data={data} />
-                <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-                  <Record
-                    value={`${data.records.bestAccuracy}%`}
-                    label="Najlepsza sesja"
+                <SummaryCard
+                  icon={<BarChart3 />}
+                  label="Ukończone rozdziały"
+                  value={`${data.progress.summary.completedChapters}/${data.progress.summary.totalChapters}`}
+                  note="Rozdział zalicza się po ukończeniu wszystkich tematów"
+                />
+                {moduleId ? (
+                  <SummaryCard
+                    icon={<Medal />}
+                    label="Postęp modułu"
+                    value={`${getPercent(data.progress.summary.completedTopics, data.progress.summary.totalTopics)}%`}
+                    note={`${data.progress.summary.remainingTopics} tematów pozostało do ukończenia`}
                   />
-                  <Record
-                    value={data.records.mostAnswersInDay}
-                    label="Odpowiedzi w dzień"
-                  />
-                  <Record
-                    value={
-                      data.records.mostActiveDate
-                        ? formatShortDate(data.records.mostActiveDate)
-                        : "—"
-                    }
-                    label="Najaktywniejszy dzień"
-                  />
-                </div>
-              </div>
-            </section>
-
-            {moduleId ? (
-              <AreasTable data={data} />
-            ) : (
-              <ModulesTable data={data} />
-            )}
-
-            <section className="rounded-2xl border p-5 sm:p-6">
-              <h2 className="text-lg font-semibold">Ostatnie sesje powtórek</h2>
-              <div className="mt-4 divide-y">
-                {data.recentSessions.length ? (
-                  data.recentSessions.map((session) => (
-                    <div
-                      key={session.id}
-                      className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                    >
-                      <div>
-                        <p className="font-medium">
-                          {session.mode === "test" ? "Test" : "Fiszki"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {!moduleId && `${session.moduleName} · `}
-                          {formatDateTime(session.startedAt)}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold">{session.accuracy}%</p>
-                        <p className="text-xs text-muted-foreground">
-                          {session.answers} odpowiedzi
-                        </p>
-                      </div>
-                    </div>
-                  ))
                 ) : (
-                  <EmptyState />
+                  <SummaryCard
+                    icon={<Medal />}
+                    label="Ukończone moduły"
+                    value={`${data.progress.summary.completedModules}/${data.progress.summary.totalModules}`}
+                    note="Moduł zalicza się po ukończeniu całego materiału"
+                  />
                 )}
-              </div>
-            </section>
-          </>
-        )}
-      </div>
-    </main>
+                <SummaryCard
+                  icon={<Flame />}
+                  label="Seria zaliczeń"
+                  value={`${data.progress.summary.currentStreak} dni`}
+                  note={`Rekord: ${data.progress.summary.longestStreak} dni`}
+                />
+              </section>
+
+              <MaterialProgressDashboard
+                data={data}
+                moduleId={moduleId}
+                repository={repository}
+              />
+
+              <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+                <div className="rounded-2xl border p-5 sm:p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-semibold">Aktywność</h2>
+                      <p className="text-sm text-muted-foreground">
+                        Dzień po dniu w wybranym okresie
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex rounded-lg bg-muted p-1">
+                        {(["completed", "answers", "sessions"] as const).map(
+                          (value) => (
+                            <Button
+                              key={value}
+                              size="sm"
+                              variant={metric === value ? "secondary" : "ghost"}
+                              onClick={() => setMetric(value)}
+                            >
+                              {value === "completed"
+                                ? "Zaliczenia"
+                                : value === "answers"
+                                  ? "Odpowiedzi"
+                                  : "Powtórki"}
+                            </Button>
+                          ),
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={showActivityTrend ? "secondary" : "outline"}
+                        className={showActivityTrend ? "shadow-sm" : undefined}
+                        aria-pressed={showActivityTrend}
+                        aria-label={
+                          showActivityTrend
+                            ? "Ukryj linię trendu"
+                            : "Pokaż linię trendu"
+                        }
+                        onClick={() =>
+                          setShowActivityTrend((current) => !current)
+                        }
+                      >
+                        <TrendingUp />
+                        Trend
+                      </Button>
+                    </div>
+                  </div>
+                  <ActivityChart
+                    daily={data.daily}
+                    progressDaily={data.progress.daily}
+                    metric={metric}
+                    showTrend={showActivityTrend}
+                  />
+                </div>
+                <WeeklyGoal
+                  data={data}
+                  goal={goal}
+                  saving={savingGoal}
+                  onChange={(value) => setGoalDraft({ key: requestKey, value })}
+                  onSave={() => void saveGoal()}
+                />
+              </section>
+
+              <section className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-2xl border p-5 sm:p-6">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="size-5 text-primary" />
+                    <h2 className="text-lg font-semibold">
+                      Trend wyników powtórek
+                    </h2>
+                  </div>
+                  <SessionTrendChart sessions={data.sessionTrend} mode={mode} />
+                </div>
+                <div className="rounded-2xl border p-5 sm:p-6">
+                  <div className="flex items-center gap-2">
+                    <Medal className="size-5 text-primary" />
+                    <h2 className="text-lg font-semibold">Jakość powtórek</h2>
+                  </div>
+                  <ReviewQualityChart data={data} />
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+                    <Record
+                      value={`${data.records.bestAccuracy}%`}
+                      label="Najlepsza sesja"
+                    />
+                    <Record
+                      value={data.records.mostAnswersInDay}
+                      label="Odpowiedzi w dzień"
+                    />
+                    <Record
+                      value={
+                        data.records.mostActiveDate
+                          ? formatShortDate(data.records.mostActiveDate)
+                          : "—"
+                      }
+                      label="Najaktywniejszy dzień"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              {moduleId ? (
+                <AreasTable data={data} />
+              ) : (
+                <ModulesTable data={data} />
+              )}
+
+              <section className="rounded-2xl border p-5 sm:p-6">
+                <h2 className="text-lg font-semibold">
+                  Ostatnie sesje powtórek
+                </h2>
+                <div className="mt-4 divide-y">
+                  {data.recentSessions.length ? (
+                    data.recentSessions.map((session) => (
+                      <div
+                        key={session.id}
+                        className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                      >
+                        <div>
+                          <p className="font-medium">
+                            {session.mode === "test" ? "Test" : "Fiszki"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {!moduleId && `${session.moduleName} · `}
+                            {formatDateTime(session.startedAt)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">{session.accuracy}%</p>
+                          <p className="text-xs text-muted-foreground">
+                            {session.answers} odpowiedzi
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <EmptyState />
+                  )}
+                </div>
+              </section>
+            </>
+          )}
+        </div>
+      </main>
+    </>
   );
 }
 

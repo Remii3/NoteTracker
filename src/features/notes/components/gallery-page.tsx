@@ -16,6 +16,7 @@ import type { GalleryImage, TopicImage } from "../types/topic-image";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { AppHeaderActions } from "@/layout/app-header-actions";
 import { ImagePreviewDialog } from "./image-preview-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { SortMode } from "../types/workspace-types";
@@ -246,9 +247,42 @@ export function GalleryPage({
   }
 
   return (
-    <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
-      <div className="mx-auto max-w-6xl">
-        <div className="flex items-start justify-between gap-4">
+    <>
+      <AppHeaderActions>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                size="sm"
+                variant="outline"
+                aria-label="Sortowanie galerii"
+              />
+            }
+          >
+            <ArrowUpDown />
+            <span className="hidden sm:inline">{SORT_LABELS[gallerySort]}</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Sortowanie galerii</DropdownMenuLabel>
+            </DropdownMenuGroup>
+            <DropdownMenuRadioGroup
+              value={gallerySort}
+              onValueChange={(value) => changeSort(value as SortMode)}
+            >
+              {(Object.entries(SORT_LABELS) as [SortMode, string][]).map(
+                ([value, label]) => (
+                  <DropdownMenuRadioItem key={value} value={value}>
+                    {label}
+                  </DropdownMenuRadioItem>
+                ),
+              )}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </AppHeaderActions>
+      <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+        <div className="mx-auto max-w-6xl">
           <div>
             <p className="mb-2 text-sm font-medium text-primary">
               {moduleName}
@@ -258,164 +292,142 @@ export function GalleryPage({
               Zdjęcia uporządkowane według rozdziałów.
             </p>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" />}>
-              <ArrowUpDown /> {SORT_LABELS[gallerySort]}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel>Sortowanie galerii</DropdownMenuLabel>
-              </DropdownMenuGroup>
-              <DropdownMenuRadioGroup
-                value={gallerySort}
-                onValueChange={(value) => changeSort(value as SortMode)}
+
+          {!service ? (
+            <div className="mt-8 rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
+              Galeria wymaga skonfigurowanego Workera zdjęć.
+            </div>
+          ) : sections.length ? (
+            <div className="mt-10 space-y-10">
+              {sections.map((section) => (
+                <section key={section.chapterId}>
+                  <div className="mb-4 flex items-end justify-between gap-4">
+                    <div>
+                      <h2 className="text-xl font-semibold">
+                        {section.chapterTitle}
+                      </h2>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {section.total === 1
+                          ? "1 zdjęcie"
+                          : `${section.total} zdjęć`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+                    {section.images.map((image) => (
+                      <article
+                        key={image.id}
+                        className="group overflow-hidden rounded-xl border bg-background"
+                      >
+                        <button
+                          type="button"
+                          className="block aspect-4/3 w-full cursor-zoom-in overflow-hidden bg-muted/20"
+                          onClick={() => setPreviewId(image.id)}
+                        >
+                          <img
+                            src={image.url}
+                            alt={image.originalFilename}
+                            loading="lazy"
+                            className="size-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          className="flex w-full items-start justify-between gap-3 p-3 text-left hover:bg-muted/30"
+                          onClick={() => openTopic(image)}
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-medium">
+                              {image.topicTitle}
+                            </span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              Otwórz temat
+                            </span>
+                          </span>
+                          <ArrowUpRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                  {section.hasMore && (
+                    <div className="mt-4">
+                      <Button
+                        variant="outline"
+                        disabled={loadingChapterId === section.chapterId}
+                        onClick={() => void loadChapter(section.chapterId)}
+                      >
+                        {loadingChapterId === section.chapterId && (
+                          <LoaderCircle className="animate-spin" />
+                        )}
+                        Pokaż więcej w rozdziale
+                      </Button>
+                    </div>
+                  )}
+                </section>
+              ))}
+            </div>
+          ) : hasLoaded && !isLoading && !error ? (
+            <div className="mt-8 rounded-xl border border-dashed py-14 text-center">
+              <Images className="mx-auto size-8 text-muted-foreground" />
+              <p className="mt-3 font-medium">Nie masz jeszcze żadnych zdjęć</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Dodaj zdjęcie w wybranym temacie, a pojawi się ono w galerii.
+              </p>
+            </div>
+          ) : null}
+
+          {isLoading && !sections.length && (
+            <div className="mt-8 space-y-8">
+              {Array.from({ length: 2 }, (_, section) => (
+                <div key={section}>
+                  <Skeleton className="mb-4 h-7 w-48" />
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                    {Array.from({ length: 4 }, (_, index) => (
+                      <Skeleton key={index} className="aspect-4/3 rounded-xl" />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {error && (
+            <div className="mt-6 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+              <p role="alert">{error}</p>
+              <Button
+                className="mt-3"
+                variant="outline"
+                disabled={isLoading}
+                onClick={() => void loadSections()}
               >
-                {(Object.entries(SORT_LABELS) as [SortMode, string][]).map(
-                  ([value, label]) => (
-                    <DropdownMenuRadioItem key={value} value={value}>
-                      {label}
-                    </DropdownMenuRadioItem>
-                  ),
-                )}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                Spróbuj ponownie
+              </Button>
+            </div>
+          )}
+          {hasMoreChapters && (
+            <div
+              ref={loadMoreSentinelRef}
+              className="flex h-24 items-center justify-center"
+              aria-label="Ładowanie kolejnych rozdziałów"
+            >
+              {isLoading && (
+                <LoaderCircle className="animate-spin text-muted-foreground" />
+              )}
+            </div>
+          )}
         </div>
 
-        {!service ? (
-          <div className="mt-8 rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
-            Galeria wymaga skonfigurowanego Workera zdjęć.
-          </div>
-        ) : sections.length ? (
-          <div className="mt-10 space-y-10">
-            {sections.map((section) => (
-              <section key={section.chapterId}>
-                <div className="mb-4 flex items-end justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl font-semibold">
-                      {section.chapterTitle}
-                    </h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {section.total === 1
-                        ? "1 zdjęcie"
-                        : `${section.total} zdjęć`}
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
-                  {section.images.map((image) => (
-                    <article
-                      key={image.id}
-                      className="group overflow-hidden rounded-xl border bg-background"
-                    >
-                      <button
-                        type="button"
-                        className="block aspect-4/3 w-full cursor-zoom-in overflow-hidden bg-muted/20"
-                        onClick={() => setPreviewId(image.id)}
-                      >
-                        <img
-                          src={image.url}
-                          alt={image.originalFilename}
-                          loading="lazy"
-                          className="size-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
-                        />
-                      </button>
-                      <button
-                        type="button"
-                        className="flex w-full items-start justify-between gap-3 p-3 text-left hover:bg-muted/30"
-                        onClick={() => openTopic(image)}
-                      >
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-medium">
-                            {image.topicTitle}
-                          </span>
-                          <span className="block truncate text-xs text-muted-foreground">
-                            Otwórz temat
-                          </span>
-                        </span>
-                        <ArrowUpRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                      </button>
-                    </article>
-                  ))}
-                </div>
-                {section.hasMore && (
-                  <div className="mt-4">
-                    <Button
-                      variant="outline"
-                      disabled={loadingChapterId === section.chapterId}
-                      onClick={() => void loadChapter(section.chapterId)}
-                    >
-                      {loadingChapterId === section.chapterId && (
-                        <LoaderCircle className="animate-spin" />
-                      )}
-                      Pokaż więcej w rozdziale
-                    </Button>
-                  </div>
-                )}
-              </section>
-            ))}
-          </div>
-        ) : hasLoaded && !isLoading && !error ? (
-          <div className="mt-8 rounded-xl border border-dashed py-14 text-center">
-            <Images className="mx-auto size-8 text-muted-foreground" />
-            <p className="mt-3 font-medium">Nie masz jeszcze żadnych zdjęć</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Dodaj zdjęcie w wybranym temacie, a pojawi się ono w galerii.
-            </p>
-          </div>
-        ) : null}
-
-        {isLoading && !sections.length && (
-          <div className="mt-8 space-y-8">
-            {Array.from({ length: 2 }, (_, section) => (
-              <div key={section}>
-                <Skeleton className="mb-4 h-7 w-48" />
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                  {Array.from({ length: 4 }, (_, index) => (
-                    <Skeleton key={index} className="aspect-4/3 rounded-xl" />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {error && (
-          <div className="mt-6 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-            <p role="alert">{error}</p>
-            <Button
-              className="mt-3"
-              variant="outline"
-              disabled={isLoading}
-              onClick={() => void loadSections()}
-            >
-              Spróbuj ponownie
-            </Button>
-          </div>
-        )}
-        {hasMoreChapters && (
-          <div
-            ref={loadMoreSentinelRef}
-            className="flex h-24 items-center justify-center"
-            aria-label="Ładowanie kolejnych rozdziałów"
-          >
-            {isLoading && (
-              <LoaderCircle className="animate-spin text-muted-foreground" />
-            )}
-          </div>
-        )}
-      </div>
-
-      <ImagePreviewDialog
-        images={images}
-        previewId={previewId}
-        onPreviewChange={setPreviewId}
-        getDescription={(item) => {
-          const image = item as GalleryImage;
-          return `${image.topicTitle} · ${image.chapterTitle}`;
-        }}
-        onOpenDescription={(item) => openTopic(item as GalleryImage)}
-        onRequestNext={requestNextInChapter}
-      />
-    </main>
+        <ImagePreviewDialog
+          images={images}
+          previewId={previewId}
+          onPreviewChange={setPreviewId}
+          getDescription={(item) => {
+            const image = item as GalleryImage;
+            return `${image.topicTitle} · ${image.chapterTitle}`;
+          }}
+          onOpenDescription={(item) => openTopic(item as GalleryImage)}
+          onRequestNext={requestNextInChapter}
+        />
+      </main>
+    </>
   );
 }

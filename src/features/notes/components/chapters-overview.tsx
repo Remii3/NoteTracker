@@ -22,7 +22,13 @@ import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
+import { AppHeaderActions } from "@/layout/app-header-actions";
 
 const CHAPTERS_PER_PAGE = 20;
 type OverviewSortMode =
@@ -97,10 +103,73 @@ export function ChaptersOverview({
     currentPage * CHAPTERS_PER_PAGE,
   );
 
+  const searchInput = (className?: string) => (
+    <div className={`relative ${className ?? ""}`}>
+      <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        value={query}
+        onChange={(event) => {
+          setQuery(event.target.value);
+          setPage(1);
+        }}
+        placeholder="Szukaj rozdziału"
+        aria-label="Szukaj rozdziału"
+        className="h-8 pl-9"
+      />
+    </div>
+  );
+
   return (
-    <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
-      <div className="mx-auto max-w-6xl">
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+    <>
+      <AppHeaderActions>
+        {searchInput("hidden w-56 sm:block lg:w-72")}
+        <Popover>
+          <PopoverTrigger
+            render={
+              <Button
+                type="button"
+                size="icon-sm"
+                variant={query ? "secondary" : "outline"}
+                className="sm:hidden"
+                aria-label="Szukaj rozdziału"
+              />
+            }
+          >
+            <Search />
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-72 p-3 sm:hidden">
+            {searchInput()}
+          </PopoverContent>
+        </Popover>
+        <Select
+          value={sortMode}
+          onValueChange={(value) => {
+            if (!value) return;
+            setSortMode(value as OverviewSortMode);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger
+            size="sm"
+            className="sm:w-56"
+            aria-label="Sortowanie rozdziałów"
+          >
+            <ArrowUpDown />
+            <SelectValue className="hidden sm:flex">
+              {SORT_LABELS[sortMode]}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent align="end">
+            {Object.entries(SORT_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </AppHeaderActions>
+      <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+        <div className="mx-auto max-w-6xl">
           <div>
             <p className="mb-2 text-sm font-medium text-primary">
               {moduleName}
@@ -114,162 +183,130 @@ export function ChaptersOverview({
               kolejności.
             </p>
           </div>
-          <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setPage(1);
-                }}
-                placeholder="Szukaj rozdziału"
-                className="pl-9"
-              />
-            </div>
-            <Select
-              value={sortMode}
-              onValueChange={(value) => {
-                if (!value) return;
-                setSortMode(value as OverviewSortMode);
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="w-full sm:w-56">
-                <ArrowUpDown />
-                <SelectValue>{SORT_LABELS[sortMode]}</SelectValue>
-              </SelectTrigger>
-              <SelectContent align="end">
-                {Object.entries(SORT_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
 
-        <section className="mt-6 rounded-xl border bg-muted/20 p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="truncate font-semibold">Postęp modułu</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {totalTopics
-                      ? `${completedTopics} z ${totalTopics} tematów ukończonych`
-                      : "Dodaj pierwszy temat, aby rozpocząć naukę."}
-                  </p>
+          <section className="mt-6 rounded-xl border bg-muted/20 p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">Postęp modułu</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {totalTopics
+                        ? `${completedTopics} z ${totalTopics} tematów ukończonych`
+                        : "Dodaj pierwszy temat, aby rozpocząć naukę."}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-lg font-semibold text-primary">
+                    {moduleProgress}%
+                  </span>
                 </div>
-                <span className="shrink-0 text-lg font-semibold text-primary">
-                  {moduleProgress}%
-                </span>
+                <Progress
+                  className="mt-3"
+                  value={moduleProgress}
+                  aria-label="Postęp modułu"
+                />
               </div>
-              <Progress
-                className="mt-3"
-                value={moduleProgress}
-                aria-label="Postęp modułu"
-              />
-            </div>
-            {nextTopic ? (
-              <Button
-                className="shrink-0"
-                onClick={() => onOpenChapter(nextTopic.chapterId, nextTopic.id)}
-              >
-                Kontynuuj naukę <ArrowRight />
-              </Button>
-            ) : totalTopics ? (
-              <div className="flex shrink-0 items-center gap-2 text-sm font-medium text-primary">
-                <CheckCircle2 className="size-5" /> Moduł ukończony
-              </div>
-            ) : null}
-          </div>
-        </section>
-
-        {visibleChapters.length ? (
-          <div className="mt-8 grid gap-4 md:grid-cols-2">
-            {visibleChapters.map((chapter) => {
-              const progress = getProgress(
-                chapter.completedTopicsCount,
-                chapter.topicsCount,
-              );
-              return (
-                <button
-                  key={chapter.id}
-                  type="button"
-                  className="group rounded-xl border bg-background p-5 text-left transition-colors hover:border-primary/40 hover:bg-muted/20 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+              {nextTopic ? (
+                <Button
+                  className="shrink-0"
                   onClick={() =>
-                    onOpenChapter(
-                      chapter.id,
-                      chapter.firstIncompleteTopicId ??
-                        chapter.topics[0]?.id ??
-                        "",
-                    )
+                    onOpenChapter(nextTopic.chapterId, nextTopic.id)
                   }
                 >
-                  <div className="mb-5 flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <h2 className="truncate font-semibold">
-                        {chapter.title}
-                      </h2>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {chapter.completedTopicsCount} z {chapter.topicsCount}{" "}
-                        tematów
-                      </p>
-                    </div>
-                    <span className="text-sm font-semibold text-primary">
-                      {progress}%
-                    </span>
-                  </div>
-                  <Progress
-                    value={progress}
-                    aria-label={`Postęp rozdziału ${chapter.title}`}
-                  />
-                  <div className="mt-4 flex items-center justify-end gap-1 text-xs font-medium text-muted-foreground transition-colors group-hover:text-primary">
-                    Otwórz rozdział <ArrowRight className="size-3.5" />
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="mt-8 rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
-            {chapters.length
-              ? `Nie znaleziono rozdziału pasującego do „${query.trim()}”.`
-              : "Dodaj pierwszy rozdział, aby rozpocząć naukę."}
-          </div>
-        )}
+                  Kontynuuj naukę <ArrowRight />
+                </Button>
+              ) : totalTopics ? (
+                <div className="flex shrink-0 items-center gap-2 text-sm font-medium text-primary">
+                  <CheckCircle2 className="size-5" /> Moduł ukończony
+                </div>
+              ) : null}
+            </div>
+          </section>
 
-        {filteredChapters.length > CHAPTERS_PER_PAGE && (
-          <nav
-            aria-label="Strony rozdziałów"
-            className="mt-6 flex items-center justify-center gap-3"
-          >
-            <Button
-              type="button"
-              variant="outline"
-              disabled={currentPage === 1}
-              onClick={() => setPage((value) => Math.max(1, value - 1))}
+          {visibleChapters.length ? (
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
+              {visibleChapters.map((chapter) => {
+                const progress = getProgress(
+                  chapter.completedTopicsCount,
+                  chapter.topicsCount,
+                );
+                return (
+                  <button
+                    key={chapter.id}
+                    type="button"
+                    className="group rounded-xl border bg-background p-5 text-left transition-colors hover:border-primary/40 hover:bg-muted/20 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                    onClick={() =>
+                      onOpenChapter(
+                        chapter.id,
+                        chapter.firstIncompleteTopicId ??
+                          chapter.topics[0]?.id ??
+                          "",
+                      )
+                    }
+                  >
+                    <div className="mb-5 flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <h2 className="truncate font-semibold">
+                          {chapter.title}
+                        </h2>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {chapter.completedTopicsCount} z {chapter.topicsCount}{" "}
+                          tematów
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold text-primary">
+                        {progress}%
+                      </span>
+                    </div>
+                    <Progress
+                      value={progress}
+                      aria-label={`Postęp rozdziału ${chapter.title}`}
+                    />
+                    <div className="mt-4 flex items-center justify-end gap-1 text-xs font-medium text-muted-foreground transition-colors group-hover:text-primary">
+                      Otwórz rozdział <ArrowRight className="size-3.5" />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-8 rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
+              {chapters.length
+                ? `Nie znaleziono rozdziału pasującego do „${query.trim()}”.`
+                : "Dodaj pierwszy rozdział, aby rozpocząć naukę."}
+            </div>
+          )}
+
+          {filteredChapters.length > CHAPTERS_PER_PAGE && (
+            <nav
+              aria-label="Strony rozdziałów"
+              className="mt-6 flex items-center justify-center gap-3"
             >
-              <ArrowLeft /> Poprzednia
-            </Button>
-            <span className="text-sm tabular-nums text-muted-foreground">
-              {currentPage} / {totalPages}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={currentPage === totalPages}
-              onClick={() =>
-                setPage((value) => Math.min(totalPages, value + 1))
-              }
-            >
-              Następna <ArrowRight />
-            </Button>
-          </nav>
-        )}
-      </div>
-    </main>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={currentPage === 1}
+                onClick={() => setPage((value) => Math.max(1, value - 1))}
+              >
+                <ArrowLeft /> Poprzednia
+              </Button>
+              <span className="text-sm tabular-nums text-muted-foreground">
+                {currentPage} / {totalPages}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={currentPage === totalPages}
+                onClick={() =>
+                  setPage((value) => Math.min(totalPages, value + 1))
+                }
+              >
+                Następna <ArrowRight />
+              </Button>
+            </nav>
+          )}
+        </div>
+      </main>
+    </>
   );
 }
