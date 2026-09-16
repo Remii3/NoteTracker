@@ -454,12 +454,12 @@ export function useNotesStore({
     [applyChapters, refreshAfterWrite, repository],
   );
 
-  const addChapters = useCallback(
-    (chapters: Chapter[]) =>
+  const addChapterWithTopics = useCallback(
+    (chapter: Chapter, topics: Topic[]) =>
       runOptimistic(
-        (current) => addChaptersToCollection(current, chapters),
-        () => repository.createChapters(chapters),
-        "Nie udało się dodać rozdziałów.",
+        (current) => addChaptersToCollection(current, [chapter]),
+        () => repository.createChapterWithTopics(chapter, topics),
+        "Nie udało się dodać rozdziału.",
         true,
       ),
     [repository, runOptimistic],
@@ -564,7 +564,7 @@ export function useNotesStore({
   );
 
   return {
-    addChapters,
+    addChapterWithTopics,
     addTopics,
     chapters,
     clearError,

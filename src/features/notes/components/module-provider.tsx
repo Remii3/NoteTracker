@@ -202,7 +202,7 @@ export function ModuleProvider({
     loadChapterTopics,
   });
   const {
-    addChapters,
+    addChapter,
     addTopics,
     deleteItem: deleteManagedItem,
     deleteItems: deleteManagedItems,
@@ -420,6 +420,7 @@ export function ModuleProvider({
     onOpenQuestions: openQuestions,
     onOpenStatistics: openStatistics,
     onOpenAddDialog: () => setAddDialogOpen(true),
+    onOpenBulkDelete: () => setBulkDeleteOpen(true),
     onSelectChapter: selectChapter,
     onSelectTopic: requestTopicSelection,
     onToggleExpanded: (nextChapterId: string, open: boolean) => {
@@ -471,8 +472,6 @@ export function ModuleProvider({
         hasUnsavedChanges: editorDirty,
         onChangeEditingMode: changeEditingMode,
         onPreloadEditor: preloadRichTextEditor,
-        onOpenAddDialog: () => setAddDialogOpen(true),
-        onOpenBulkDelete: () => setBulkDeleteOpen(true),
       };
 
   const dialogs: WorkspaceDialogsProps = {
@@ -480,9 +479,8 @@ export function ModuleProvider({
       ? {
           open: true,
           chapters: orderedChapters,
-          activeChapterId: chapterId,
           onOpenChange: setAddDialogOpen,
-          onAddChapters: addChapters,
+          onAddChapter: addChapter,
           onAddTopics: addTopics,
         }
       : null,

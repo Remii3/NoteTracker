@@ -1,19 +1,4 @@
-import {
-  Check,
-  Circle,
-  Eye,
-  LoaderCircle,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Check, Circle, Eye, LoaderCircle, Pencil } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -39,8 +24,6 @@ type Props = {
   hasUnsavedChanges: boolean;
   onChangeEditingMode: (isEditing: boolean) => void;
   onPreloadEditor: () => void;
-  onOpenAddDialog: () => void;
-  onOpenBulkDelete: () => void;
 };
 
 export function WorkspaceHeader({
@@ -59,8 +42,6 @@ export function WorkspaceHeader({
   hasUnsavedChanges,
   onChangeEditingMode,
   onPreloadEditor,
-  onOpenAddDialog,
-  onOpenBulkDelete,
 }: Props) {
   const viewTitle = isChapters
     ? "Wszystkie rozdziały"
@@ -81,7 +62,6 @@ export function WorkspaceHeader({
     !isChapters && !isGallery && !isStatistics && !isQuestions && topicTitle
       ? topicTitle
       : viewTitle;
-  const showStructureActions = showEditingMode || isChapters;
   const [showSaved, setShowSaved] = useState(false);
   const wasSaving = useRef(false);
 
@@ -125,96 +105,26 @@ export function WorkspaceHeader({
           {viewTitle}
         </h1>
       </div>
-      {(showEditingMode && isEditing && saveStatus) || showStructureActions ? (
+      {showEditingMode && isEditing && saveStatus ? (
         <div className="flex h-8 shrink-0 items-center gap-2">
-          {showEditingMode && isEditing && saveStatus && (
-            <>
-              <span role="status" aria-live="polite" className="sr-only">
-                {saveStatus.label}
-              </span>
-              <span
-                aria-hidden="true"
-                className="hidden items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground lg:inline-flex"
-              >
-                <saveStatus.Icon
-                  className={
-                    isSaving
-                      ? "size-3.5 animate-spin motion-reduce:animate-none"
-                      : hasUnsavedChanges
-                        ? "size-2 fill-current"
-                        : "size-3.5 text-primary dark:text-chart-2"
-                  }
-                />
-                {saveStatus.label}
-              </span>
-            </>
-          )}
-          {showStructureActions && (
-            <>
-              <div className="hidden items-center gap-1 sm:flex">
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        type="button"
-                        size="icon-sm"
-                        variant="ghost"
-                        aria-label="Usuń wiele rozdziałów lub tematów"
-                        onClick={onOpenBulkDelete}
-                      />
-                    }
-                  >
-                    <Trash2 />
-                  </TooltipTrigger>
-                  <TooltipContent>Usuń wiele</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        type="button"
-                        size="icon-sm"
-                        variant="ghost"
-                        aria-label="Dodaj rozdział lub tematy"
-                        onClick={onOpenAddDialog}
-                      />
-                    }
-                  >
-                    <Plus />
-                  </TooltipTrigger>
-                  <TooltipContent>Dodaj zawartość</TooltipContent>
-                </Tooltip>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      type="button"
-                      size="icon-sm"
-                      variant="ghost"
-                      className="sm:hidden"
-                      aria-label="Więcej działań edycji"
-                    />
-                  }
-                >
-                  <MoreHorizontal />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={onOpenAddDialog}>
-                    <Plus />
-                    Dodaj zawartość
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={onOpenBulkDelete}
-                  >
-                    <Trash2 />
-                    Usuń wiele
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          )}
+          <span role="status" aria-live="polite" className="sr-only">
+            {saveStatus.label}
+          </span>
+          <span
+            aria-hidden="true"
+            className="hidden items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground lg:inline-flex"
+          >
+            <saveStatus.Icon
+              className={
+                isSaving
+                  ? "size-3.5 animate-spin motion-reduce:animate-none"
+                  : hasUnsavedChanges
+                    ? "size-2 fill-current"
+                    : "size-3.5 text-primary dark:text-chart-2"
+              }
+            />
+            {saveStatus.label}
+          </span>
         </div>
       ) : null}
       {showEditingMode && (

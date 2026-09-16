@@ -4,7 +4,10 @@ import {
   Images,
   Layers3,
   LibraryBig,
+  MoreHorizontal,
+  Plus,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 import { DndContext, closestCenter } from "@dnd-kit/core";
@@ -18,6 +21,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -71,6 +75,7 @@ type Props = {
   onOpenQuestions: () => void;
   onOpenStatistics: () => void;
   onOpenAddDialog: () => void;
+  onOpenBulkDelete: () => void;
   onSelectChapter: (chapter: Chapter) => void;
   onSelectTopic: (chapterId: string, topicId: string) => void;
   onToggleExpanded: (chapterId: string, open: boolean) => void;
@@ -114,6 +119,7 @@ export function WorkspaceSidebar({
   onOpenQuestions,
   onOpenStatistics,
   onOpenAddDialog,
+  onOpenBulkDelete,
   onSelectChapter,
   onSelectTopic,
   onToggleExpanded,
@@ -146,6 +152,14 @@ export function WorkspaceSidebar({
   const closeMobileSidebar = useCallback(() => {
     if (isMobile) setOpenMobile(false);
   }, [isMobile, setOpenMobile]);
+  const openAddDialog = () => {
+    onOpenAddDialog();
+    closeMobileSidebar();
+  };
+  const openBulkDelete = () => {
+    onOpenBulkDelete();
+    closeMobileSidebar();
+  };
   const compactNavigation = [
     {
       label: "Wszystkie rozdziały",
@@ -277,6 +291,53 @@ export function WorkspaceSidebar({
         )}
       </nav>
       <SidebarHeader className="gap-2 border-b p-2">
+        <div className="flex items-center gap-1">
+          <span className="mr-auto text-xs font-medium text-sidebar-foreground/70">
+            Rozdziały
+          </span>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Dodaj rozdział lub tematy"
+                  disabled={isLoading}
+                  onClick={openAddDialog}
+                />
+              }
+            >
+              <Plus />
+            </TooltipTrigger>
+            <TooltipContent>Dodaj zawartość</TooltipContent>
+          </Tooltip>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Więcej działań na rozdziałach"
+                  disabled={isLoading}
+                />
+              }
+            >
+              <MoreHorizontal />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={!chapters.length}
+                onClick={openBulkDelete}
+              >
+                <Trash2 />
+                Usuń wiele
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <div className="flex gap-2">
           <div className="group relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -420,7 +481,7 @@ export function WorkspaceSidebar({
                                     variant="link"
                                     size="sm"
                                     className="mt-2"
-                                    onClick={onOpenAddDialog}
+                                    onClick={openAddDialog}
                                   >
                                     Dodaj pierwszy rozdział
                                   </Button>

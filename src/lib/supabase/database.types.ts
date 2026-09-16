@@ -314,6 +314,14 @@ export type Database = {
     };
     Views: Record<never, never>;
     Functions: {
+      create_chapter_with_topics: {
+        Args: {
+          target_module_id: string;
+          new_chapter: Json;
+          new_topics: Json;
+        };
+        Returns: undefined;
+      };
       import_docx_module: {
         Args: {
           imported_chapters: Json;

@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { expect, it, vi } from "vitest";
 import type { Database } from "@/lib/supabase/database.types";
 import { SupabaseNotesRepository } from "./supabase-notes-repository";
+import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
 function setup(body: unknown = []) {
   const fetch = vi.fn().mockImplementation(
     async () =>
@@ -39,6 +40,56 @@ it("sends the entire chapter order in one RPC", async () => {
   expect(String(fetch.mock.calls[0][0])).toContain("/rpc/reorder_chapters");
   expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
     chapter_ids: ["a", "b"],
+  });
+});
+
+it("creates a chapter and its topics atomically in one RPC", async () => {
+  const { fetch, repository } = setup(null);
+  await repository.createChapterWithTopics(
+    {
+      id: "11111111-1111-4111-8111-111111111111",
+      slug: "chapter",
+      title: "Chapter",
+      position: 1000,
+      topicsCount: 1,
+      completedTopicsCount: 0,
+      firstIncompleteTopicId: "22222222-2222-4222-8222-222222222222",
+      firstIncompleteTopicSlug: "topic",
+    },
+    [
+      {
+        id: "22222222-2222-4222-8222-222222222222",
+        slug: "topic",
+        title: "Topic",
+        content: EMPTY_RICH_TEXT,
+        completed: false,
+        position: 1000,
+      },
+    ],
+  );
+
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(String(fetch.mock.calls[0][0])).toContain(
+    "/rpc/create_chapter_with_topics",
+  );
+  expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+    target_module_id: "module",
+    new_chapter: {
+      id: "11111111-1111-4111-8111-111111111111",
+      slug: "chapter",
+      title: "Chapter",
+      position: 1000,
+    },
+    new_topics: [
+      {
+        id: "22222222-2222-4222-8222-222222222222",
+        slug: "topic",
+        title: "Topic",
+        content: EMPTY_RICH_TEXT,
+        completed: false,
+        position: 1000,
+      },
+    ],
   });
 });
 it("sends note content in an RPC body and rejects a stale write", async () => {

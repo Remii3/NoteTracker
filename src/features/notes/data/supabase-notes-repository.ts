@@ -173,17 +173,24 @@ export class SupabaseNotesRepository implements NotesRepository {
     return data as unknown as LearningSummary;
   }
 
-  async createChapters(chapters: ChapterSummary[]) {
-    const { error } = await this.client.from("chapters").insert(
-      chapters.map((chapter) => ({
+  async createChapterWithTopics(chapter: ChapterSummary, topics: Topic[]) {
+    const { error } = await this.client.rpc("create_chapter_with_topics", {
+      target_module_id: this.moduleId,
+      new_chapter: {
         id: chapter.id,
         slug: chapter.slug,
         title: chapter.title,
         position: chapter.position,
-        module_id: this.moduleId,
-        user_id: this.userId,
+      },
+      new_topics: topics.map((topic) => ({
+        id: topic.id,
+        slug: topic.slug,
+        title: topic.title,
+        content: topic.content as Json,
+        completed: topic.completed,
+        position: topic.position,
       })),
-    );
+    });
     throwIfPostgrestError(error);
     this.clearStatisticsCache();
   }

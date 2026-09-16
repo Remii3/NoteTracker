@@ -13,7 +13,10 @@ type Options = {
   isSaving: boolean;
   editorDirty: boolean;
   commands: {
-    addChapters: (chapters: Chapter[]) => Promise<boolean>;
+    addChapterWithTopics: (
+      chapter: Chapter,
+      topics: Topic[],
+    ) => Promise<boolean>;
     addTopics: (chapterId: string, topics: Topic[]) => Promise<boolean>;
     loadChapterTopics: (chapterId: string) => Promise<Topic[] | null>;
     removeItem: (item: ManagedItem) => Promise<boolean>;
@@ -138,35 +141,45 @@ export function useWorkspaceActions({
     return fullySaved;
   }
 
-  async function addChapters(titles: string[]) {
-    if (isSaving || !titles.length) return false;
+  async function addChapter(title: string, topicTitles: string[]) {
+    if (isSaving || !title) return false;
     const usedSlugs = new Set(chapters.map((chapter) => chapter.slug));
-    const newChapters: Chapter[] = titles.map((title, index) => {
-      const slug = createUniqueSlug(title, usedSlugs, "rozdzial");
-      usedSlugs.add(slug);
+    const chapterSlug = createUniqueSlug(title, usedSlugs, "rozdzial");
+    const usedTopicSlugs = new Set<string>();
+    const topics: Topic[] = topicTitles.map((topicTitle, index) => {
+      const slug = createUniqueSlug(topicTitle, usedTopicSlugs, "temat");
+      usedTopicSlugs.add(slug);
       return {
         id: crypto.randomUUID(),
         slug,
-        title,
-        position: (chapters.length + index + 1) * 1000,
-        topicsCount: 0,
-        completedTopicsCount: 0,
-        firstIncompleteTopicId: null,
-        firstIncompleteTopicSlug: null,
-        topics: [],
-        topicsStatus: "loaded",
+        title: topicTitle,
+        content: EMPTY_RICH_TEXT,
+        contentLoaded: true,
+        completed: false,
+        position: (index + 1) * 1000,
       };
     });
-    if (!(await commands.addChapters(newChapters))) return false;
-    const firstChapter = newChapters[0];
-    navigateToChapter(firstChapter.id);
-    expandChapter(firstChapter.id);
+    const firstTopic = topics[0];
+    const chapter: Chapter = {
+      id: crypto.randomUUID(),
+      slug: chapterSlug,
+      title,
+      position: (chapters.length + 1) * 1000,
+      topicsCount: topics.length,
+      completedTopicsCount: 0,
+      firstIncompleteTopicId: firstTopic?.id ?? null,
+      firstIncompleteTopicSlug: firstTopic?.slug ?? null,
+      topics,
+      topicsStatus: "loaded",
+    };
+    if (!(await commands.addChapterWithTopics(chapter, topics))) return false;
+    navigateToChapter(chapter.id, firstTopic?.id);
+    expandChapter(chapter.id);
     toast.add({
       data: { type: "success" },
-      description:
-        titles.length === 1
-          ? `Dodano rozdział „${titles[0]}”.`
-          : `Dodano ${titles.length} rozdziałów.`,
+      description: topicTitles.length
+        ? `Dodano rozdział „${title}” wraz z tematami.`
+        : `Dodano rozdział „${title}”.`,
     });
     return true;
   }
@@ -303,7 +316,7 @@ export function useWorkspaceActions({
   }
 
   return {
-    addChapters,
+    addChapter,
     addTopics,
     deleteItem,
     deleteItems,
