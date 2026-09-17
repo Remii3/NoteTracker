@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "npm install && npm install --force --no-save @open-spaced-repetition/binding-wasm32-wasi@0.5.0",
   "headers": [
     {
       "source": "/(.*)",
