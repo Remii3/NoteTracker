@@ -1,17 +1,17 @@
-import { useCallback, useMemo } from "react";
-import { useNavigate } from "react-router";
-
-import { useAuth } from "@/features/auth";
-import { supabase } from "@/lib/supabase/client";
-import { SupabaseModulesRepository } from "../data/supabase-modules-repository";
-import { ModulePicker } from "../module-picker";
 import { forgetRecentModule, reconcileRecentModules } from "@/lib/memory-cache";
+import { useCallback, useMemo } from "react";
+
 import type { Module } from "../data/modules-repository";
+import { ModulePicker } from "../module-picker";
 import { R2TopicImagesService } from "@/features/notes/data/r2-topic-images-service";
+import { SupabaseModulesRepository } from "../data/supabase-modules-repository";
+import { supabase } from "@/lib/supabase/client";
+import { useNavigate } from "react-router";
+import { useUser } from "@/features/auth";
 
 export function ModulesPage() {
-  const { user } = useAuth();
-  const userId = user?.id;
+  const user = useUser();
+  const userId = user.id;
   const navigate = useNavigate();
   const repository = useMemo(
     () => new SupabaseModulesRepository(supabase, userId ?? ""),
@@ -32,7 +32,6 @@ export function ModulesPage() {
     },
     [userId],
   );
-  if (!user) return null;
 
   return (
     <ModulePicker

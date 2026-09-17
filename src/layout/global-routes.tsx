@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   BarChart3,
   BookOpen,
+  CalendarDays,
   CircleCheck,
   LayoutGrid,
   Trash2,
@@ -27,7 +28,8 @@ import {
 } from "@/lib/memory-cache";
 
 const navigation = [
-  { to: "/", label: "Moduły", icon: LayoutGrid, end: true },
+  { to: "/", label: "Dzisiaj", icon: CalendarDays, end: true },
+  { to: "/modules", label: "Moduły", icon: LayoutGrid, end: false },
   {
     to: "/statistics",
     label: "Statystyki",

@@ -5,10 +5,10 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarProvider,
+  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 
-import { AppHeader } from "@/layout/app-header";
 import { AppHeaderActionsProvider } from "@/layout/app-header-actions";
 import { BookOpen } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
@@ -50,13 +50,16 @@ export function AppLayout({
         </Sidebar>
         <AppHeaderActionsProvider target={headerActionsTarget}>
           <SidebarInset className="h-svh max-h-svh min-w-0 overflow-hidden">
-            <AppHeader>
-              {header}
-              <div
-                ref={setHeaderActionsTarget}
-                className="flex min-w-0 items-center gap-2 sm:gap-3"
-              />
-            </AppHeader>
+            <header className="relative z-30 flex h-14 shrink-0 items-center border-b bg-background/95 px-2 backdrop-blur sm:px-6 justify-between">
+              <SidebarTrigger className="shrink-0 focus-visible:ring-2 focus-visible:ring-ring/70 mr-2" />
+              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                {header}
+                <div
+                  ref={setHeaderActionsTarget}
+                  className="flex min-w-0 items-center gap-2 sm:gap-3"
+                />
+              </div>
+            </header>
             {children}
           </SidebarInset>
         </AppHeaderActionsProvider>

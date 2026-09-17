@@ -11,6 +11,14 @@ const router = createBrowserRouter([
       {
         index: true,
         lazy: () =>
+          import("@/features/today/pages/today-page").then(({ TodayPage }) => ({
+            Component: TodayPage,
+          })),
+        HydrateFallback: AppLoading,
+      },
+      {
+        path: "modules",
+        lazy: () =>
           import("@/features/modules/pages/modules-page").then(
             ({ ModulesPage }) => ({ Component: ModulesPage }),
           ),

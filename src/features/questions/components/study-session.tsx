@@ -13,8 +13,16 @@ type Props = {
   sessionId: string;
   repository: QuestionsRepository;
   onClose: () => void;
+  onCloseLabel?: string;
+  timeLimitMinutes?: number;
 };
-export function StudySession({ sessionId, repository, onClose }: Props) {
+export function StudySession({
+  sessionId,
+  repository,
+  onClose,
+  onCloseLabel = "Wróć do bazy pytań",
+  timeLimitMinutes,
+}: Props) {
   const load = useCallback(
     () => repository.getSession(sessionId),
     [repository, sessionId],
@@ -50,6 +58,8 @@ export function StudySession({ sessionId, repository, onClose }: Props) {
       initialSession={data}
       repository={repository}
       onClose={onClose}
+      onCloseLabel={onCloseLabel}
+      timeLimitMinutes={timeLimitMinutes}
     />
   );
 }
@@ -58,6 +68,8 @@ function LoadedStudySession({
   initialSession,
   repository,
   onClose,
+  onCloseLabel,
+  timeLimitMinutes,
 }: Omit<Props, "sessionId"> & { initialSession: Session }) {
   const [session, setSession] = useState(initialSession);
   const [index, setIndex] = useState(() =>
@@ -71,8 +83,32 @@ function LoadedStudySession({
   );
   const [revealed, setRevealed] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [timeExpired, setTimeExpired] = useState(false);
+  const deadline = useRef<number | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState(
+    timeLimitMinutes ? timeLimitMinutes * 60 : null,
+  );
   const timer = useRef({ itemId: "", elapsedMs: 0, startedAt: 0 });
   const currentItemId = session.items[index]?.id ?? "";
+
+  useEffect(() => {
+    if (!timeLimitMinutes || session.status !== "in_progress") return;
+    deadline.current ??= Date.now() + timeLimitMinutes * 60_000;
+    const updateRemaining = () => {
+      const remaining = Math.max(
+        0,
+        Math.ceil((deadline.current! - Date.now()) / 1000),
+      );
+      setRemainingSeconds(remaining);
+      if (remaining === 0) {
+        setTimeExpired(true);
+        setReadyToFinish(true);
+      }
+    };
+    updateRemaining();
+    const interval = window.setInterval(updateRemaining, 1_000);
+    return () => window.clearInterval(interval);
+  }, [session.status, timeLimitMinutes]);
 
   useEffect(() => {
     timer.current = {
@@ -155,13 +191,14 @@ function LoadedStudySession({
   const failed = session.items.filter(
     (item) => item.result === "forgotten" || item.result === "incorrect",
   ).length;
+  const answered = successful + failed;
   if (session.status === "completed")
     return (
       <main className="grid flex-1 place-items-center p-5">
         <div className="w-full max-w-xl rounded-2xl border p-8 text-center">
           <h1 className="text-3xl font-semibold">Sesja ukończona</h1>
           <p className="mt-3 text-muted-foreground">
-            Wynik: {successful} z {session.items.length}
+            Wynik: {successful} z {answered}
           </p>
           <div className="mt-6 grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-primary/10 p-4">
@@ -177,8 +214,17 @@ function LoadedStudySession({
               </p>
             </div>
           </div>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Aktywna nauka:{" "}
+            {formatDuration(
+              session.items.reduce(
+                (total, item) => total + item.activeDurationSeconds,
+                0,
+              ),
+            )}
+          </p>
           <Button className="mt-6" onClick={onClose}>
-            Wróć do bazy pytań
+            {onCloseLabel}
           </Button>
         </div>
       </main>
@@ -190,9 +236,13 @@ function LoadedStudySession({
       <main className="grid flex-1 place-items-center p-8">
         <div className="space-y-4 text-center">
           <h1 className="text-2xl font-semibold">
-            Wszystkie odpowiedzi zapisane
+            {timeExpired ? "10 minut minęło" : "Wszystkie odpowiedzi zapisane"}
           </h1>
-          <p>Zakończ sesję, aby zobaczyć podsumowanie.</p>
+          <p>
+            {timeExpired
+              ? "Zakończ sesję i zobacz krótkie podsumowanie."
+              : "Zakończ sesję, aby zobaczyć podsumowanie."}
+          </p>
           <Button disabled={saving} onClick={() => void finish()}>
             {saving ? "Zapisywanie…" : "Zakończ sesję"}
           </Button>
@@ -266,7 +316,13 @@ function LoadedStudySession({
           <span>
             Pytanie {index + 1} z {session.items.length}
           </span>
-          <span>{session.mode === "test" ? "Test" : "Fiszki"}</span>
+          <span>
+            {remainingSeconds === null
+              ? session.mode === "test"
+                ? "Test"
+                : "Fiszki"
+              : `Pozostało ${formatCountdown(remainingSeconds)}`}
+          </span>
         </div>
         <Progress value={((index + 1) / session.items.length) * 100} />
         <section className="mt-8 rounded-2xl border p-8 text-center">
@@ -352,4 +408,14 @@ function LoadedStudySession({
       </div>
     </main>
   );
+}
+
+function formatDuration(seconds: number) {
+  const minutes = Math.max(1, Math.round(seconds / 60));
+  return `${minutes} min`;
+}
+
+function formatCountdown(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }

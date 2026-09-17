@@ -18,6 +18,7 @@ export type Database = {
           name: string;
           position: number;
           created_at: string;
+          exam_date: string | null;
           trash_id: string | null;
         };
         Insert: {
@@ -28,6 +29,7 @@ export type Database = {
           name: string;
           position: number;
           created_at?: string;
+          exam_date?: string | null;
           trash_id?: string | null;
         };
         Update: {
@@ -35,6 +37,7 @@ export type Database = {
           slug?: string;
           name?: string;
           position?: number;
+          exam_date?: string | null;
           trash_id?: string | null;
         };
         Relationships: [];
@@ -214,6 +217,27 @@ export type Database = {
           weekly_minutes?: number;
           weekly_topics?: number;
           weekly_topics_enabled?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      study_task_deferrals: {
+        Row: {
+          user_id: string;
+          task_type: "question" | "topic";
+          task_id: string;
+          deferred_until: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          task_type: "question" | "topic";
+          task_id: string;
+          deferred_until: string;
+          updated_at?: string;
+        };
+        Update: {
+          deferred_until?: string;
           updated_at?: string;
         };
         Relationships: [];
@@ -564,6 +588,10 @@ export type Database = {
       };
       get_topic_navigation: {
         Args: { target_module_id: string; current_topic_id: string };
+        Returns: Json;
+      };
+      get_today_dashboard: {
+        Args: { timezone_name?: string };
         Returns: Json;
       };
       save_topic_content: {
