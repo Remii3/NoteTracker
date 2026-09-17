@@ -17,8 +17,32 @@ export type StudyMode = "flashcards" | "test";
 export type StudyScope =
   "chapter" | "topic" | "all" | "random_chapters" | "unassigned";
 export type StudyResult = "remembered" | "forgotten" | "correct" | "incorrect";
+export type FsrsRating = 1 | 2 | 3 | 4;
+export type FsrsStateName = "new" | "learning" | "review" | "relearning";
+export type QuestionLearningStatus =
+  "new" | "learning" | "mastered" | "overdue";
+export type FsrsCardState = {
+  dueAt: string;
+  lastReviewedAt: string | null;
+  stability: number;
+  difficulty: number;
+  elapsedDays: number;
+  scheduledDays: number;
+  learningSteps: number;
+  repetitions: number;
+  lapses: number;
+  state: FsrsStateName;
+  learningStatus: QuestionLearningStatus;
+  version: number;
+};
+export type FsrsProfile = {
+  desiredRetention: number;
+  parameters: number[] | null;
+  parametersVersion: number;
+};
 export type StudyItem = {
   id: string;
+  questionId: string;
   position: number;
   question: string;
   options: Required<QuestionOption>[];
@@ -26,6 +50,7 @@ export type StudyItem = {
   selectedOptionId: string | null;
   result: StudyResult | null;
   activeDurationSeconds: number;
+  fsrs: FsrsCardState;
 };
 export type StudySession = {
   id: string;
@@ -35,6 +60,7 @@ export type StudySession = {
   startedAt: string;
   completedAt: string | null;
   items: StudyItem[];
+  fsrsProfile: FsrsProfile;
 };
 
 export type StudySessionSummary = {

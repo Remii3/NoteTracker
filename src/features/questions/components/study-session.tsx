@@ -1,5 +1,9 @@
-import { Eye, ThumbsDown, ThumbsUp } from "lucide-react";
-import type { StudySession as Session, StudyResult } from "../model/types";
+import { Eye } from "lucide-react";
+import type {
+  FsrsRating,
+  StudyResult,
+  StudySession as Session,
+} from "../model/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -72,6 +76,14 @@ function LoadedStudySession({
   timeLimitMinutes,
 }: Omit<Props, "sessionId"> & { initialSession: Session }) {
   const [session, setSession] = useState(initialSession);
+  const configuredTimeLimit =
+    typeof initialSession.configuration.timeLimitMinutes === "number"
+      ? initialSession.configuration.timeLimitMinutes
+      : undefined;
+  const effectiveTimeLimit = timeLimitMinutes ?? configuredTimeLimit;
+  const initialDeadline = effectiveTimeLimit
+    ? new Date(initialSession.startedAt).getTime() + effectiveTimeLimit * 60_000
+    : null;
   const [index, setIndex] = useState(() =>
     Math.max(
       0,
@@ -83,17 +95,20 @@ function LoadedStudySession({
   );
   const [revealed, setRevealed] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [timeExpired, setTimeExpired] = useState(false);
-  const deadline = useRef<number | null>(null);
-  const [remainingSeconds, setRemainingSeconds] = useState(
-    timeLimitMinutes ? timeLimitMinutes * 60 : null,
+  const [timeExpired, setTimeExpired] = useState(
+    () => initialDeadline !== null && initialDeadline <= Date.now(),
+  );
+  const deadline = useRef<number | null>(initialDeadline);
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(() =>
+    initialDeadline === null
+      ? null
+      : Math.max(0, Math.ceil((initialDeadline - Date.now()) / 1_000)),
   );
   const timer = useRef({ itemId: "", elapsedMs: 0, startedAt: 0 });
   const currentItemId = session.items[index]?.id ?? "";
 
   useEffect(() => {
-    if (!timeLimitMinutes || session.status !== "in_progress") return;
-    deadline.current ??= Date.now() + timeLimitMinutes * 60_000;
+    if (!effectiveTimeLimit || session.status !== "in_progress") return;
     const updateRemaining = () => {
       const remaining = Math.max(
         0,
@@ -108,7 +123,7 @@ function LoadedStudySession({
     updateRemaining();
     const interval = window.setInterval(updateRemaining, 1_000);
     return () => window.clearInterval(interval);
-  }, [session.status, timeLimitMinutes]);
+  }, [effectiveTimeLimit, session.status]);
 
   useEffect(() => {
     timer.current = {
@@ -151,20 +166,27 @@ function LoadedStudySession({
     }
   }
   const record = useCallback(
-    async (result: StudyResult, selectedOptionId?: string) => {
+    async (rating: FsrsRating, selectedOptionId?: string) => {
       if (!session || saving) return;
       const item = session.items[index];
+      const duration = activeSeconds();
       setSaving(true);
       try {
         await repository.answerItem(
           item.id,
-          result,
+          rating,
           selectedOptionId,
-          activeSeconds(),
+          duration,
         );
+        const result: StudyResult = rating === 1 ? "forgotten" : "remembered";
         const items = session.items.map((entry) =>
           entry.id === item.id
-            ? { ...entry, result, selectedOptionId: selectedOptionId ?? null }
+            ? {
+                ...entry,
+                result,
+                selectedOptionId: selectedOptionId ?? null,
+                activeDurationSeconds: duration,
+              }
             : entry,
         );
         setSession({ ...session, items });
@@ -258,6 +280,7 @@ function LoadedStudySession({
     if (revealed || saving) return;
     const isCorrect = correct.id === optionId;
     const result = isCorrect ? "correct" : "incorrect";
+    const duration = activeSeconds();
 
     setRevealed(true);
     setSaving(true);
@@ -267,7 +290,12 @@ function LoadedStudySession({
             ...current,
             items: current.items.map((entry) =>
               entry.id === item.id
-                ? { ...entry, selectedOptionId: optionId, result }
+                ? {
+                    ...entry,
+                    selectedOptionId: optionId,
+                    result,
+                    activeDurationSeconds: duration,
+                  }
                 : entry,
             ),
           }
@@ -275,7 +303,12 @@ function LoadedStudySession({
     );
 
     try {
-      await repository.answerItem(item.id, result, optionId, activeSeconds());
+      await repository.answerItem(
+        item.id,
+        isCorrect ? 3 : 1,
+        optionId,
+        duration,
+      );
     } catch {
       setRevealed(false);
       setSession((current) =>
@@ -284,7 +317,12 @@ function LoadedStudySession({
               ...current,
               items: current.items.map((entry) =>
                 entry.id === item.id
-                  ? { ...entry, selectedOptionId: null, result: null }
+                  ? {
+                      ...entry,
+                      selectedOptionId: null,
+                      result: null,
+                      activeDurationSeconds: item.activeDurationSeconds,
+                    }
                   : entry,
               ),
             }
@@ -378,21 +416,37 @@ function LoadedStudySession({
         </section>
         {revealed &&
           (session.mode === "flashcards" ? (
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Button
+                size="lg"
+                variant="destructive"
+                disabled={saving}
+                onClick={() => void record(1)}
+              >
+                Nie pamiętam
+              </Button>
               <Button
                 size="lg"
                 variant="outline"
                 disabled={saving}
-                onClick={() => void record("forgotten")}
+                onClick={() => void record(2)}
               >
-                <ThumbsDown /> Nie pamiętam
+                Trudne
               </Button>
               <Button
                 size="lg"
                 disabled={saving}
-                onClick={() => void record("remembered")}
+                onClick={() => void record(3)}
               >
-                <ThumbsUp /> Pamiętam
+                Pamiętam
+              </Button>
+              <Button
+                size="lg"
+                variant="secondary"
+                disabled={saving}
+                onClick={() => void record(4)}
+              >
+                Łatwe
               </Button>
             </div>
           ) : (

@@ -95,6 +95,88 @@ select pg_temp.assert_true(
   jsonb_array_length(public.get_today_dashboard('UTC')->'dueQuestions') = 1,
   'today RPC: returns only the current user due questions'
 );
+select pg_temp.assert_true(
+  (public.get_today_dashboard('UTC')->>'dueQuestionCount')::integer = 1
+  and public.get_today_dashboard('UTC')->'dueQuestions'->0->>'learningStatus' = 'new'
+  and public.get_today_dashboard('UTC')->'sessionTarget'->>'moduleId'
+    = '10000001-0000-4000-8000-000000000000',
+  'today RPC: reports the complete FSRS queue, product state and matching session target'
+);
+insert into public.study_task_deferrals(user_id,task_type,task_id,deferred_until)
+values ('10000000-0000-4000-8000-000000000000','question',
+  '10000004-0000-4000-8000-000000000000', current_date + 1);
+select pg_temp.assert_true(
+  (public.get_today_dashboard('UTC')->>'dueQuestionCount')::integer = 0
+  and public.get_today_dashboard('UTC')->'sessionTarget' = 'null'::jsonb,
+  'today RPC: applies question deferrals to the queue and session target'
+);
+do $$ declare rejected boolean := false; begin
+  begin
+    perform public.create_fsrs_study_session(
+      '10000001-0000-4000-8000-000000000000', 10, 'UTC');
+  exception when others then rejected := true;
+  end;
+  perform pg_temp.assert_true(rejected,
+    'FSRS quick session: cannot include a deferred question');
+end; $$;
+delete from public.study_task_deferrals
+where task_type = 'question'
+  and task_id = '10000004-0000-4000-8000-000000000000';
+do $$ declare created_session uuid; begin
+  created_session := public.create_fsrs_study_session(
+    '10000001-0000-4000-8000-000000000000', 10, 'UTC');
+  perform pg_temp.assert_true(
+    (select count(*) = 1 from public.study_session_items
+      where session_id = created_session)
+    and (select configuration->>'timeLimitMinutes' = '10'
+      from public.study_sessions where id = created_session),
+    'FSRS quick session: uses the due queue and persists its time limit');
+  delete from public.study_sessions where id = created_session;
+end; $$;
+select public.record_fsrs_review(
+  '10000007-0000-4000-8000-000000000000', 3::smallint,
+  now(), null, 12, 0, 1);
+select pg_temp.assert_true(
+  (select state = 'learning' and repetitions = 1 and learning_steps = 1
+    and stability = 2.3065 and abs(difficulty - 2.11810397) < 0.00000001
+    and due_at between now() + interval '9 minutes'
+      and now() + interval '11 minutes'
+    from public.question_review_states
+    where question_id = '10000004-0000-4000-8000-000000000000')
+  and (select count(*) = 1 from public.question_review_logs
+    where question_id = '10000004-0000-4000-8000-000000000000')
+  and (select result = 'remembered' and active_duration_seconds = 12
+    from public.study_session_items
+    where id = '10000007-0000-4000-8000-000000000000'),
+  'FSRS review RPC: atomically records an authoritative FSRS v6 transition'
+);
+do $$ declare queue_question_id uuid; item_index integer; begin
+  for item_index in 1..9 loop
+    queue_question_id := gen_random_uuid();
+    insert into public.questions(id,user_id,module_id,content)
+    values (queue_question_id, '10000000-0000-4000-8000-000000000000',
+      '10000001-0000-4000-8000-000000000000',
+      'Queue count test ' || item_index);
+    insert into public.question_options(user_id,question_id,content,is_correct,position)
+    values ('10000000-0000-4000-8000-000000000000', queue_question_id,
+      'Answer', true, 1);
+  end loop;
+  perform pg_temp.assert_true(
+    (public.get_today_dashboard('UTC')->>'dueQuestionCount')::integer = 9
+    and jsonb_array_length(public.get_today_dashboard('UTC')->'dueQuestions') = 8,
+    'today RPC: reports the full queue while limiting rendered rows');
+  delete from public.questions where content like 'Queue count test %';
+end; $$;
+do $$ declare rejected boolean := false; begin
+  begin
+    perform public.record_fsrs_review(
+      '20000007-0000-4000-8000-000000000000', 3::smallint,
+      now(), null, 1, 0, 1);
+  exception when others then rejected := true;
+  end;
+  perform pg_temp.assert_true(rejected,
+    'FSRS review RPC: cannot record another user review');
+end; $$;
 do $$ declare affected integer; begin
  update public.study_task_deferrals set deferred_until = current_date + 7
  where user_id = '20000000-0000-4000-8000-000000000000';

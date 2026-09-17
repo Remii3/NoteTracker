@@ -2,7 +2,7 @@ import type {
   Question,
   QuestionOption,
   StudyMode,
-  StudyResult,
+  FsrsRating,
   StudyScope,
   StudySession,
   StudySessionSummary,
@@ -48,7 +48,7 @@ export interface QuestionsRepository {
   getSession(id: string): Promise<StudySession>;
   answerItem(
     id: string,
-    result: StudyResult,
+    rating: FsrsRating,
     selectedOptionId?: string,
     activeDurationSeconds?: number,
   ): Promise<void>;

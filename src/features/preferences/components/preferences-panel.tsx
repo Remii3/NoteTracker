@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BellRing, Laptop, Moon, Sun, Target } from "lucide-react";
+import { BellRing, Brain, Laptop, Moon, Sun, Target } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -51,6 +51,7 @@ export function PreferencesPanel({ userId }: { userId: string }) {
   const [goalInput, setGoalInput] = useState("5");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -125,6 +126,30 @@ export function PreferencesPanel({ userId }: { userId: string }) {
       });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function optimizeFsrs() {
+    setOptimizing(true);
+    try {
+      await repository.optimizeFsrs();
+      const next = await repository.get();
+      setPreferences(next);
+      setSavedPreferences(next);
+      toast.add({
+        data: { type: "success" },
+        description: "Parametry FSRS v6 zostały spersonalizowane.",
+      });
+    } catch (error) {
+      toast.add({
+        data: { type: "error" },
+        description:
+          error instanceof Error
+            ? error.message
+            : "Nie udało się zoptymalizować FSRS.",
+      });
+    } finally {
+      setOptimizing(false);
     }
   }
 
@@ -238,6 +263,52 @@ export function PreferencesPanel({ userId }: { userId: string }) {
             onChange={(event) => setGoalInput(event.target.value)}
           />
         </div>
+      </PreferenceSection>
+
+      <PreferenceSection
+        icon={Brain}
+        title="Powtórki FSRS v6"
+        description="Terminy są wyliczane osobno dla każdego pytania. Po 1000 odpowiedziach możesz dopasować model do własnej pamięci."
+      >
+        <div className="max-w-xs">
+          <label
+            className="mb-2 block text-sm font-medium"
+            htmlFor="fsrs-retention"
+          >
+            Docelowa retencja:{" "}
+            {Math.round(preferences.fsrsDesiredRetention * 100)}%
+          </label>
+          <Input
+            id="fsrs-retention"
+            type="range"
+            min={70}
+            max={99}
+            value={Math.round(preferences.fsrsDesiredRetention * 100)}
+            onChange={(event) =>
+              setPreferences((current) =>
+                current
+                  ? {
+                      ...current,
+                      fsrsDesiredRetention: Number(event.target.value) / 100,
+                    }
+                  : current,
+              )
+            }
+          />
+        </div>
+        <p className="mt-4 text-sm text-muted-foreground">
+          Historia: {preferences.fsrsReviewCount} / 1000 powtórek
+          {preferences.fsrsOptimizedAt ? " · model spersonalizowany" : ""}
+        </p>
+        <Button
+          className="mt-3"
+          type="button"
+          variant="outline"
+          disabled={optimizing || preferences.fsrsReviewCount < 1000}
+          onClick={() => void optimizeFsrs()}
+        >
+          {optimizing ? "Optymalizowanie…" : "Spersonalizuj harmonogram"}
+        </Button>
       </PreferenceSection>
 
       <PreferenceSection

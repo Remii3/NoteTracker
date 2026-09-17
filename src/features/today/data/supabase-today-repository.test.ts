@@ -19,6 +19,7 @@ function createRepository(fetchMock: typeof globalThis.fetch) {
 it("loads the Today dashboard in the user's timezone", async () => {
   const dashboard = {
     date: "2026-09-17",
+    dueQuestionCount: 0,
     dueQuestions: [],
     recommendedTopics: [],
     nearestExam: null,
@@ -27,7 +28,7 @@ it("loads the Today dashboard in the user's timezone", async () => {
     sessionTarget: null,
     modules: [],
   };
-  const fetch = vi.fn().mockResolvedValue(
+  const fetch = vi.fn().mockResolvedValueOnce(
     new Response(JSON.stringify(dashboard), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -43,6 +44,7 @@ it("loads the Today dashboard in the user's timezone", async () => {
   expect(JSON.parse(request[1].body)).toEqual({
     timezone_name: "Europe/Warsaw",
   });
+  expect(fetch).toHaveBeenCalledTimes(1);
 });
 
 it("stores a deferral under the current user's id", async () => {
@@ -77,15 +79,15 @@ it("creates a ten-question quick session", async () => {
   await expect(
     createRepository(fetch as typeof globalThis.fetch).createQuickSession(
       "module-one",
+      "Europe/Warsaw",
     ),
   ).resolves.toBe("session-one");
 
   expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual(
     expect.objectContaining({
       target_module_id: "module-one",
-      study_mode: "flashcards",
-      scope_mode: "all",
       requested_question_count: 10,
+      timezone_name: "Europe/Warsaw",
     }),
   );
 });

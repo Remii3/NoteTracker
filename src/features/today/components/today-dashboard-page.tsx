@@ -121,6 +121,7 @@ export function TodayDashboardPage(props: Props) {
     try {
       const sessionId = await props.repository.createQuickSession(
         data.sessionTarget.moduleId,
+        timezone,
       );
       props.onNavigate(
         `/${data.sessionTarget.moduleSlug}/study/flashcards/${sessionId}?from=today`,
@@ -178,8 +179,8 @@ export function TodayDashboardPage(props: Props) {
                 <div>
                   <CardTitle className="text-lg">Pytania na dziś</CardTitle>
                   <CardDescription>
-                    {data.dueQuestions.length
-                      ? `${data.dueQuestions.length} pytań czeka na powtórkę`
+                    {data.dueQuestionCount
+                      ? `${data.dueQuestionCount} pytań czeka na powtórkę`
                       : "Na dziś nie zostały żadne zaległe pytania"}
                   </CardDescription>
                 </div>
@@ -396,11 +397,21 @@ function QuestionRow({
         <p className="mt-1 truncate text-xs text-muted-foreground">
           {question.moduleName}
           {question.topicTitle ? ` · ${question.topicTitle}` : ""}
+          {` · ${learningStatusLabel(question.learningStatus)}`}
         </p>
       </button>
       <DeferMenu busy={busy} onDefer={onDefer} />
     </div>
   );
+}
+
+function learningStatusLabel(status: TodayQuestion["learningStatus"]) {
+  return {
+    new: "Nowe",
+    learning: "Uczone",
+    mastered: "Opanowane",
+    overdue: "Zaległe",
+  }[status];
 }
 
 function TopicRow({

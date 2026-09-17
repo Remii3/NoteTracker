@@ -1,4 +1,6 @@
 export type TodayTaskType = "question" | "topic";
+export type QuestionLearningStatus =
+  "new" | "learning" | "mastered" | "overdue";
 
 export type TodayQuestion = {
   id: string;
@@ -9,6 +11,7 @@ export type TodayQuestion = {
   chapterTitle: string | null;
   topicTitle: string | null;
   dueOn: string;
+  learningStatus: QuestionLearningStatus;
 };
 
 export type TodayTopic = {
@@ -24,6 +27,7 @@ export type TodayTopic = {
 
 export type TodayDashboard = {
   date: string;
+  dueQuestionCount: number;
   dueQuestions: TodayQuestion[];
   recommendedTopics: TodayTopic[];
   nearestExam: {

@@ -15,11 +15,11 @@ export class SupabaseTodayRepository implements TodayRepository {
   }
 
   async get(timezone: string) {
-    const { data, error } = await this.client.rpc("get_today_dashboard", {
+    const dashboard = await this.client.rpc("get_today_dashboard", {
       timezone_name: timezone,
     });
-    throwIfPostgrestError(error);
-    return data as unknown as TodayDashboard;
+    throwIfPostgrestError(dashboard.error);
+    return dashboard.data as unknown as TodayDashboard;
   }
 
   async deferTask(input: Parameters<TodayRepository["deferTask"]>[0]) {
@@ -48,15 +48,11 @@ export class SupabaseTodayRepository implements TodayRepository {
     throwIfPostgrestError(error);
   }
 
-  async createQuickSession(moduleId: string) {
-    const { data, error } = await this.client.rpc("create_study_session", {
+  async createQuickSession(moduleId: string, timezone: string) {
+    const { data, error } = await this.client.rpc("create_fsrs_study_session", {
       target_module_id: moduleId,
-      study_mode: "flashcards",
-      scope_mode: "all",
-      selected_chapter_id: null,
-      selected_topic_id: null,
-      random_chapter_count: 3,
       requested_question_count: 10,
+      timezone_name: timezone,
     });
     throwIfPostgrestError(error);
     if (!data) throw new Error("Nie udało się utworzyć sesji.");

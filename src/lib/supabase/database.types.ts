@@ -242,6 +242,81 @@ export type Database = {
         };
         Relationships: [];
       };
+      fsrs_profiles: {
+        Row: {
+          user_id: string;
+          desired_retention: number;
+          parameters: number[] | null;
+          parameters_version: number;
+          optimized_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          desired_retention?: number;
+          parameters?: number[] | null;
+          parameters_version?: number;
+          optimized_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          desired_retention?: number;
+          parameters?: number[] | null;
+          parameters_version?: number;
+          optimized_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      question_review_states: {
+        Row: {
+          user_id: string;
+          question_id: string;
+          due_at: string;
+          last_reviewed_at: string | null;
+          stability: number;
+          difficulty: number;
+          elapsed_days: number;
+          scheduled_days: number;
+          learning_steps: number;
+          repetitions: number;
+          lapses: number;
+          state: "new" | "learning" | "review" | "relearning";
+          version: number;
+          parameters_version: number;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      question_review_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          question_id: string;
+          session_id: string | null;
+          session_item_id: string | null;
+          reviewed_at: string;
+          rating: number;
+          duration_seconds: number;
+          state_before: string;
+          state_after: string;
+          due_before: string;
+          due_after: string;
+          stability_before: number;
+          stability_after: number;
+          difficulty_before: number;
+          difficulty_after: number;
+          elapsed_days: number;
+          scheduled_days: number;
+          algorithm_version: string;
+          parameters_version: number;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       chapters: {
         Row: {
           id: string;
@@ -350,6 +425,33 @@ export type Database = {
     };
     Views: Record<never, never>;
     Functions: {
+      record_fsrs_review: {
+        Args: {
+          target_session_item_id: string;
+          review_rating: number;
+          review_time: string;
+          selected_option: string | null;
+          duration_seconds: number;
+          expected_version: number;
+          used_parameters_version: number;
+        };
+        Returns: Json;
+      };
+      save_fsrs_profile: {
+        Args: {
+          requested_retention: number;
+          optimized_parameters?: number[] | null;
+        };
+        Returns: number;
+      };
+      create_fsrs_study_session: {
+        Args: {
+          target_module_id: string;
+          requested_question_count?: number;
+          timezone_name?: string;
+        };
+        Returns: string;
+      };
       create_chapter_with_topics: {
         Args: {
           target_module_id: string;

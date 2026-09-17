@@ -3,11 +3,26 @@ import type { Database, Json } from "@/lib/supabase/database.types";
 import { throwIfPostgrestError } from "@/features/notes/data/supabase-error";
 import type { QuestionsRepository } from "./questions-repository";
 import type {
+  FsrsCardState,
+  FsrsRating,
+  FsrsStateName,
   Question,
   QuestionOption,
-  StudyResult,
   StudySessionSummary,
 } from "../model/types";
+type ReviewStateRow = {
+  due_at: string;
+  last_reviewed_at: string | null;
+  stability: number;
+  difficulty: number;
+  elapsed_days: number;
+  scheduled_days: number;
+  learning_steps: number;
+  repetitions: number;
+  lapses: number;
+  state: FsrsStateName;
+  version: number;
+};
 
 export class SupabaseQuestionsRepository implements QuestionsRepository {
   private readonly client: SupabaseClient<Database>;
@@ -190,7 +205,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
   }
 
   async getSession(id: string) {
-    const [session, items] = await Promise.all([
+    const [session, items, profile] = await Promise.all([
       this.client
         .from("study_sessions")
         .select("id,mode,status,configuration,started_at,completed_at")
@@ -202,15 +217,38 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
       this.client
         .from("study_session_items")
         .select(
-          "id,position,question_snapshot,options_snapshot,explanation_snapshot,selected_option_id,result,active_duration_seconds",
+          "id,question_id,position,question_snapshot,options_snapshot,explanation_snapshot,selected_option_id,result,active_duration_seconds",
         )
         .eq("session_id", id)
         .eq("user_id", this.userId)
         .order("position"),
+      this.client
+        .from("fsrs_profiles")
+        .select("desired_retention,parameters,parameters_version")
+        .eq("user_id", this.userId)
+        .maybeSingle(),
     ]);
     throwIfPostgrestError(session.error);
     throwIfPostgrestError(items.error);
+    throwIfPostgrestError(profile.error);
     if (!session.data) throw new Error("Nie znaleziono sesji.");
+    const questionIds = (items.data ?? [])
+      .map((item) => item.question_id)
+      .filter((value): value is string => Boolean(value));
+    const states = questionIds.length
+      ? await this.client
+          .from("question_review_states")
+          .select(
+            "question_id,due_at,last_reviewed_at,stability,difficulty,elapsed_days,scheduled_days,learning_steps,repetitions,lapses,state,version",
+          )
+          .eq("user_id", this.userId)
+          .in("question_id", questionIds)
+      : { data: [], error: null };
+    throwIfPostgrestError(states.error);
+    const stateByQuestion = new Map(
+      (states.data ?? []).map((state) => [state.question_id, state]),
+    );
+    const now = new Date().toISOString();
     return {
       id: session.data.id,
       mode: session.data.mode,
@@ -218,8 +256,14 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
       configuration: this.asConfiguration(session.data.configuration),
       startedAt: session.data.started_at,
       completedAt: session.data.completed_at,
+      fsrsProfile: {
+        desiredRetention: profile.data?.desired_retention ?? 0.9,
+        parameters: profile.data?.parameters ?? null,
+        parametersVersion: profile.data?.parameters_version ?? 1,
+      },
       items: (items.data ?? []).map((item) => ({
         id: item.id,
+        questionId: item.question_id!,
         position: item.position,
         question: item.question_snapshot,
         options: item.options_snapshot as unknown as Required<QuestionOption>[],
@@ -227,32 +271,111 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
         selectedOptionId: item.selected_option_id,
         result: item.result,
         activeDurationSeconds: item.active_duration_seconds,
+        fsrs: this.mapFsrsState(stateByQuestion.get(item.question_id!), now),
       })),
     };
   }
 
   async answerItem(
     id: string,
-    result: StudyResult,
+    rating: FsrsRating,
     selectedOptionId?: string,
     activeDurationSeconds = 0,
   ) {
-    const { error } = await this.client
+    const session = await this.getItemFsrsContext(id);
+    const reviewedAt = new Date();
+    const { error } = await this.client.rpc("record_fsrs_review", {
+      target_session_item_id: id,
+      review_rating: rating,
+      review_time: reviewedAt.toISOString(),
+      selected_option: selectedOptionId ?? null,
+      duration_seconds: Math.min(
+        86_400,
+        Math.max(0, Math.round(activeDurationSeconds)),
+      ),
+      expected_version: session.state.version,
+      used_parameters_version: session.profile.parametersVersion,
+    });
+    throwIfPostgrestError(error);
+  }
+
+  private async getItemFsrsContext(id: string) {
+    const item = await this.client
       .from("study_session_items")
-      .update({
-        result,
-        selected_option_id: selectedOptionId ?? null,
-        answered_at: new Date().toISOString(),
-        active_duration_seconds: Math.min(
-          86_400,
-          Math.max(0, Math.round(activeDurationSeconds)),
-        ),
-      })
+      .select("question_id")
       .eq("id", id)
       .eq("user_id", this.userId)
-      .select("id")
       .single();
-    throwIfPostgrestError(error);
+    throwIfPostgrestError(item.error);
+    if (!item.data?.question_id) throw new Error("Pytanie nie istnieje.");
+    const [state, profile] = await Promise.all([
+      this.client
+        .from("question_review_states")
+        .select(
+          "due_at,last_reviewed_at,stability,difficulty,elapsed_days,scheduled_days,learning_steps,repetitions,lapses,state,version",
+        )
+        .eq("user_id", this.userId)
+        .eq("question_id", item.data.question_id)
+        .maybeSingle(),
+      this.client
+        .from("fsrs_profiles")
+        .select("desired_retention,parameters,parameters_version")
+        .eq("user_id", this.userId)
+        .maybeSingle(),
+    ]);
+    throwIfPostgrestError(state.error);
+    throwIfPostgrestError(profile.error);
+    return {
+      state: this.mapFsrsState(state.data, new Date().toISOString()),
+      profile: {
+        desiredRetention: profile.data?.desired_retention ?? 0.9,
+        parameters: profile.data?.parameters ?? null,
+        parametersVersion: profile.data?.parameters_version ?? 1,
+      },
+    };
+  }
+
+  private mapFsrsState(
+    row: ReviewStateRow | null | undefined,
+    fallbackDue: string,
+  ): FsrsCardState {
+    return row
+      ? {
+          dueAt: row.due_at,
+          lastReviewedAt: row.last_reviewed_at,
+          stability: row.stability,
+          difficulty: row.difficulty,
+          elapsedDays: row.elapsed_days,
+          scheduledDays: row.scheduled_days,
+          learningSteps: row.learning_steps,
+          repetitions: row.repetitions,
+          lapses: row.lapses,
+          state: row.state,
+          learningStatus: this.learningStatus(row.state, row.due_at),
+          version: row.version,
+        }
+      : {
+          dueAt: fallbackDue,
+          lastReviewedAt: null,
+          stability: 0,
+          difficulty: 0,
+          elapsedDays: 0,
+          scheduledDays: 0,
+          learningSteps: 0,
+          repetitions: 0,
+          lapses: 0,
+          state: "new",
+          learningStatus: "new",
+          version: 0,
+        };
+  }
+
+  private learningStatus(state: FsrsStateName, dueAt: string) {
+    if (state === "new") return "new" as const;
+    if (state === "learning" || state === "relearning")
+      return "learning" as const;
+    if (new Date(dueAt).getTime() < Date.now()) return "overdue" as const;
+    return "mastered" as const;
   }
   async completeSession(id: string) {
     const { error } = await this.client

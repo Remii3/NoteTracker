@@ -8,5 +8,5 @@ export interface TodayRepository {
     until: string;
   }): Promise<void>;
   setExamDate(moduleId: string, examDate: string | null): Promise<void>;
-  createQuickSession(moduleId: string): Promise<string>;
+  createQuickSession(moduleId: string, timezone: string): Promise<string>;
 }

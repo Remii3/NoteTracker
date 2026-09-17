@@ -68,7 +68,7 @@ type Props = {
   onLoaded?: (modules: Module[]) => void;
 };
 
-const PAGE_SIZE = 24;
+const PAGE_SIZE = 12;
 
 export function ModulePicker({
   repository,
@@ -227,7 +227,6 @@ export function ModulePicker({
       if (!query && cacheKey)
         writeMemoryCache(cacheKey, [...pinnedModules, ...modules, created]);
       setCreateOpen(false);
-      onSelect(created);
     } catch {
       throw new Error("create-module-failed");
     }
@@ -270,7 +269,6 @@ export function ModulePicker({
       data: { type: "success" },
       description: `Zaimportowano moduł „${imported.name}”.`,
     });
-    onSelect(imported);
   }
 
   async function togglePinned(module: Module) {
