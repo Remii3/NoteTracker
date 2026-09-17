@@ -184,7 +184,6 @@ export function ModulePage() {
       moduleName={selectedModule?.name}
       moduleNameLoading={moduleResource.loading}
       onOpenModules={() => navigate("/")}
-      onOpenAccount={() => navigate("/settings")}
       onModuleProgressChange={handleModuleProgressChange}
     />
   );

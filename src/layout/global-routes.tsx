@@ -49,17 +49,15 @@ export function GlobalRoutes() {
     return subscribeToRecentModules(userId, setRecentModules);
   }, [userId]);
 
-  const accountMenu = (
-    <AccountMenu
-      userName={getUserDisplayName(user)}
-      userEmail={user.email}
-      onOpenAccount={() => navigate("/settings")}
-    />
-  );
-
   return (
     <AppLayout
-      accountMenu={accountMenu}
+      accountMenu={(onOpenAccount) => (
+        <AccountMenu
+          userName={getUserDisplayName(user)}
+          userEmail={user.email}
+          onOpenAccount={onOpenAccount}
+        />
+      )}
       onOpenHome={() => navigate("/")}
       sidebar={<GlobalNavigation recentModules={recentModules} />}
     >

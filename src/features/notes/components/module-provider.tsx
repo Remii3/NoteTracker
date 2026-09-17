@@ -42,7 +42,6 @@ type Props = {
   moduleName?: string;
   moduleNameLoading?: boolean;
   onOpenModules?: () => void;
-  onOpenAccount?: () => void;
   onModuleProgressChange?: (progress: {
     completedTopicsCount: number;
     topicsCount: number;
@@ -64,7 +63,6 @@ export function ModuleProvider({
   userEmail,
   moduleName,
   onOpenModules,
-  onOpenAccount,
   onModuleProgressChange,
 }: Props) {
   const [isSearchPending, setIsSearchPending] = useState(false);
@@ -525,13 +523,13 @@ export function ModuleProvider({
   return (
     <ModuleContext.Provider value={contextValue}>
       <AppLayout
-        accountMenu={
+        accountMenu={(onOpenAccount) => (
           <AccountMenu
             userName={userName}
             userEmail={userEmail}
-            onOpenAccount={() => onOpenAccount?.()}
+            onOpenAccount={onOpenAccount}
           />
-        }
+        )}
         header={header ? <WorkspaceHeader {...header} /> : undefined}
         onOpenHome={onOpenModules ?? navigateHome}
         overlay={<WorkspaceDialogs {...dialogs} />}

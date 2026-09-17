@@ -10,7 +10,7 @@ import {
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, expect, it, vi } from "vitest";
 
-import { AccountPage } from "./account-page";
+import { AccountSettings } from "./account-page";
 
 const auth = vi.hoisted(() => ({
   deleteAccount: vi.fn(),
@@ -39,8 +39,8 @@ it("requires explicit confirmation and permanently deletes the account", async (
   auth.deleteAccount.mockResolvedValue(undefined);
   auth.signOut.mockResolvedValue(undefined);
   const router = createMemoryRouter(
-    [{ path: "/settings", element: <AccountPage /> }],
-    { initialEntries: ["/settings"] },
+    [{ path: "/", element: <AccountSettings /> }],
+    { initialEntries: ["/"] },
   );
   render(<RouterProvider router={router} />);
 

@@ -5,6 +5,7 @@ import { clearUserMemoryCache } from "@/lib/memory-cache";
 import { toast } from "@/components/ui/toast";
 import { useAuth } from "./auth-context";
 import { useState } from "react";
+import { useSidebar } from "@/components/ui/sidebar";
 
 type Props = {
   userName?: string;
@@ -14,10 +15,16 @@ type Props = {
 
 export function AccountMenu({ userName, userEmail, onOpenAccount }: Props) {
   const { signOut, user } = useAuth();
+  const { isMobile, setOpenMobile } = useSidebar();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const initial = (userName?.[0] ?? userEmail?.[0] ?? "U").toLocaleUpperCase(
     "pl",
   );
+
+  function handleOpenAccount() {
+    if (isMobile) setOpenMobile(false);
+    onOpenAccount();
+  }
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -40,7 +47,7 @@ export function AccountMenu({ userName, userEmail, onOpenAccount }: Props) {
         variant="ghost"
         className="group h-auto min-w-0 flex-1 justify-start gap-3 px-2 py-1.5 text-left focus-visible:ring-2 focus-visible:ring-sidebar-ring/70"
         aria-label="Przejdź do ustawień konta"
-        onClick={onOpenAccount}
+        onClick={handleOpenAccount}
       >
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">
           {initial}

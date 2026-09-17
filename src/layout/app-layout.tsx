@@ -13,10 +13,11 @@ import { AppHeaderActionsProvider } from "@/layout/app-header-actions";
 import { BookOpen } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { InAppReviewReminder } from "@/features/preferences/components/in-app-review-reminder";
+import { AccountSettingsSheet } from "@/features/auth/account-settings-sheet";
 import { NavLink } from "react-router";
 
 type AppLayoutProps = {
-  accountMenu: ReactNode;
+  accountMenu: (onOpenAccount: () => void) => ReactNode;
   children: ReactNode;
   header?: ReactNode;
   onOpenHome: () => void;
@@ -34,6 +35,7 @@ export function AppLayout({
 }: AppLayoutProps) {
   const [headerActionsTarget, setHeaderActionsTarget] =
     useState<HTMLDivElement | null>(null);
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
 
   return (
     <>
@@ -42,7 +44,9 @@ export function AppLayout({
         <Sidebar>
           <AppSidebarHeader onOpenHome={onOpenHome} />
           {sidebar}
-          <SidebarFooter className="border-t">{accountMenu}</SidebarFooter>
+          <SidebarFooter className="border-t">
+            {accountMenu(() => setAccountSettingsOpen(true))}
+          </SidebarFooter>
         </Sidebar>
         <AppHeaderActionsProvider target={headerActionsTarget}>
           <SidebarInset className="h-svh max-h-svh min-w-0 overflow-hidden">
@@ -57,6 +61,10 @@ export function AppLayout({
           </SidebarInset>
         </AppHeaderActionsProvider>
         {overlay}
+        <AccountSettingsSheet
+          open={accountSettingsOpen}
+          onOpenChange={setAccountSettingsOpen}
+        />
       </SidebarProvider>
     </>
   );

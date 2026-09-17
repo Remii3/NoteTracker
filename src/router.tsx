@@ -32,14 +32,6 @@ const router = createBrowserRouter([
           })),
         HydrateFallback: AppLoading,
       },
-      {
-        path: "settings",
-        lazy: () =>
-          import("@/features/auth/account-page").then(({ AccountPage }) => ({
-            Component: AccountPage,
-          })),
-        HydrateFallback: AppLoading,
-      },
     ],
   },
   {
@@ -81,9 +73,7 @@ const router = createBrowserRouter([
               Component: ModuleStatisticsPage,
             }),
           ),
-        handle: {
-          activeView: "statistics",
-        },
+        handle: { activeView: "statistics" },
       },
       {
         path: "questions",

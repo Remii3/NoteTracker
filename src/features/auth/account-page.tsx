@@ -50,7 +50,7 @@ const passwordFormSchema = z
     },
   );
 
-export function AccountPage() {
+export function AccountSettings() {
   const { deleteAccount, signOut, updateName, updatePassword, user } =
     useAuth();
   const navigate = useNavigate();
@@ -77,7 +77,6 @@ export function AccountPage() {
     profileForm.formState.isSubmitting ||
     passwordForm.formState.isSubmitting ||
     isDeleting;
-
   if (!user) return null;
   const userId = user.id;
 
