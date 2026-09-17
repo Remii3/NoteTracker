@@ -79,6 +79,10 @@ export function useWorkspaceRoute({
     () => navigate(`${basePath}/statistics`),
     [basePath, navigate],
   );
+  const navigateExams = useCallback(
+    () => navigate(`${basePath}/exams`),
+    [basePath, navigate],
+  );
   const navigateQuestionHistory = useCallback(
     () => navigate(`${basePath}/questions/history`),
     [basePath, navigate],
@@ -145,6 +149,7 @@ export function useWorkspaceRoute({
     navigateGallery,
     navigateQuestions,
     navigateStatistics,
+    navigateExams,
     navigateQuestionHistory,
     navigateStudySession,
     navigateToChapter,

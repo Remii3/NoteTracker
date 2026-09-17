@@ -37,6 +37,8 @@ function getPostgrestErrorMessage(error: PostgrestError) {
       return "Wprowadzone dane są nieprawidłowe.";
     case "42501":
       return "Nie masz uprawnień do wykonania tej operacji.";
+    case "40001":
+      return "Dane zostały zmienione w innym miejscu. Odśwież widok i spróbuj ponownie.";
     case "PGRST116":
       return "Nie znaleziono elementu lub nie masz już do niego dostępu.";
     default:

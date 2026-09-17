@@ -3,6 +3,7 @@ import {
   BarChart3,
   BookOpen,
   CalendarDays,
+  CalendarRange,
   CircleCheck,
   LayoutGrid,
   Trash2,
@@ -30,6 +31,7 @@ import {
 const navigation = [
   { to: "/", label: "Dzisiaj", icon: CalendarDays, end: true },
   { to: "/modules", label: "Moduły", icon: LayoutGrid, end: false },
+  { to: "/calendar", label: "Kalendarz", icon: CalendarRange, end: false },
   {
     to: "/statistics",
     label: "Statystyki",

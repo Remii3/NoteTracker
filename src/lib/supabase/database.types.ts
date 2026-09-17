@@ -9,6 +9,137 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      exam_plans: {
+        Row: {
+          id: string;
+          user_id: string;
+          module_id: string;
+          name: string;
+          exam_date: string;
+          target_retention: number;
+          study_weekdays: number[];
+          daily_time_limit_minutes: number | null;
+          daily_question_limit: number | null;
+          buffer_percent: number;
+          include_unassigned_questions: boolean;
+          status: "active" | "completed" | "archived";
+          needs_rebuild: boolean;
+          plan_version: number;
+          last_rebuilt_on: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          module_id: string;
+          name: string;
+          exam_date: string;
+          target_retention?: number;
+          study_weekdays?: number[];
+          daily_time_limit_minutes?: number | null;
+          daily_question_limit?: number | null;
+          buffer_percent?: number;
+          include_unassigned_questions?: boolean;
+          status?: "active" | "completed" | "archived";
+          needs_rebuild?: boolean;
+          plan_version?: number;
+          last_rebuilt_on?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["exam_plans"]["Insert"]>;
+        Relationships: [];
+      };
+      exam_plan_topics: {
+        Row: {
+          exam_plan_id: string;
+          user_id: string;
+          topic_id: string;
+          workload_points: number;
+          workload_source: "automatic" | "manual";
+          created_at: string;
+        };
+        Insert: {
+          exam_plan_id: string;
+          user_id: string;
+          topic_id: string;
+          workload_points?: number;
+          workload_source?: "automatic" | "manual";
+          created_at?: string;
+        };
+        Update: {
+          workload_points?: number;
+          workload_source?: "automatic" | "manual";
+        };
+        Relationships: [];
+      };
+      exam_plan_assignments: {
+        Row: {
+          id: string;
+          exam_plan_id: string;
+          user_id: string;
+          topic_id: string;
+          scheduled_for: string;
+          position: number;
+          workload_points: number;
+          is_locked: boolean;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          exam_plan_id: string;
+          user_id: string;
+          topic_id: string;
+          scheduled_for: string;
+          position: number;
+          workload_points: number;
+          is_locked?: boolean;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["exam_plan_assignments"]["Insert"]
+        >;
+        Relationships: [];
+      };
+      exam_plan_daily_targets: {
+        Row: {
+          exam_plan_id: string;
+          user_id: string;
+          target_date: string;
+          topic_count: number;
+          workload_points: number;
+          review_target: number;
+          review_forecast_low: number;
+          review_forecast_high: number;
+          is_buffer_day: boolean;
+          is_overloaded: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          exam_plan_id: string;
+          user_id: string;
+          target_date: string;
+          topic_count?: number;
+          workload_points?: number;
+          review_target?: number;
+          review_forecast_low?: number;
+          review_forecast_high?: number;
+          is_buffer_day?: boolean;
+          is_overloaded?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["exam_plan_daily_targets"]["Insert"]
+        >;
+        Relationships: [];
+      };
       modules: {
         Row: {
           id: string;
@@ -704,6 +835,10 @@ export type Database = {
           expected_content: Json;
         };
         Returns: boolean;
+      };
+      save_exam_plan: {
+        Args: { plan_payload: Json };
+        Returns: string;
       };
       move_topic: {
         Args: {

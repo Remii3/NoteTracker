@@ -462,7 +462,119 @@ do $$ begin
  end;
 end; $$;
 
+select set_config(
+  'test.exam_plan_id',
+  public.save_exam_plan(jsonb_build_object(
+    'moduleId', '10000001-0000-4000-8000-000000000000',
+    'name', 'Exam plan',
+    'examDate', '2099-06-30',
+    'targetRetention', 0.9,
+    'studyWeekdays', jsonb_build_array(1, 2, 3, 4, 5),
+    'dailyTimeLimitMinutes', null,
+    'dailyQuestionLimit', 32,
+    'bufferPercent', 10,
+    'includeUnassignedQuestions', false,
+    'topicSettings', jsonb_build_array(jsonb_build_object(
+      'id', '10000003-0000-4000-8000-000000000000',
+      'workload_points', 2,
+      'workload_source', 'automatic'
+    )),
+    'assignments', jsonb_build_array(jsonb_build_object(
+      'topic_id', '10000003-0000-4000-8000-000000000000',
+      'scheduled_for', '2099-06-01',
+      'position', 1,
+      'workload_points', 2,
+      'is_locked', false,
+      'completed_at', null
+    )),
+    'days', jsonb_build_array(jsonb_build_object(
+      'target_date', '2099-06-01',
+      'topic_count', 1,
+      'workload_points', 2,
+      'review_target', 4,
+      'review_forecast_low', 3,
+      'review_forecast_high', 5,
+      'is_buffer_day', false,
+      'is_overloaded', false
+    ))
+  ))::text,
+  true
+);
+select pg_temp.assert_true(
+  (select count(*) = 1 from public.exam_plans),
+  'exam plans: owner can atomically create a plan'
+);
+select pg_temp.assert_true(
+  (select count(*) = 1 from public.exam_plan_topics)
+  and (select count(*) = 1 from public.exam_plan_assignments)
+  and (select count(*) = 1 from public.exam_plan_daily_targets),
+  'exam plans: scope, assignments and targets are persisted'
+);
+do $$
+begin
+  perform public.save_exam_plan(jsonb_build_object(
+    'id', current_setting('test.exam_plan_id'),
+    'expectedPlanVersion', 0
+  ));
+  raise exception 'A stale exam plan write was accepted';
+exception when serialization_failure then null;
+end;
+$$;
+select pg_temp.assert_true(
+  (select plan_version = 1 from public.exam_plans),
+  'exam plans: optimistic locking rejects a stale plan version'
+);
+set local role postgres;
+insert into public.question_review_states(user_id, question_id)
+values (
+  '10000000-0000-4000-8000-000000000000',
+  '10000004-0000-4000-8000-000000000000'
+)
+on conflict (user_id, question_id) do update
+set version = public.question_review_states.version + 1;
+set local role authenticated;
+select pg_temp.assert_true(
+  (select needs_rebuild from public.exam_plans),
+  'exam plans: an FSRS state change marks the related plan for rebuilding'
+);
+update public.exam_plans set needs_rebuild = false;
+update public.questions
+set topic_id = null
+where id = '10000004-0000-4000-8000-000000000000';
+select pg_temp.assert_true(
+  (select needs_rebuild from public.exam_plans),
+  'exam plans: a question scope change marks the related plan for rebuilding'
+);
+update public.questions
+set topic_id = '10000003-0000-4000-8000-000000000000'
+where id = '10000004-0000-4000-8000-000000000000';
+update public.exam_plans set needs_rebuild = false;
 set local request.jwt.claim.sub = '20000000-0000-4000-8000-000000000000';
+select private.mark_exam_plans_dirty_for_question(
+  '10000000-0000-4000-8000-000000000000',
+  '10000001-0000-4000-8000-000000000000',
+  '10000003-0000-4000-8000-000000000000'
+);
+set local request.jwt.claim.sub = '10000000-0000-4000-8000-000000000000';
+select pg_temp.assert_true(
+  not (select needs_rebuild from public.exam_plans),
+  'exam plans: invoker RLS prevents marking another user plan'
+);
+
+set local request.jwt.claim.sub = '20000000-0000-4000-8000-000000000000';
+select pg_temp.assert_true(
+  (select count(*) = 0 from public.exam_plans)
+  and (select count(*) = 0 from public.exam_plan_topics)
+  and (select count(*) = 0 from public.exam_plan_assignments)
+  and (select count(*) = 0 from public.exam_plan_daily_targets),
+  'exam plans: another user cannot read plan data'
+);
+do $$ declare affected integer; begin
+ delete from public.exam_plans
+ where id = current_setting('test.exam_plan_id')::uuid;
+ get diagnostics affected = row_count;
+ perform pg_temp.assert_true(affected = 0, 'exam plans: another user cannot delete a plan');
+end; $$;
 select pg_temp.assert_true((select count(*) = 1 and bool_and(user_id = '20000000-0000-4000-8000-000000000000') from public.modules), 'modules: user 2 sees only own rows');
 do $$ declare affected integer; begin
  delete from public.modules where user_id = '10000000-0000-4000-8000-000000000000';

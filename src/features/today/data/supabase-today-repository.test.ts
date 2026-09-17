@@ -28,23 +28,41 @@ it("loads the Today dashboard in the user's timezone", async () => {
     sessionTarget: null,
     modules: [],
   };
-  const fetch = vi.fn().mockResolvedValueOnce(
-    new Response(JSON.stringify(dashboard), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }),
-  );
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify(dashboard), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
 
   await expect(
     createRepository(fetch as typeof globalThis.fetch).get("Europe/Warsaw"),
   ).resolves.toEqual(dashboard);
 
-  const request = fetch.mock.calls[0];
+  expect(new URL(fetch.mock.calls[0][0]).pathname).toContain("/exam_plans");
+  const request = fetch.mock.calls[1];
   expect(new URL(request[0]).pathname).toContain("/rpc/get_today_dashboard");
   expect(JSON.parse(request[1].body)).toEqual({
     timezone_name: "Europe/Warsaw",
   });
-  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(new URL(fetch.mock.calls[2][0]).pathname).toContain(
+    "/exam_plan_assignments",
+  );
+  expect(fetch).toHaveBeenCalledTimes(3);
 });
 
 it("stores a deferral under the current user's id", async () => {

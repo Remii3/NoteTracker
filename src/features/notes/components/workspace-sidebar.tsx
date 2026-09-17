@@ -1,6 +1,7 @@
 import {
   ArrowUpDown,
   BarChart3,
+  CalendarClock,
   Images,
   Layers3,
   LibraryBig,
@@ -63,6 +64,7 @@ type Props = {
   isGallery: boolean;
   isQuestions: boolean;
   isStatistics: boolean;
+  isExams: boolean;
   isEditing: boolean;
   search: string;
   sortMode: SortMode;
@@ -74,6 +76,7 @@ type Props = {
   onOpenGallery: () => void;
   onOpenQuestions: () => void;
   onOpenStatistics: () => void;
+  onOpenExams: () => void;
   onOpenAddDialog: () => void;
   onOpenBulkDelete: () => void;
   onSelectChapter: (chapter: Chapter) => void;
@@ -107,6 +110,7 @@ export function WorkspaceSidebar({
   isGallery,
   isQuestions,
   isStatistics,
+  isExams,
   isEditing,
   search,
   sortMode,
@@ -118,6 +122,7 @@ export function WorkspaceSidebar({
   onOpenGallery,
   onOpenQuestions,
   onOpenStatistics,
+  onOpenExams,
   onOpenAddDialog,
   onOpenBulkDelete,
   onSelectChapter,
@@ -174,6 +179,13 @@ export function WorkspaceSidebar({
       icon: BarChart3,
       active: isStatistics,
       onClick: onOpenStatistics,
+    },
+    {
+      label: "Egzaminy",
+      ariaLabel: "Przejdź do planów egzaminów",
+      icon: CalendarClock,
+      active: isExams,
+      onClick: onOpenExams,
     },
     {
       label: "Galeria",

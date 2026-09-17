@@ -25,6 +25,14 @@ const router = createBrowserRouter([
         HydrateFallback: AppLoading,
       },
       {
+        path: "calendar",
+        lazy: () =>
+          import("@/features/exam-plans/pages/exam-calendar-page").then(
+            ({ ExamCalendarPage }) => ({ Component: ExamCalendarPage }),
+          ),
+        HydrateFallback: AppLoading,
+      },
+      {
         path: "statistics",
         lazy: () =>
           import("@/features/statistics/pages/statistics-page").then(
@@ -82,6 +90,14 @@ const router = createBrowserRouter([
             }),
           ),
         handle: { activeView: "statistics" },
+      },
+      {
+        path: "exams/:examPlanId?",
+        lazy: () =>
+          import("@/features/exam-plans/pages/exam-plans-page").then(
+            ({ ExamPlansPage }) => ({ Component: ExamPlansPage }),
+          ),
+        handle: { activeView: "exams", moduleView: "exams" },
       },
       {
         path: "questions",

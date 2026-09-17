@@ -1,11 +1,12 @@
 export type ActiveView =
-  "chapters" | "gallery" | "questions" | "statistics" | "notes";
+  "chapters" | "gallery" | "questions" | "statistics" | "exams" | "notes";
 
 export type ModuleRouteView =
   | "chapters"
   | "chapter"
   | "gallery"
   | "statistics"
+  | "exams"
   | "questions"
   | "question-history"
   | "study-session";

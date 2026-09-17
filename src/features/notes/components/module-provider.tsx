@@ -130,6 +130,7 @@ export function ModuleProvider({
     navigateGallery,
     navigateQuestions,
     navigateStatistics,
+    navigateExams,
     navigateQuestionHistory,
     navigateStudySession,
     navigateToChapter,
@@ -327,6 +328,11 @@ export function ModuleProvider({
     navigateStatistics();
   }
 
+  function openExams() {
+    if (activeView === "exams") return;
+    navigateExams();
+  }
+
   async function openChapter(nextChapterId: string, nextTopicId: string) {
     await loadChapterTopics(nextChapterId);
     navigateToChapter(nextChapterId, nextTopicId);
@@ -402,6 +408,7 @@ export function ModuleProvider({
     isGallery: activeView === "gallery",
     isQuestions: activeView === "questions",
     isStatistics: activeView === "statistics",
+    isExams: activeView === "exams",
     isEditing: true,
     search,
     sortMode,
@@ -413,6 +420,7 @@ export function ModuleProvider({
     onOpenGallery: openGallery,
     onOpenQuestions: openQuestions,
     onOpenStatistics: openStatistics,
+    onOpenExams: openExams,
     onOpenAddDialog: () => setAddDialogOpen(true),
     onOpenBulkDelete: () => setBulkDeleteOpen(true),
     onSelectChapter: selectChapter,
