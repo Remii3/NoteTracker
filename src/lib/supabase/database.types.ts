@@ -556,6 +556,33 @@ export type Database = {
     };
     Views: Record<never, never>;
     Functions: {
+      get_exam_planning_chapters: {
+        Args: {
+          target_module_id: string;
+          search_query?: string | null;
+          after_position?: number | null;
+          after_id?: string | null;
+          result_limit?: number;
+        };
+        Returns: Json;
+      };
+      get_exam_planning_scope: {
+        Args: {
+          target_module_id: string;
+          timezone_name?: string;
+        };
+        Returns: Json;
+      };
+      get_exam_planning_topics: {
+        Args: {
+          target_module_id: string;
+          target_chapter_ids?: string[] | null;
+          timezone_name?: string;
+          search_query?: string | null;
+          result_limit?: number | null;
+        };
+        Returns: Json;
+      };
       record_fsrs_review: {
         Args: {
           target_session_item_id: string;

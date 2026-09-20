@@ -7,7 +7,9 @@ import type {
   SaveExamPlanInput,
 } from "../model/types";
 import type {
+  ExamPlanningChapterPage,
   ExamPlanningMaterial,
+  ExamPlanningScope,
   ExamPlansRepository,
 } from "./exam-plans-repository";
 
@@ -16,16 +18,27 @@ import { generateExamPlan } from "../domain/plan-generator";
 import { throwIfPostgrestError } from "@/features/notes/data/supabase-error";
 
 type PlanRow = Database["public"]["Tables"]["exam_plans"]["Row"];
+type PlanTopicRow = Pick<
+  Database["public"]["Tables"]["exam_plan_topics"]["Row"],
+  "topic_id" | "workload_points" | "workload_source"
+>;
+type PlanAssignmentRow = Pick<
+  Database["public"]["Tables"]["exam_plan_assignments"]["Row"],
+  | "topic_id"
+  | "scheduled_for"
+  | "position"
+  | "workload_points"
+  | "is_locked"
+  | "completed_at"
+>;
+type PlanDayRow =
+  Database["public"]["Tables"]["exam_plan_daily_targets"]["Row"];
 
 const adaptiveRebuilds = new Map<string, Promise<void>>();
+const DATABASE_PAGE_SIZE = 1_000;
 
 function localDateKey() {
   const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-function localDateFromTimestamp(value: string) {
-  const date = new Date(value);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
@@ -48,12 +61,8 @@ function mapPlan(row: PlanRow): ExamPlan {
   };
 }
 
-function automaticWorkload(content: Json) {
-  const size = JSON.stringify(content).length;
-  if (size < 800) return 1;
-  if (size < 2_500) return 2;
-  if (size < 6_000) return 4;
-  return 6;
+function planningTimeZone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
 export class SupabaseExamPlansRepository implements ExamPlansRepository {
@@ -63,6 +72,61 @@ export class SupabaseExamPlansRepository implements ExamPlansRepository {
   constructor(client: SupabaseClient<Database>, userId: string) {
     this.client = client;
     this.userId = userId;
+  }
+
+  private async listPlanTopics(planId: string) {
+    const rows: PlanTopicRow[] = [];
+    for (let from = 0; ; from += DATABASE_PAGE_SIZE) {
+      const { data, error } = await this.client
+        .from("exam_plan_topics")
+        .select("topic_id,workload_points,workload_source")
+        .eq("exam_plan_id", planId)
+        .eq("user_id", this.userId)
+        .order("topic_id")
+        .range(from, from + DATABASE_PAGE_SIZE - 1);
+      throwIfPostgrestError(error);
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < DATABASE_PAGE_SIZE) return rows;
+    }
+  }
+
+  private async listPlanAssignments(planId: string) {
+    const rows: PlanAssignmentRow[] = [];
+    for (let from = 0; ; from += DATABASE_PAGE_SIZE) {
+      const { data, error } = await this.client
+        .from("exam_plan_assignments")
+        .select(
+          "topic_id,scheduled_for,position,workload_points,is_locked,completed_at",
+        )
+        .eq("exam_plan_id", planId)
+        .eq("user_id", this.userId)
+        .order("scheduled_for")
+        .order("position")
+        .order("topic_id")
+        .range(from, from + DATABASE_PAGE_SIZE - 1);
+      throwIfPostgrestError(error);
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < DATABASE_PAGE_SIZE) return rows;
+    }
+  }
+
+  private async listPlanDays(planId: string) {
+    const rows: PlanDayRow[] = [];
+    for (let from = 0; ; from += DATABASE_PAGE_SIZE) {
+      const { data, error } = await this.client
+        .from("exam_plan_daily_targets")
+        .select("*")
+        .eq("exam_plan_id", planId)
+        .eq("user_id", this.userId)
+        .order("target_date")
+        .range(from, from + DATABASE_PAGE_SIZE - 1);
+      throwIfPostgrestError(error);
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < DATABASE_PAGE_SIZE) return rows;
+    }
   }
 
   async list(moduleId?: string) {
@@ -201,34 +265,14 @@ export class SupabaseExamPlansRepository implements ExamPlansRepository {
 
     const [topicResult, assignmentResult, dayResult, material] =
       await Promise.all([
-        this.client
-          .from("exam_plan_topics")
-          .select("topic_id,workload_points,workload_source")
-          .eq("exam_plan_id", planId)
-          .eq("user_id", this.userId),
-        this.client
-          .from("exam_plan_assignments")
-          .select(
-            "topic_id,scheduled_for,position,workload_points,is_locked,completed_at",
-          )
-          .eq("exam_plan_id", planId)
-          .eq("user_id", this.userId)
-          .order("scheduled_for")
-          .order("position"),
-        this.client
-          .from("exam_plan_daily_targets")
-          .select("*")
-          .eq("exam_plan_id", planId)
-          .eq("user_id", this.userId)
-          .order("target_date"),
+        this.listPlanTopics(planId),
+        this.listPlanAssignments(planId),
+        this.listPlanDays(planId),
         this.getPlanningMaterial(planResult.data.module_id),
       ]);
-    throwIfPostgrestError(topicResult.error);
-    throwIfPostgrestError(assignmentResult.error);
-    throwIfPostgrestError(dayResult.error);
 
     const assignmentsByDate = new Map<string, ExamPlanDay["assignments"]>();
-    for (const row of assignmentResult.data ?? []) {
+    for (const row of assignmentResult) {
       const assignments = assignmentsByDate.get(row.scheduled_for) ?? [];
       assignments.push({
         topicId: row.topic_id,
@@ -241,13 +285,11 @@ export class SupabaseExamPlansRepository implements ExamPlansRepository {
       assignmentsByDate.set(row.scheduled_for, assignments);
     }
 
-    const settings = new Map(
-      (topicResult.data ?? []).map((row) => [row.topic_id, row]),
-    );
+    const settings = new Map(topicResult.map((row) => [row.topic_id, row]));
     const assignmentTopicIds = new Set(
-      (assignmentResult.data ?? []).map((row) => row.topic_id),
+      assignmentResult.map((row) => row.topic_id),
     );
-    const scopeTopicIds = (topicResult.data ?? []).map((row) => row.topic_id);
+    const scopeTopicIds = topicResult.map((row) => row.topic_id);
     const scopeTopicIdSet = new Set(scopeTopicIds);
     const topics: ExamPlanTopic[] = material.topics
       .filter(
@@ -270,7 +312,7 @@ export class SupabaseExamPlansRepository implements ExamPlansRepository {
       plan,
       topics,
       scopeTopicIds,
-      days: (dayResult.data ?? []).map((row) => ({
+      days: dayResult.map((row) => ({
         date: row.target_date,
         assignments: assignmentsByDate.get(row.target_date) ?? [],
         workloadPoints: row.workload_points,
@@ -311,123 +353,75 @@ export class SupabaseExamPlansRepository implements ExamPlansRepository {
     };
   }
 
+  async getPlanningScope(moduleId: string): Promise<ExamPlanningScope> {
+    const { data, error } = await this.client.rpc("get_exam_planning_scope", {
+      target_module_id: moduleId,
+      timezone_name: planningTimeZone(),
+    });
+    throwIfPostgrestError(error);
+    if (!data) throw new Error("Nie udało się pobrać zakresu egzaminu.");
+    return data as unknown as ExamPlanningScope;
+  }
+
+  async getPlanningChapters(
+    moduleId: string,
+    options: {
+      query?: string;
+      cursor?: { position: number; id: string };
+      limit?: number;
+    } = {},
+  ): Promise<ExamPlanningChapterPage> {
+    const { data, error } = await this.client.rpc(
+      "get_exam_planning_chapters",
+      {
+        target_module_id: moduleId,
+        search_query: options.query?.trim() || null,
+        after_position: options.cursor?.position ?? null,
+        after_id: options.cursor?.id ?? null,
+        result_limit: options.limit ?? 50,
+      },
+    );
+    throwIfPostgrestError(error);
+    if (!data) throw new Error("Nie udało się pobrać rozdziałów.");
+    return data as unknown as ExamPlanningChapterPage;
+  }
+
+  async getPlanningTopics(
+    moduleId: string,
+    chapterIds?: string[],
+    searchQuery?: string,
+  ) {
+    const { data, error } = await this.client.rpc("get_exam_planning_topics", {
+      target_module_id: moduleId,
+      target_chapter_ids: chapterIds ?? null,
+      timezone_name: planningTimeZone(),
+      search_query: searchQuery?.trim() || null,
+      result_limit: null,
+    });
+    throwIfPostgrestError(error);
+    return (data ?? []) as unknown as ExamPlanTopic[];
+  }
+
+  async searchPlanningTopics(moduleId: string, query: string) {
+    const { data, error } = await this.client.rpc("get_exam_planning_topics", {
+      target_module_id: moduleId,
+      target_chapter_ids: null,
+      timezone_name: planningTimeZone(),
+      search_query: query.trim(),
+      result_limit: 100,
+    });
+    throwIfPostgrestError(error);
+    return (data ?? []) as unknown as ExamPlanTopic[];
+  }
+
   async getPlanningMaterial(moduleId: string): Promise<ExamPlanningMaterial> {
-    const [topicsResult, questionsResult, paceResult] = await Promise.all([
-      this.client
-        .from("topics")
-        .select(
-          "id,title,content,completed,chapter_id,position,chapters!inner(title,position,module_id)",
-        )
-        .eq("user_id", this.userId)
-        .eq("chapters.module_id", moduleId)
-        .is("trash_id", null)
-        .is("chapters.trash_id", null)
-        .order("position"),
-      this.client
-        .from("questions")
-        .select("id,topic_id")
-        .eq("user_id", this.userId)
-        .eq("module_id", moduleId)
-        .is("trash_id", null),
-      this.client
-        .from("study_session_items")
-        .select("active_duration_seconds")
-        .eq("user_id", this.userId)
-        .not("answered_at", "is", null)
-        .gt("active_duration_seconds", 0)
-        .order("answered_at", { ascending: false })
-        .limit(200),
+    const [scope, topics] = await Promise.all([
+      this.getPlanningScope(moduleId),
+      this.getPlanningTopics(moduleId),
     ]);
-    throwIfPostgrestError(topicsResult.error);
-    throwIfPostgrestError(questionsResult.error);
-    throwIfPostgrestError(paceResult.error);
-
-    const questions = questionsResult.data ?? [];
-    const questionIds = questions.map((question) => question.id);
-    const reviewResult = questionIds.length
-      ? await this.client
-          .from("question_review_states")
-          .select("question_id,due_at")
-          .eq("user_id", this.userId)
-          .in("question_id", questionIds)
-      : { data: [], error: null };
-    throwIfPostgrestError(reviewResult.error);
-    const dueQuestionIds = new Set(
-      (reviewResult.data ?? [])
-        .filter((state) => new Date(state.due_at).getTime() <= Date.now())
-        .map((state) => state.question_id),
-    );
-    const reviewDueDateByQuestion = new Map(
-      (reviewResult.data ?? []).map((state) => [
-        state.question_id,
-        localDateFromTimestamp(state.due_at),
-      ]),
-    );
-    const questionCounts = new Map<string, number>();
-    const dueCounts = new Map<string, number>();
-    const reviewDueDates = new Map<string, string[]>();
-    for (const question of questions) {
-      if (!question.topic_id) continue;
-      questionCounts.set(
-        question.topic_id,
-        (questionCounts.get(question.topic_id) ?? 0) + 1,
-      );
-      if (dueQuestionIds.has(question.id))
-        dueCounts.set(
-          question.topic_id,
-          (dueCounts.get(question.topic_id) ?? 0) + 1,
-        );
-      const dueDate = reviewDueDateByQuestion.get(question.id);
-      if (dueDate)
-        reviewDueDates.set(question.topic_id, [
-          ...(reviewDueDates.get(question.topic_id) ?? []),
-          dueDate,
-        ]);
-    }
-
-    const topics = (topicsResult.data ?? [])
-      .sort(
-        (first, second) =>
-          first.chapters.position - second.chapters.position ||
-          first.position - second.position,
-      )
-      .map((row): ExamPlanTopic => ({
-        id: row.id,
-        chapterId: row.chapter_id,
-        chapterTitle: row.chapters.title,
-        title: row.title,
-        completed: row.completed,
-        workloadPoints: automaticWorkload(row.content),
-        workloadSource: "automatic",
-        questionCount: questionCounts.get(row.id) ?? 0,
-        dueReviewCount: dueCounts.get(row.id) ?? 0,
-        reviewDueDates: reviewDueDates.get(row.id) ?? [],
-      }));
-    const unassigned = questions.filter((question) => !question.topic_id);
-    const durations = (paceResult.data ?? [])
-      .map((item) => item.active_duration_seconds)
-      .filter((duration) => duration > 0 && duration <= 600)
-      .sort((first, second) => first - second);
-    const trim =
-      durations.length >= 10 ? Math.floor(durations.length * 0.1) : 0;
-    const trimmed = durations.slice(trim, durations.length - trim || undefined);
-    const reviewSecondsPerQuestion = trimmed.length
-      ? Math.round(
-          trimmed.reduce((sum, duration) => sum + duration, 0) / trimmed.length,
-        )
-      : 45;
     return {
+      ...scope,
       topics,
-      unassignedQuestionCount: unassigned.length,
-      unassignedDueReviewCount: unassigned.filter((question) =>
-        dueQuestionIds.has(question.id),
-      ).length,
-      unassignedReviewDueDates: unassigned.flatMap((question) => {
-        const dueDate = reviewDueDateByQuestion.get(question.id);
-        return dueDate ? [dueDate] : [];
-      }),
-      reviewSecondsPerQuestion,
-      paceSampleSize: durations.length,
     };
   }
 

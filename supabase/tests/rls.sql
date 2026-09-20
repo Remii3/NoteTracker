@@ -59,6 +59,85 @@ set local request.jwt.claim.role = 'authenticated';
 
 set local request.jwt.claim.sub = '10000000-0000-4000-8000-000000000000';
 select pg_temp.assert_true(
+  (
+    public.get_exam_planning_scope(
+      '10000001-0000-4000-8000-000000000000', 'UTC'
+    )->>'chapterCount'
+  )::integer = 1
+  and (
+    public.get_exam_planning_scope(
+      '10000001-0000-4000-8000-000000000000', 'UTC'
+    )->>'topicCount'
+  )::integer = 1,
+  'exam planning scope: returns current user module totals'
+);
+select pg_temp.assert_true(
+  jsonb_array_length(public.get_exam_planning_chapters(
+    '10000001-0000-4000-8000-000000000000'
+  )->'chapters') = 1
+  and (
+    public.get_exam_planning_chapters(
+      '10000001-0000-4000-8000-000000000000'
+    )->'chapters'->0->>'topicCount'
+  )::integer = 1,
+  'exam planning chapters: returns current user chapter summaries'
+);
+select pg_temp.assert_true(
+  jsonb_array_length(public.get_exam_planning_topics(
+    '10000001-0000-4000-8000-000000000000', null, 'UTC'
+  )) = 1
+  and public.get_exam_planning_topics(
+    '10000001-0000-4000-8000-000000000000', null, 'UTC'
+  )->0->>'id' = '10000003-0000-4000-8000-000000000000',
+  'exam planning topics: returns only current user topics'
+);
+do $$ declare rejected boolean := false; begin
+  begin
+    perform public.get_exam_planning_scope(
+      '20000001-0000-4000-8000-000000000000', 'UTC'
+    );
+  exception when others then rejected := true;
+  end;
+  perform pg_temp.assert_true(rejected,
+    'exam planning scope: rejects another user module');
+end; $$;
+insert into public.topics(user_id,chapter_id,slug,title,position)
+select '10000000-0000-4000-8000-000000000000',
+  '10000002-0000-4000-8000-000000000000',
+  'scale-topic-' || item_index,
+  'Scale topic ' || item_index,
+  2000 + item_index
+from generate_series(1, 1001) as item_index;
+select pg_temp.assert_true(
+  jsonb_array_length(public.get_exam_planning_topics(
+    '10000001-0000-4000-8000-000000000000',
+    array['10000002-0000-4000-8000-000000000000']::uuid[],
+    'UTC'
+  )) = 1002,
+  'exam planning topics: returns more than the Data API row limit'
+);
+delete from public.topics where slug like 'scale-topic-%';
+insert into public.chapters(user_id,module_id,slug,title,position)
+select '10000000-0000-4000-8000-000000000000',
+  '10000001-0000-4000-8000-000000000000',
+  'scale-chapter-' || item_index,
+  'Scale chapter ' || item_index,
+  2000 + item_index
+from generate_series(1, 1001) as item_index;
+select pg_temp.assert_true(
+  (public.get_exam_planning_chapters(
+    '10000001-0000-4000-8000-000000000000'
+  )->>'totalCount')::integer = 1002
+  and jsonb_array_length(public.get_exam_planning_chapters(
+    '10000001-0000-4000-8000-000000000000'
+  )->'chapters') = 50
+  and (public.get_exam_planning_chapters(
+    '10000001-0000-4000-8000-000000000000'
+  )->>'hasMore')::boolean,
+  'exam planning chapters: cursor page is bounded above 1000 chapters'
+);
+delete from public.chapters where slug like 'scale-chapter-%';
+select pg_temp.assert_true(
   (select slug = 'module-1' from public.modules
    where id = '10000001-0000-4000-8000-000000000000'),
   'module slug: generated from the module name'
