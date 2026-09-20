@@ -1,11 +1,7 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-
-import { throwIfPostgrestError } from "@/features/notes/data/supabase-error";
 import type { Database, Json } from "@/lib/supabase/database.types";
-import { generateExamPlan } from "../domain/plan-generator";
 import type {
-  ExamPlan,
   ExamCalendar,
+  ExamPlan,
   ExamPlanDay,
   ExamPlanTopic,
   SaveExamPlanInput,
@@ -14,6 +10,10 @@ import type {
   ExamPlanningMaterial,
   ExamPlansRepository,
 } from "./exam-plans-repository";
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { generateExamPlan } from "../domain/plan-generator";
+import { throwIfPostgrestError } from "@/features/notes/data/supabase-error";
 
 type PlanRow = Database["public"]["Tables"]["exam_plans"]["Row"];
 
