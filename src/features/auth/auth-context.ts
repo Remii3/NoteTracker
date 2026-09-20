@@ -8,21 +8,30 @@ export type AuthContextValue = {
   isLoading: boolean;
   isPasswordRecovery: boolean;
   user: User | null;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (
+    email: string,
+    password: string,
+    captchaToken: string,
+  ) => Promise<void>;
   signUp: (
     name: string,
     email: string,
     password: string,
+    captchaToken: string,
   ) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
-  requestPasswordReset: (email: string) => Promise<void>;
+  requestPasswordReset: (email: string, captchaToken: string) => Promise<void>;
   updateName: (name: string) => Promise<void>;
   updatePassword: (
     currentPassword: string,
     newPassword: string,
   ) => Promise<void>;
-  deleteAccount: () => Promise<void>;
+  deleteAccount: (
+    currentPassword: string,
+    captchaToken: string,
+  ) => Promise<void>;
   completePasswordRecovery: (password: string) => Promise<void>;
+  cancelPasswordRecovery: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

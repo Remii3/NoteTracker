@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
-import { useUser } from "@/features/auth";
+import { getUserDisplayName, useUser } from "@/features/auth";
 import { supabase } from "@/lib/supabase/client";
 import { SupabaseTodayRepository } from "../data/supabase-today-repository";
 import { TodayDashboardPage } from "../components/today-dashboard-page";
@@ -20,11 +20,7 @@ export function TodayPage() {
     <TodayDashboardPage
       key={refreshKey}
       repository={repository}
-      userName={
-        typeof user.user_metadata.name === "string"
-          ? user.user_metadata.name
-          : null
-      }
+      userName={getUserDisplayName(user)}
       onChanged={refresh}
       onNavigate={navigate}
     />

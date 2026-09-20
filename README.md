@@ -35,11 +35,14 @@ Uzupełnij w `.env.local`:
 | `VITE_SUPABASE_URL`             | tak           | URL projektu Supabase                   |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | tak           | publiczny klucz klienta Supabase        |
 | `VITE_R2_IMAGES_API_URL`        | tak dla zdjęć | URL Workera Cloudflare                  |
+| `VITE_TURNSTILE_SITE_KEY`       | tak           | publiczny site key Cloudflare Turnstile |
 | `VITE_SENTRY_DSN`               | nie           | publiczny identyfikator projektu Sentry |
 | `VITE_SENTRY_RELEASE`           | nie           | identyfikator wydania widoczny w Sentry |
 
-Zmienne z prefiksem `VITE_` trafiają do kodu przeglądarki. Nie umieszczaj w
-nich `service_role`, prywatnych kluczy ani tokenów administracyjnych.
+Zmienne z prefiksem `VITE_` trafiają do kodu przeglądarki. Site key Turnstile
+jest publiczny, ale jego secret należy skonfigurować wyłącznie w ustawieniach
+Supabase Auth. Nie umieszczaj w zmiennych Vite `service_role`, prywatnych
+kluczy ani tokenów administracyjnych.
 
 Konfiguracja bazy jest opisana w
 [`docs/database-setup.md`](docs/database-setup.md), a lokalne uruchomienie

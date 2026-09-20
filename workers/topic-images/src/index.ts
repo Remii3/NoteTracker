@@ -8,7 +8,7 @@ interface Env {
   ALLOWED_ORIGINS: string;
 }
 
-type User = { id: string };
+type User = { id: string; email: string };
 
 type ImageRow = {
   id: string;
@@ -86,11 +86,14 @@ async function authenticate(request: Request, env: Env) {
     value === null ||
     !("id" in value) ||
     typeof value.id !== "string" ||
-    !UUID_PATTERN.test(value.id)
+    !UUID_PATTERN.test(value.id) ||
+    !("email" in value) ||
+    typeof value.email !== "string" ||
+    !value.email
   ) {
     return null;
   }
-  return { id: value.id };
+  return { id: value.id, email: value.email };
 }
 
 function isUploadTooLarge(request: Request) {
@@ -153,7 +156,101 @@ async function deleteUserImages(env: Env, userId: string) {
   }
 }
 
+async function readBoundedText(request: Request, maxBytes: number) {
+  const declaredLength = request.headers.get("Content-Length");
+  if (declaredLength) {
+    const bytes = Number(declaredLength);
+    if (!Number.isFinite(bytes) || bytes > maxBytes) return null;
+  }
+  if (!request.body) return null;
+
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let bytesRead = 0;
+  let text = "";
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      bytesRead += chunk.value.byteLength;
+      if (bytesRead > maxBytes) {
+        await reader.cancel();
+        return null;
+      }
+      text += decoder.decode(chunk.value, { stream: true });
+    }
+    return text + decoder.decode();
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+async function reauthenticateForAccountDeletion(
+  request: Request,
+  env: Env,
+  user: User,
+) {
+  let value: unknown;
+  try {
+    const body = await readBoundedText(request, 4096);
+    if (!body) return false;
+    value = JSON.parse(body);
+  } catch {
+    return false;
+  }
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !("currentPassword" in value) ||
+    typeof value.currentPassword !== "string" ||
+    value.currentPassword.length === 0 ||
+    value.currentPassword.length > 72 ||
+    !("captchaToken" in value) ||
+    typeof value.captchaToken !== "string" ||
+    value.captchaToken.length === 0 ||
+    value.captchaToken.length > 2048
+  ) {
+    return false;
+  }
+
+  const response = await fetch(
+    `${env.SUPABASE_URL}/auth/v1/token?grant_type=password`,
+    {
+      method: "POST",
+      headers: {
+        apikey: env.SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${env.SUPABASE_PUBLISHABLE_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: user.email,
+        password: value.currentPassword,
+        gotrue_meta_security: { captcha_token: value.captchaToken },
+      }),
+    },
+  );
+  if (!response.ok) return false;
+
+  const authResult: unknown = await response.json();
+  return (
+    typeof authResult === "object" &&
+    authResult !== null &&
+    "user" in authResult &&
+    typeof authResult.user === "object" &&
+    authResult.user !== null &&
+    "id" in authResult.user &&
+    authResult.user.id === user.id
+  );
+}
+
 async function deleteAccount(request: Request, env: Env, user: User) {
+  if (!(await reauthenticateForAccountDeletion(request, env, user))) {
+    return {
+      markerKey: null,
+      response: json(request, env, { error: "Reauthentication failed" }, 403),
+    };
+  }
+
   const markerKey = `${ACCOUNT_DELETION_PREFIX}${user.id}`;
   await env.IMAGES.put(markerKey, "pending", {
     httpMetadata: { contentType: "text/plain" },
@@ -168,12 +265,32 @@ async function deleteAccount(request: Request, env: Env, user: User) {
     throw new Error("Auth user deletion failed");
   }
 
-  await env.IMAGES.put(markerKey, "confirmed", {
-    httpMetadata: { contentType: "text/plain" },
-  });
-  await deleteUserImages(env, user.id);
-  await env.IMAGES.delete(markerKey);
-  return json(request, env, { success: true });
+  return {
+    markerKey,
+    response: json(request, env, { success: true, cleanupPending: true }, 202),
+  };
+}
+
+async function finishDeletedAccountCleanup(
+  env: Env,
+  userId: string,
+  markerKey: string,
+) {
+  try {
+    await env.IMAGES.put(markerKey, "confirmed", {
+      httpMetadata: { contentType: "text/plain" },
+    });
+    await deleteUserImages(env, userId);
+    await env.IMAGES.delete(markerKey);
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        message: "Deleted account image cleanup deferred to cron",
+        userId,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  }
 }
 
 async function purgeDeletedAccountImages(env: Env) {
@@ -521,7 +638,7 @@ async function purgeExpiredTrash(env: Env) {
 }
 
 export default {
-  async fetch(request, env): Promise<Response> {
+  async fetch(request, env, ctx): Promise<Response> {
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: allowedOrigin(request, env) ? 204 : 403,
@@ -583,7 +700,12 @@ export default {
         return await purgeTrash(request, env, resourceId);
       }
       if (accountMatch) {
-        return await deleteAccount(request, env, user);
+        const deletion = await deleteAccount(request, env, user);
+        if (!deletion.markerKey) return deletion.response;
+        ctx.waitUntil(
+          finishDeletedAccountCleanup(env, user.id, deletion.markerKey),
+        );
+        return deletion.response;
       }
       if (topicMatch && request.method === "GET") {
         return await listImages(request, env, resourceId);

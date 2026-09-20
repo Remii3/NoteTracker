@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/features/theme";
 import { getAuthErrorMessage } from "./auth-error";
+import { TurnstileWidget } from "./turnstile-widget";
 import { useAuth } from "./auth-context";
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -56,6 +57,8 @@ type Mode = AuthFormValues["mode"];
 export function AuthPage() {
   const { requestPasswordReset, signIn, signUp } = useAuth();
   const [message, setMessage] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const form = useForm<AuthFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -72,6 +75,8 @@ export function AuthPage() {
 
   function changeMode(nextMode: Mode) {
     setMessage(null);
+    setCaptchaToken(null);
+    setCaptchaResetKey((key) => key + 1);
 
     form.clearErrors();
 
@@ -105,19 +110,26 @@ export function AuthPage() {
 
   async function handleSubmit(data: AuthFormValues) {
     form.clearErrors("root");
-
     setMessage(null);
+    if (!captchaToken) {
+      form.setError("root", {
+        message: "Potwierdź, że nie jesteś robotem.",
+      });
+      return;
+    }
+
     try {
       if (data.mode === "reset") {
-        await requestPasswordReset(data.email);
+        await requestPasswordReset(data.email, captchaToken);
         setMessage("Wysłaliśmy link do ustawienia nowego hasła.");
       } else if (data.mode === "sign-in") {
-        await signIn(data.email, data.password);
+        await signIn(data.email, data.password, captchaToken);
       } else {
         const result = await signUp(
           data.name.trim(),
           data.email,
           data.password,
+          captchaToken,
         );
         if (result.confirmationRequired) {
           setMessage(
@@ -132,6 +144,9 @@ export function AuthPage() {
           data.mode === "reset" ? "request-password-reset" : data.mode,
         ),
       });
+    } finally {
+      setCaptchaToken(null);
+      setCaptchaResetKey((key) => key + 1);
     }
   }
 
@@ -266,6 +281,17 @@ export function AuthPage() {
                   )}
                 />
               )}
+              <TurnstileWidget
+                action={
+                  mode === "sign-in"
+                    ? "login"
+                    : mode === "sign-up"
+                      ? "signup"
+                      : "password-reset"
+                }
+                onTokenChange={setCaptchaToken}
+                resetKey={captchaResetKey}
+              />
               {form.formState.errors.root && (
                 <FieldError errors={[form.formState.errors.root]} />
               )}
@@ -277,7 +303,7 @@ export function AuthPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={form.formState.isSubmitting}
+                disabled={!captchaToken || form.formState.isSubmitting}
               >
                 {form.formState.isSubmitting
                   ? "Proszę czekać…"

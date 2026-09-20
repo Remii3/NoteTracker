@@ -22,12 +22,12 @@ const formSchema = z
     passwordVerification: passwordSchema,
   })
   .refine((val) => val.password === val.passwordVerification, {
-    error: "Hasła muszą być identyczne",
+    error: "Hasła muszą być identyczne.",
     path: ["passwordVerification"],
   });
 
 export function PasswordRecoveryPage() {
-  const { completePasswordRecovery } = useAuth();
+  const { cancelPasswordRecovery, completePasswordRecovery } = useAuth();
 
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -45,6 +45,17 @@ export function PasswordRecoveryPage() {
     } catch (caughtError) {
       form.setError("root", {
         message: getAuthErrorMessage(caughtError, "recover-password"),
+      });
+    }
+  }
+
+  async function cancelRecovery() {
+    form.clearErrors("root");
+    try {
+      await cancelPasswordRecovery();
+    } catch {
+      form.setError("root", {
+        message: "Nie udało się zakończyć odzyskiwania. Odśwież stronę.",
       });
     }
   }
@@ -119,6 +130,15 @@ export function PasswordRecoveryPage() {
             }
           >
             {form.formState.isSubmitting ? "Zapisywanie…" : "Zapisz nowe hasło"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={form.formState.isSubmitting}
+            onClick={() => void cancelRecovery()}
+          >
+            Wróć do logowania
           </Button>
         </form>
       </section>

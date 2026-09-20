@@ -14,6 +14,7 @@ W ustawieniach środowiska dodaj:
 VITE_SUPABASE_URL
 VITE_SUPABASE_PUBLISHABLE_KEY
 VITE_R2_IMAGES_API_URL
+VITE_TURNSTILE_SITE_KEY
 VITE_SENTRY_DSN                 # opcjonalne
 VITE_SENTRY_RELEASE             # opcjonalne
 SENTRY_AUTH_TOKEN               # opcjonalny sekret builda
@@ -53,13 +54,18 @@ w kodzie Workera.
 - wykonano backup przed zmianą schematu;
 - `Authentication > URL Configuration` w Supabase zawiera produkcyjny origin
   jako `Site URL` oraz `<origin>/update-password` na liście `Redirect URLs`;
+- widget Cloudflare Turnstile zawiera produkcyjną domenę frontendu, a jego
+  secret i provider są skonfigurowane w
+  `Authentication > Bot and Abuse Protection` w Supabase;
+- `VITE_TURNSTILE_SITE_KEY` zawiera publiczny site key tego samego widgetu;
 - `ALLOWED_ORIGINS` zawiera dokładny produkcyjny origin Vercel;
 - bucket `notetracker-images` nie ma publicznego dostępu;
 - sekrety nie znajdują się w repozytorium ani zmiennych `VITE_*`.
 
 ## Smoke test po wdrożeniu
 
-1. Otwórz aplikację w prywatnym oknie i sprawdź rejestrację lub logowanie.
+1. Otwórz aplikację w prywatnym oknie i sprawdź Turnstile oraz rejestrację lub
+   logowanie.
 2. Utwórz rozdział i temat, zapisz sformatowaną treść, odśwież stronę i sprawdź
    dane.
 3. Dodaj, otwórz, przestaw i usuń zdjęcie.

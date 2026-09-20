@@ -4,6 +4,7 @@ type AuthAction =
   | "sign-in"
   | "sign-up"
   | "request-password-reset"
+  | "delete-account"
   | "update-name"
   | "update-password"
   | "recover-password";
@@ -12,6 +13,7 @@ const fallbackMessages: Record<AuthAction, string> = {
   "sign-in": "Nie udało się zalogować.",
   "sign-up": "Nie udało się zarejestrować.",
   "request-password-reset": "Nie udało się wysłać wiadomości.",
+  "delete-account": "Nie udało się usunąć konta.",
   "update-name": "Nie udało się zaktualizować imienia.",
   "update-password": "Nie udało się zmienić hasła.",
   "recover-password": "Nie udało się ustawić nowego hasła.",
@@ -22,9 +24,11 @@ export function getAuthErrorMessage(error: unknown, action: AuthAction) {
 
   switch (error.code) {
     case "invalid_credentials":
-      return action === "update-password"
+      return action === "update-password" || action === "delete-account"
         ? "Stare hasło jest nieprawidłowe."
         : "Nieprawidłowy email lub hasło.";
+    case "captcha_failed":
+      return "Weryfikacja antybotowa nie powiodła się. Spróbuj ponownie.";
     case "email_not_confirmed":
       return "Najpierw potwierdź adres email.";
     case "weak_password":

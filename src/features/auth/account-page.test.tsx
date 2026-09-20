@@ -30,6 +30,18 @@ vi.mock("./auth-context", () => ({
   }),
 }));
 
+vi.mock("./turnstile-widget", () => ({
+  TurnstileWidget: ({
+    onTokenChange,
+  }: {
+    onTokenChange: (token: string) => void;
+  }) => (
+    <button type="button" onClick={() => onTokenChange("captcha-token")}>
+      Potwierdź CAPTCHA
+    </button>
+  ),
+}));
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -45,15 +57,27 @@ it("requires explicit confirmation and permanently deletes the account", async (
   render(<RouterProvider router={router} />);
 
   fireEvent.click(screen.getByRole("button", { name: "Usuń konto" }));
+  fireEvent.change(
+    screen.getByLabelText("Obecne hasło", {
+      selector: "#delete-account-password",
+    }),
+    { target: { value: "secret-password" } },
+  );
   const confirmation = screen.getByLabelText("Potwierdzenie");
   const submit = screen.getByRole("button", { name: "Usuń konto na zawsze" });
   expect((submit as HTMLButtonElement).disabled).toBe(true);
 
   fireEvent.change(confirmation, { target: { value: "USUŃ" } });
+  fireEvent.click(screen.getByRole("button", { name: "Potwierdź CAPTCHA" }));
   expect((submit as HTMLButtonElement).disabled).toBe(false);
   fireEvent.click(submit);
 
-  await waitFor(() => expect(auth.deleteAccount).toHaveBeenCalledOnce());
+  await waitFor(() =>
+    expect(auth.deleteAccount).toHaveBeenCalledWith(
+      "secret-password",
+      "captcha-token",
+    ),
+  );
   expect(auth.signOut).toHaveBeenCalledOnce();
   expect(auth.deleteAccount.mock.invocationCallOrder[0]).toBeLessThan(
     auth.signOut.mock.invocationCallOrder[0],

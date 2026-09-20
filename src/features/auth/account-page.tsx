@@ -3,6 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { LogOut, Trash2, UserRound } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { isAuthError } from "@supabase/supabase-js";
 import * as z from "zod";
 
 import {
@@ -33,6 +34,7 @@ import { getAuthErrorMessage } from "./auth-error";
 import { nameSchema, passwordSchema } from "./auth-schema";
 import { useAuth } from "./auth-context";
 import { getUserDisplayName } from "./user-display-name";
+import { TurnstileWidget } from "./turnstile-widget";
 
 const profileFormSchema = z.object({ name: nameSchema });
 const passwordFormSchema = z
@@ -59,6 +61,11 @@ export function AccountSettings() {
     "account",
   );
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteCaptchaToken, setDeleteCaptchaToken] = useState<string | null>(
+    null,
+  );
+  const [deleteCaptchaResetKey, setDeleteCaptchaResetKey] = useState(0);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
@@ -126,19 +133,34 @@ export function AccountSettings() {
   }
 
   async function handleDeleteAccount() {
-    if (deleteConfirmation !== "USUŃ") return;
+    if (deleteConfirmation !== "USUŃ" || !deletePassword || !deleteCaptchaToken)
+      return;
     setDeleteError(null);
     setIsDeleting(true);
     try {
-      await deleteAccount();
+      await deleteAccount(deletePassword, deleteCaptchaToken);
       clearDeletedUserLocalData(userId);
-      await signOut();
+      setDeleteOpen(false);
+      try {
+        await signOut();
+      } catch {
+        toast.add({
+          data: { type: "error" },
+          description:
+            "Konto usunięto, ale lokalne wylogowanie nie powiodło się. Odśwież stronę.",
+        });
+      }
+      navigate("/", { replace: true });
     } catch (error) {
       setDeleteError(
-        error instanceof Error
+        error instanceof Error && !isAuthError(error)
           ? error.message
-          : "Nie udało się usunąć konta. Spróbuj ponownie.",
+          : getAuthErrorMessage(error, "delete-account"),
       );
+      setDeletePassword("");
+      setDeleteCaptchaToken(null);
+      setDeleteCaptchaResetKey((key) => key + 1);
+    } finally {
       setIsDeleting(false);
     }
   }
@@ -375,6 +397,9 @@ export function AccountSettings() {
           setDeleteOpen(open);
           if (!open) {
             setDeleteConfirmation("");
+            setDeletePassword("");
+            setDeleteCaptchaToken(null);
+            setDeleteCaptchaResetKey((key) => key + 1);
             setDeleteError(null);
           }
         }}
@@ -383,11 +408,29 @@ export function AccountSettings() {
           <AlertDialogHeader>
             <AlertDialogTitle>Trwale usunąć konto?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tej operacji nie można cofnąć. Wpisz USUŃ, aby potwierdzić
-              usunięcie konta wraz ze wszystkimi danymi i zdjęciami.
+              Tej operacji nie można cofnąć. Podaj obecne hasło i wpisz USUŃ,
+              aby potwierdzić usunięcie konta wraz ze wszystkimi danymi i
+              zdjęciami.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Field data-invalid={Boolean(deleteError)}>
+          <Field>
+            <FieldLabel htmlFor="delete-account-password">
+              Obecne hasło
+            </FieldLabel>
+            <Input
+              id="delete-account-password"
+              type="password"
+              value={deletePassword}
+              onChange={(event) => {
+                setDeletePassword(event.target.value);
+                setDeleteError(null);
+              }}
+              autoComplete="current-password"
+              autoFocus
+              disabled={isDeleting}
+            />
+          </Field>
+          <Field>
             <FieldLabel htmlFor="delete-account-confirmation">
               Potwierdzenie
             </FieldLabel>
@@ -399,18 +442,26 @@ export function AccountSettings() {
                 setDeleteError(null);
               }}
               autoComplete="off"
-              autoFocus
               disabled={isDeleting}
               placeholder="USUŃ"
-              aria-invalid={Boolean(deleteError)}
             />
-            {deleteError && <FieldError>{deleteError}</FieldError>}
           </Field>
+          <TurnstileWidget
+            action="account-delete"
+            onTokenChange={setDeleteCaptchaToken}
+            resetKey={deleteCaptchaResetKey}
+          />
+          {deleteError && <FieldError>{deleteError}</FieldError>}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Anuluj</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              disabled={deleteConfirmation !== "USUŃ" || isDeleting}
+              disabled={
+                deleteConfirmation !== "USUŃ" ||
+                !deletePassword ||
+                !deleteCaptchaToken ||
+                isDeleting
+              }
               onClick={() => void handleDeleteAccount()}
             >
               {isDeleting ? "Usuwanie…" : "Usuń konto na zawsze"}
