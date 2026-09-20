@@ -2,6 +2,7 @@ import type {
   ExamPlanAssignment,
   ExamPlanDay,
   ExamPlanTopic,
+  ReviewDueDateCount,
 } from "../model/types";
 
 export type GenerateExamPlanInput = {
@@ -16,7 +17,7 @@ export type GenerateExamPlanInput = {
   topics: ExamPlanTopic[];
   unassignedQuestionCount?: number;
   unassignedDueReviewCount?: number;
-  unassignedReviewDueDates?: string[];
+  unassignedReviewDueDateCounts?: ReviewDueDateCount[];
   lockedAssignments?: ExamPlanAssignment[];
   creditedTopicIds?: Iterable<string>;
 };
@@ -67,7 +68,7 @@ function distributeReviews(
   unassignedDueReviewCount: number,
   dailyTimeLimitMinutes: number | null,
   reviewSecondsPerQuestion: number,
-  unassignedReviewDueDates: string[],
+  unassignedReviewDueDateCounts: ReviewDueDateCount[],
 ) {
   if (!days.length) return;
   const dueNow =
@@ -77,17 +78,21 @@ function distributeReviews(
     unassignedQuestionCount +
     topics.reduce((sum, topic) => sum + topic.questionCount, 0);
   const expectedPasses = 1.25 + targetRetention;
-  const knownDueDates = [
-    ...unassignedReviewDueDates,
-    ...topics.flatMap((topic) => topic.reviewDueDates ?? []),
+  const knownDueDateCounts = [
+    ...unassignedReviewDueDateCounts,
+    ...topics.flatMap((topic) =>
+      topic.reviewDueDateCounts?.length
+        ? topic.reviewDueDateCounts
+        : (topic.reviewDueDates ?? []).map((date) => ({ date, count: 1 })),
+    ),
   ];
   const knownDueByDay = new Map<string, number>();
-  for (const dueDate of knownDueDates) {
-    const targetDay = days.find((day) => day.date >= dueDate);
+  for (const due of knownDueDateCounts) {
+    const targetDay = days.find((day) => day.date >= due.date);
     if (targetDay)
       knownDueByDay.set(
         targetDay.date,
-        (knownDueByDay.get(targetDay.date) ?? 0) + 1,
+        (knownDueByDay.get(targetDay.date) ?? 0) + due.count,
       );
   }
   const knownDueCount = [...knownDueByDay.values()].reduce(
@@ -268,7 +273,7 @@ export function generateExamPlan(
     input.unassignedDueReviewCount ?? 0,
     input.dailyTimeLimitMinutes ?? null,
     input.reviewSecondsPerQuestion ?? 45,
-    input.unassignedReviewDueDates ?? [],
+    input.unassignedReviewDueDateCounts ?? [],
   );
 
   const scheduledTopicCount = days.reduce(

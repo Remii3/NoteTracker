@@ -9,7 +9,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { pl } from "date-fns/locale";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   AlertDialog,
@@ -283,6 +283,7 @@ export function ExamPlanBuilder({
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [selectedMaterialsOpen, setSelectedMaterialsOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const chapterRequestVersion = useRef(0);
 
   useEffect(() => {
     let active = true;
@@ -318,6 +319,8 @@ export function ExamPlanBuilder({
         setSearching(Boolean(nextQuery));
         setChapters([]);
         setSearchResults([]);
+        setOpenChapterIds([]);
+        chapterRequestVersion.current += 1;
         setDebouncedQuery(nextQuery);
       },
       normalized.length >= 2 ? 300 : 0,
@@ -327,6 +330,7 @@ export function ExamPlanBuilder({
 
   useEffect(() => {
     let active = true;
+    chapterRequestVersion.current += 1;
     repository
       .getPlanningChapters(moduleId, {
         query: debouncedQuery || undefined,
@@ -469,6 +473,8 @@ export function ExamPlanBuilder({
 
   async function loadMoreChapters() {
     if (!chapterCursor || loadingMoreChapters) return;
+    const requestVersion = chapterRequestVersion.current;
+    const requestQuery = debouncedQuery;
     setLoadingMoreChapters(true);
     try {
       const page = await repository.getPlanningChapters(moduleId, {
@@ -476,7 +482,19 @@ export function ExamPlanBuilder({
         cursor: chapterCursor,
         limit: CHAPTER_PAGE_SIZE,
       });
-      setChapters((current) => [...current, ...page.chapters]);
+      if (
+        requestVersion !== chapterRequestVersion.current ||
+        requestQuery !== debouncedQuery
+      )
+        return;
+      setChapters((current) => [
+        ...new Map(
+          [...current, ...page.chapters].map((chapter) => [
+            chapter.id,
+            chapter,
+          ]),
+        ).values(),
+      ]);
       setKnownChapters((current) => [
         ...new Map(
           [...current, ...page.chapters].map((chapter) => [
@@ -654,8 +672,8 @@ export function ExamPlanBuilder({
         unassignedDueReviewCount: includeUnassigned
           ? scope?.unassignedDueReviewCount
           : 0,
-        unassignedReviewDueDates: includeUnassigned
-          ? scope?.unassignedReviewDueDates
+        unassignedReviewDueDateCounts: includeUnassigned
+          ? scope?.unassignedReviewDueDateCounts
           : [],
         lockedAssignments: initialDetails?.days
           .flatMap((day) => day.assignments)
@@ -715,7 +733,10 @@ export function ExamPlanBuilder({
     selectedTopicCount > 0 &&
     !preparing &&
     loadingChapterIds.size === 0 &&
-    !scopeLoading;
+    !scopeLoading &&
+    !scopeError &&
+    !chaptersError &&
+    Boolean(scope);
   const availableStudyDays = useMemo(
     () => countStudyDays(localDate(), examDate, weekdays),
     [examDate, weekdays],
@@ -805,6 +826,11 @@ export function ExamPlanBuilder({
           initialDetails.plan.dailyQuestionLimit ??
           32) ||
       includeUnassigned !== initialDetails.plan.includeUnassignedQuestions ||
+      initialTopics.some(
+        (topic) =>
+          (workloads[topic.id] ?? topic.workloadPoints) !==
+          topic.workloadPoints,
+      ) ||
       selectedChapterIds.size > 0 ||
       excludedTopicIds.size > 0 ||
       currentSelectedIds.join(",") !== initialSelectedIds.join(",")
@@ -903,10 +929,18 @@ export function ExamPlanBuilder({
   }
 
   async function save() {
-    if (!name.trim() || !selectedTopics.length || !generated.days.length) {
+    if (
+      !name.trim() ||
+      !selectedTopics.length ||
+      !generated.days.length ||
+      !scope ||
+      scopeLoading ||
+      scopeError
+    ) {
       toast.add({
         data: { type: "error" },
-        description: "Plan wymaga nazwy, terminu i co najmniej jednego tematu.",
+        description:
+          "Plan wymaga poprawnego zakresu, nazwy, terminu i co najmniej jednego tematu.",
       });
       return;
     }
@@ -947,7 +981,15 @@ export function ExamPlanBuilder({
         topicSettings: selectedTopics,
         days: [...historicalDays, ...generated.days],
       });
-      await repository.rebuildAdaptivePlans(undefined, true);
+      try {
+        await repository.rebuildAdaptivePlans(undefined, true);
+      } catch {
+        toast.add({
+          data: { type: "warning" },
+          description:
+            "Plan zapisano, ale nie udało się odświeżyć pozostałych planów.",
+        });
+      }
       toast.add({
         data: { type: "success" },
         description: "Plan egzaminu został zapisany.",
@@ -1126,10 +1168,12 @@ export function ExamPlanBuilder({
                         className="h-9 rounded-md border bg-background px-3 text-sm"
                       >
                         <option value="all">Wszystkie rozdziały</option>
-                        <option value="selected">Zaznaczone</option>
-                        <option value="unselected">Niezaznaczone</option>
+                        <option value="selected">Zaznaczone (wczytane)</option>
+                        <option value="unselected">
+                          Niezaznaczone (wczytane)
+                        </option>
                         <option value="completed">
-                          Z ukończonymi tematami
+                          Z ukończonymi tematami (wczytane)
                         </option>
                       </select>
                     </div>
@@ -1808,6 +1852,9 @@ export function ExamPlanBuilder({
                   <Button
                     disabled={
                       saving ||
+                      scopeLoading ||
+                      scopeError ||
+                      !scope ||
                       !generated.days.length ||
                       Boolean(limitError) ||
                       Boolean(advancedError)

@@ -3,6 +3,7 @@ import type {
   ExamPlanDetails,
   ExamCalendar,
   ExamPlanTopic,
+  ReviewDueDateCount,
   SaveExamPlanInput,
 } from "../model/types";
 
@@ -10,7 +11,7 @@ export type ExamPlanningMaterial = {
   topics: ExamPlanTopic[];
   unassignedQuestionCount: number;
   unassignedDueReviewCount: number;
-  unassignedReviewDueDates: string[];
+  unassignedReviewDueDateCounts: ReviewDueDateCount[];
   reviewSecondsPerQuestion: number;
   paceSampleSize: number;
 };
@@ -58,10 +59,6 @@ export interface ExamPlansRepository {
     moduleId: string,
     chapterIds?: string[],
     searchQuery?: string,
-  ): Promise<ExamPlanTopic[]>;
-  searchPlanningTopics(
-    moduleId: string,
-    query: string,
   ): Promise<ExamPlanTopic[]>;
   getPlanningMaterial(moduleId: string): Promise<ExamPlanningMaterial>;
   save(input: SaveExamPlanInput): Promise<string>;

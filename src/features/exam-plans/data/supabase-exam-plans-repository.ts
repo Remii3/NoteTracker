@@ -14,6 +14,7 @@ import type {
 } from "./exam-plans-repository";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
 import { generateExamPlan } from "../domain/plan-generator";
 import { throwIfPostgrestError } from "@/features/notes/data/supabase-error";
 
@@ -33,9 +34,87 @@ type PlanAssignmentRow = Pick<
 >;
 type PlanDayRow =
   Database["public"]["Tables"]["exam_plan_daily_targets"]["Row"];
+type CalendarScopeRow = Pick<
+  Database["public"]["Tables"]["exam_plan_topics"]["Row"],
+  "exam_plan_id" | "topic_id"
+>;
+type CalendarAssignmentRow = Pick<
+  Database["public"]["Tables"]["exam_plan_assignments"]["Row"],
+  "exam_plan_id" | "topic_id" | "scheduled_for"
+>;
+type CalendarTargetRow = Pick<
+  Database["public"]["Tables"]["exam_plan_daily_targets"]["Row"],
+  | "exam_plan_id"
+  | "target_date"
+  | "review_forecast_low"
+  | "review_forecast_high"
+  | "is_overloaded"
+>;
+type CalendarModuleRow = Pick<
+  Database["public"]["Tables"]["modules"]["Row"],
+  "id" | "name" | "slug"
+>;
 
 const adaptiveRebuilds = new Map<string, Promise<void>>();
 const DATABASE_PAGE_SIZE = 1_000;
+
+const dueDateCountSchema = z.object({
+  date: z.string(),
+  count: z.number().int().nonnegative(),
+});
+
+const planningTopicSchema = z.object({
+  id: z.string().uuid(),
+  chapterId: z.string().uuid(),
+  chapterTitle: z.string(),
+  title: z.string(),
+  completed: z.boolean(),
+  workloadPoints: z.number().int().min(1).max(6),
+  workloadSource: z.enum(["automatic", "manual"]),
+  questionCount: z.number().int().nonnegative(),
+  dueReviewCount: z.number().int().nonnegative(),
+  reviewDueDateCounts: z.array(dueDateCountSchema).default([]),
+});
+
+const planningScopeSchema = z.object({
+  chapterCount: z.number().int().nonnegative(),
+  topicCount: z.number().int().nonnegative(),
+  unfinishedTopicCount: z.number().int().nonnegative(),
+  unassignedQuestionCount: z.number().int().nonnegative(),
+  unassignedDueReviewCount: z.number().int().nonnegative(),
+  unassignedReviewDueDateCounts: z.array(dueDateCountSchema),
+  reviewSecondsPerQuestion: z.number().int().positive(),
+  paceSampleSize: z.number().int().nonnegative(),
+});
+
+const planningChapterSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  position: z.number().int(),
+  topicCount: z.number().int().nonnegative(),
+  unfinishedTopicCount: z.number().int().nonnegative(),
+});
+
+const planningChapterPageSchema = z.object({
+  chapters: z.array(planningChapterSchema),
+  totalCount: z.number().int().nonnegative(),
+  hasMore: z.boolean(),
+  nextCursor: z
+    .object({ position: z.number().int(), id: z.string().uuid() })
+    .nullable(),
+});
+
+const planningTopicPageSchema = z.object({
+  topics: z.array(planningTopicSchema),
+  hasMore: z.boolean(),
+  nextCursor: z
+    .object({
+      chapterPosition: z.number().int(),
+      topicPosition: z.number().int(),
+      id: z.string().uuid(),
+    })
+    .nullable(),
+});
 
 function localDateKey() {
   const date = new Date();
@@ -72,6 +151,82 @@ export class SupabaseExamPlansRepository implements ExamPlansRepository {
   constructor(client: SupabaseClient<Database>, userId: string) {
     this.client = client;
     this.userId = userId;
+  }
+
+  private async listCalendarModules(moduleIds: string[]) {
+    const rows: CalendarModuleRow[] = [];
+    for (let from = 0; ; from += DATABASE_PAGE_SIZE) {
+      const { data, error } = await this.client
+        .from("modules")
+        .select("id,name,slug")
+        .eq("user_id", this.userId)
+        .in("id", moduleIds)
+        .order("id")
+        .range(from, from + DATABASE_PAGE_SIZE - 1);
+      throwIfPostgrestError(error);
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < DATABASE_PAGE_SIZE) return rows;
+    }
+  }
+
+  private async listCalendarScopes(planIds: string[]) {
+    const rows: CalendarScopeRow[] = [];
+    for (let from = 0; ; from += DATABASE_PAGE_SIZE) {
+      const { data, error } = await this.client
+        .from("exam_plan_topics")
+        .select("exam_plan_id,topic_id")
+        .eq("user_id", this.userId)
+        .in("exam_plan_id", planIds)
+        .order("exam_plan_id")
+        .order("topic_id")
+        .range(from, from + DATABASE_PAGE_SIZE - 1);
+      throwIfPostgrestError(error);
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < DATABASE_PAGE_SIZE) return rows;
+    }
+  }
+
+  private async listCalendarAssignments(planIds: string[], fromDate: string) {
+    const rows: CalendarAssignmentRow[] = [];
+    for (let from = 0; ; from += DATABASE_PAGE_SIZE) {
+      const { data, error } = await this.client
+        .from("exam_plan_assignments")
+        .select("exam_plan_id,topic_id,scheduled_for")
+        .eq("user_id", this.userId)
+        .in("exam_plan_id", planIds)
+        .gte("scheduled_for", fromDate)
+        .order("scheduled_for")
+        .order("exam_plan_id")
+        .order("topic_id")
+        .range(from, from + DATABASE_PAGE_SIZE - 1);
+      throwIfPostgrestError(error);
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < DATABASE_PAGE_SIZE) return rows;
+    }
+  }
+
+  private async listCalendarTargets(planIds: string[], fromDate: string) {
+    const rows: CalendarTargetRow[] = [];
+    for (let from = 0; ; from += DATABASE_PAGE_SIZE) {
+      const { data, error } = await this.client
+        .from("exam_plan_daily_targets")
+        .select(
+          "exam_plan_id,target_date,review_forecast_low,review_forecast_high,is_overloaded",
+        )
+        .eq("user_id", this.userId)
+        .in("exam_plan_id", planIds)
+        .gte("target_date", fromDate)
+        .order("target_date")
+        .order("exam_plan_id")
+        .range(from, from + DATABASE_PAGE_SIZE - 1);
+      throwIfPostgrestError(error);
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < DATABASE_PAGE_SIZE) return rows;
+    }
   }
 
   private async listPlanTopics(planId: string) {
@@ -149,61 +304,31 @@ export class SupabaseExamPlansRepository implements ExamPlansRepository {
     if (!plans.length) return { plans: [], days: [] };
     const planIds = plans.map((plan) => plan.id);
     const moduleIds = [...new Set(plans.map((plan) => plan.moduleId))];
-    const [modulesResult, scopesResult, assignmentsResult, targetsResult] =
+    const [moduleRows, scopeRows, assignmentRows, targetRows] =
       await Promise.all([
-        this.client
-          .from("modules")
-          .select("id,name,slug")
-          .eq("user_id", this.userId)
-          .in("id", moduleIds),
-        this.client
-          .from("exam_plan_topics")
-          .select("exam_plan_id,topic_id")
-          .eq("user_id", this.userId)
-          .in("exam_plan_id", planIds),
-        this.client
-          .from("exam_plan_assignments")
-          .select("exam_plan_id,topic_id,scheduled_for")
-          .eq("user_id", this.userId)
-          .in("exam_plan_id", planIds)
-          .gte("scheduled_for", fromDate),
-        this.client
-          .from("exam_plan_daily_targets")
-          .select(
-            "exam_plan_id,target_date,review_forecast_low,review_forecast_high,is_overloaded",
-          )
-          .eq("user_id", this.userId)
-          .in("exam_plan_id", planIds)
-          .gte("target_date", fromDate)
-          .order("target_date"),
+        this.listCalendarModules(moduleIds),
+        this.listCalendarScopes(planIds),
+        this.listCalendarAssignments(planIds, fromDate),
+        this.listCalendarTargets(planIds, fromDate),
       ]);
-    throwIfPostgrestError(modulesResult.error);
-    throwIfPostgrestError(scopesResult.error);
-    throwIfPostgrestError(assignmentsResult.error);
-    throwIfPostgrestError(targetsResult.error);
 
-    const modules = new Map(
-      (modulesResult.data ?? []).map((module) => [module.id, module]),
-    );
+    const modules = new Map(moduleRows.map((module) => [module.id, module]));
     const scopes = new Map<string, Set<string>>();
-    for (const row of scopesResult.data ?? []) {
+    for (const row of scopeRows) {
       const scope = scopes.get(row.exam_plan_id) ?? new Set<string>();
       scope.add(row.topic_id);
       scopes.set(row.exam_plan_id, scope);
     }
     const assignmentsByDate = new Map<string, Set<string>>();
-    for (const row of assignmentsResult.data ?? []) {
+    for (const row of assignmentRows) {
       const topics =
         assignmentsByDate.get(row.scheduled_for) ?? new Set<string>();
       topics.add(row.topic_id);
       assignmentsByDate.set(row.scheduled_for, topics);
     }
     const planById = new Map(plans.map((plan) => [plan.id, plan]));
-    const targetsByDate = new Map<
-      string,
-      NonNullable<typeof targetsResult.data>
-    >();
-    for (const target of targetsResult.data ?? []) {
+    const targetsByDate = new Map<string, CalendarTargetRow[]>();
+    for (const target of targetRows) {
       const rows = targetsByDate.get(target.target_date) ?? [];
       rows.push(target);
       targetsByDate.set(target.target_date, rows);
@@ -347,7 +472,7 @@ export class SupabaseExamPlansRepository implements ExamPlansRepository {
       })),
       unassignedQuestionCount: material.unassignedQuestionCount,
       unassignedDueReviewCount: material.unassignedDueReviewCount,
-      unassignedReviewDueDates: material.unassignedReviewDueDates,
+      unassignedReviewDueDateCounts: material.unassignedReviewDueDateCounts,
       reviewSecondsPerQuestion: material.reviewSecondsPerQuestion,
       paceSampleSize: material.paceSampleSize,
     };
@@ -360,7 +485,7 @@ export class SupabaseExamPlansRepository implements ExamPlansRepository {
     });
     throwIfPostgrestError(error);
     if (!data) throw new Error("Nie udało się pobrać zakresu egzaminu.");
-    return data as unknown as ExamPlanningScope;
+    return planningScopeSchema.parse(data) as ExamPlanningScope;
   }
 
   async getPlanningChapters(
@@ -383,7 +508,7 @@ export class SupabaseExamPlansRepository implements ExamPlansRepository {
     );
     throwIfPostgrestError(error);
     if (!data) throw new Error("Nie udało się pobrać rozdziałów.");
-    return data as unknown as ExamPlanningChapterPage;
+    return planningChapterPageSchema.parse(data) as ExamPlanningChapterPage;
   }
 
   async getPlanningTopics(
@@ -391,27 +516,33 @@ export class SupabaseExamPlansRepository implements ExamPlansRepository {
     chapterIds?: string[],
     searchQuery?: string,
   ) {
-    const { data, error } = await this.client.rpc("get_exam_planning_topics", {
-      target_module_id: moduleId,
-      target_chapter_ids: chapterIds ?? null,
-      timezone_name: planningTimeZone(),
-      search_query: searchQuery?.trim() || null,
-      result_limit: null,
-    });
-    throwIfPostgrestError(error);
-    return (data ?? []) as unknown as ExamPlanTopic[];
-  }
-
-  async searchPlanningTopics(moduleId: string, query: string) {
-    const { data, error } = await this.client.rpc("get_exam_planning_topics", {
-      target_module_id: moduleId,
-      target_chapter_ids: null,
-      timezone_name: planningTimeZone(),
-      search_query: query.trim(),
-      result_limit: 100,
-    });
-    throwIfPostgrestError(error);
-    return (data ?? []) as unknown as ExamPlanTopic[];
+    const topics: ExamPlanTopic[] = [];
+    let cursor:
+      | { chapterPosition: number; topicPosition: number; id: string }
+      | undefined;
+    do {
+      const { data, error } = await this.client.rpc(
+        "get_exam_planning_topics_page",
+        {
+          target_module_id: moduleId,
+          target_chapter_ids: chapterIds ?? null,
+          timezone_name: planningTimeZone(),
+          search_query: searchQuery?.trim() || null,
+          after_chapter_position: cursor?.chapterPosition ?? null,
+          after_topic_position: cursor?.topicPosition ?? null,
+          after_id: cursor?.id ?? null,
+          result_limit: 100,
+        },
+      );
+      throwIfPostgrestError(error);
+      if (!data) throw new Error("Nie udało się pobrać tematów.");
+      const page = planningTopicPageSchema.parse(data);
+      topics.push(...page.topics);
+      cursor = page.hasMore ? (page.nextCursor ?? undefined) : undefined;
+      if (page.hasMore && !cursor)
+        throw new Error("Nieprawidłowy kursor listy tematów.");
+    } while (cursor);
+    return topics;
   }
 
   async getPlanningMaterial(moduleId: string): Promise<ExamPlanningMaterial> {
@@ -518,8 +649,8 @@ export class SupabaseExamPlansRepository implements ExamPlansRepository {
       unassignedDueReviewCount: details.plan.includeUnassignedQuestions
         ? details.unassignedDueReviewCount
         : 0,
-      unassignedReviewDueDates: details.plan.includeUnassignedQuestions
-        ? details.unassignedReviewDueDates
+      unassignedReviewDueDateCounts: details.plan.includeUnassignedQuestions
+        ? details.unassignedReviewDueDateCounts
         : [],
       lockedAssignments: details.days
         .flatMap((day) => day.assignments)
@@ -557,7 +688,8 @@ export class SupabaseExamPlansRepository implements ExamPlansRepository {
       if (!force) return;
     }
     const rebuild = this.runAdaptiveRebuild(today, force).finally(() => {
-      adaptiveRebuilds.delete(this.userId);
+      if (adaptiveRebuilds.get(this.userId) === rebuild)
+        adaptiveRebuilds.delete(this.userId);
     });
     adaptiveRebuilds.set(this.userId, rebuild);
     return rebuild;

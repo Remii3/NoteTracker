@@ -583,6 +583,19 @@ export type Database = {
         };
         Returns: Json;
       };
+      get_exam_planning_topics_page: {
+        Args: {
+          target_module_id: string;
+          target_chapter_ids?: string[] | null;
+          timezone_name?: string;
+          search_query?: string | null;
+          after_chapter_position?: number | null;
+          after_topic_position?: number | null;
+          after_id?: string | null;
+          result_limit?: number;
+        };
+        Returns: Json;
+      };
       record_fsrs_review: {
         Args: {
           target_session_item_id: string;

@@ -1,5 +1,10 @@
 export type ExamPlanStatus = "active" | "completed" | "archived";
 
+export type ReviewDueDateCount = {
+  date: string;
+  count: number;
+};
+
 export type ExamPlan = {
   id: string;
   moduleId: string;
@@ -27,6 +32,8 @@ export type ExamPlanTopic = {
   workloadSource: "automatic" | "manual";
   questionCount: number;
   dueReviewCount: number;
+  reviewDueDateCounts?: ReviewDueDateCount[];
+  /** @deprecated Kept temporarily for previously serialized plan inputs. */
   reviewDueDates?: string[];
 };
 
@@ -59,7 +66,7 @@ export type ExamPlanDetails = {
   days: ExamPlanDay[];
   unassignedQuestionCount: number;
   unassignedDueReviewCount: number;
-  unassignedReviewDueDates: string[];
+  unassignedReviewDueDateCounts: ReviewDueDateCount[];
   reviewSecondsPerQuestion: number;
   paceSampleSize: number;
 };
