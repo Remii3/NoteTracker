@@ -69,7 +69,7 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
   });
 
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || editor.isDestroyed) return;
     if (JSON.stringify(editor.getJSON()) !== JSON.stringify(content))
       editor.commands.setContent(content, { emitUpdate: false });
   }, [content, editor]);
@@ -99,7 +99,7 @@ export function RichTextViewer({ content }: { content: NoteContent }) {
   });
 
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || editor.isDestroyed) return;
     if (JSON.stringify(editor.getJSON()) !== JSON.stringify(content))
       editor.commands.setContent(content, { emitUpdate: false });
   }, [content, editor]);
