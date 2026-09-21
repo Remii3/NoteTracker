@@ -42,7 +42,7 @@ Podgląd błędów na żywo:
 
 ```bash
 cd workers/topic-images
-npx wrangler tail notetracker-topic-images --status error --format pretty
+pnpm exec wrangler tail notetracker-topic-images --status error --format pretty
 ```
 
 Po każdym deployu sprawdź co najmniej: odpowiedzi 5xx, 429, błędy Supabase oraz

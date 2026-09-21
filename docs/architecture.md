@@ -78,8 +78,8 @@ przez `get_study_statistics` po stronie Postgresa i respektują RLS wywołujące
 - `src/features/*/components` — widoki i interakcje;
 - `src/lib` — współdzielone integracje Supabase i Sentry.
 
-`npm test` obejmuje logikę, interakcje React w jsdom i obsługę awarii API
-zdjęć z podstawionymi usługami zewnętrznymi. `npm run test:db` odtwarza schemat
+`pnpm test` obejmuje logikę, interakcje React w jsdom i obsługę awarii API
+zdjęć z podstawionymi usługami zewnętrznymi. `pnpm test:db` odtwarza schemat
 na pustym Postgresie i sprawdza RLS dla dwóch użytkowników. Logowanie przez
 Supabase Auth i operacje na prawdziwym R2 wymagają smoke testów środowiska.
 

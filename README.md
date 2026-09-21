@@ -24,13 +24,13 @@ Opis granic systemu i przepływów danych znajduje się w
 
 ## Uruchomienie lokalne
 
-Wymagane są Node.js 22+ i npm. Projekt korzysta z dwóch osobnych paczek npm:
-aplikacji oraz Workera.
+Wymagane są Node.js 22+ i pnpm 12. Repozytorium jest workspace'em pnpm
+obejmującym aplikację oraz Workera.
 
 ```bash
-npm ci
+pnpm install --frozen-lockfile
 cp .env.example .env.local
-npm run dev
+pnpm dev
 ```
 
 Uzupełnij w `.env.local`:
@@ -55,33 +55,31 @@ Workera w [`workers/topic-images/README.md`](workers/topic-images/README.md).
 
 ## Komendy
 
-| Komenda                | Działanie                                         |
-| ---------------------- | ------------------------------------------------- |
-| `npm run dev`          | uruchamia frontend deweloperski                   |
-| `npm run build`        | sprawdza TypeScript i buduje produkcyjny frontend |
-| `npm run preview`      | uruchamia lokalny podgląd buildu                  |
-| `npm test`             | wykonuje testy logiki, interakcji i błędów API    |
-| `npm run test:db`      | odtwarza bazę i testuje RLS w kontenerze Docker   |
-| `npm run test:watch`   | uruchamia testy w trybie obserwowania             |
-| `npm run lint`         | uruchamia ESLint                                  |
-| `npm run format:check` | sprawdza formatowanie Prettierem                  |
+| Komenda             | Działanie                                         |
+| ------------------- | ------------------------------------------------- |
+| `pnpm dev`          | uruchamia frontend deweloperski                   |
+| `pnpm build`        | sprawdza TypeScript i buduje produkcyjny frontend |
+| `pnpm preview`      | uruchamia lokalny podgląd buildu                  |
+| `pnpm test`         | wykonuje testy logiki, interakcji i błędów API    |
+| `pnpm test:db`      | odtwarza bazę i testuje RLS w kontenerze Docker   |
+| `pnpm test:watch`   | uruchamia testy w trybie obserwowania             |
+| `pnpm lint`         | uruchamia ESLint                                  |
+| `pnpm format:check` | sprawdza formatowanie Prettierem                  |
 
 Przed wysłaniem zmian uruchom:
 
 ```bash
-npm test
-npm run lint
-npm run format:check
-npm run build
+pnpm test
+pnpm lint
+pnpm format:check
+pnpm build
 ```
 
 Po zmianie Workera dodatkowo uruchom:
 
 ```bash
-cd workers/topic-images
-npm ci
-npm run typecheck
-npx wrangler deploy --dry-run
+pnpm --filter notetracker-topic-images-worker typecheck
+pnpm --filter notetracker-topic-images-worker exec wrangler deploy --dry-run
 ```
 
 Projekt używa `@cloudflare/workers-types`; nie generujemy i nie commitujemy
@@ -115,6 +113,6 @@ przeglądarki; wracają po odświeżeniu lub przywróceniu tej karty. Nie są
 synchronizowane pomiędzy urządzeniami. Zapis odrzuca nadpisanie treści
 zmienionej w innej karcie i zachowuje szkic użytkownika.
 
-Po zmianie schematu uruchom również `npm run test:db` (wymaga Dockera).
-Testy `npm test` obejmują m.in. zapis podczas dalszej edycji, ochronę szkiców
+Po zmianie schematu uruchom również `pnpm test:db` (wymaga Dockera).
+Testy `pnpm test` obejmują m.in. zapis podczas dalszej edycji, ochronę szkiców
 przy wylogowaniu, wznawianie sesji i awarie API zdjęć.

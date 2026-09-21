@@ -5,7 +5,7 @@
 1. Sprawdź konsolę i zakładkę Network w DevTools.
 2. Potwierdź obecność `VITE_SUPABASE_URL` i
    `VITE_SUPABASE_PUBLISHABLE_KEY` w `.env.local`.
-3. Po zmianie pliku env uruchom ponownie `npm run dev`.
+3. Po zmianie pliku env uruchom ponownie `pnpm dev`.
 4. Sprawdź status usług Supabase oraz błędy Auth i REST w dashboardzie.
 
 ## Logowanie wraca na nieprawidłowy adres
@@ -19,7 +19,8 @@ adresem w przeglądarce.
 - wyloguj się i zaloguj ponownie, aby odświeżyć sesję;
 - sprawdź, czy frontend wysyła nagłówek `Authorization: Bearer ...`;
 - sprawdź `SUPABASE_URL` i `SUPABASE_PUBLISHABLE_KEY` w sekretach Workera;
-- przejrzyj błędy: `npx wrangler tail notetracker-topic-images --status error`.
+- przejrzyj błędy:
+  `pnpm --dir workers/topic-images exec wrangler tail notetracker-topic-images --status error`.
 
 ## Przeglądarka blokuje zdjęcia przez CORS
 
@@ -55,14 +56,14 @@ Po zmianie zmiennej wykonaj nowy deploy. Source mapy wymagają dodatkowo
 ## Szybka diagnostyka
 
 ```bash
-npm test
-npm run lint
-npm run build
+pnpm test
+pnpm lint
+pnpm build
 
 cd workers/topic-images
-npm run typecheck
-npx wrangler whoami
-npx wrangler tail notetracker-topic-images --status error
+pnpm typecheck
+pnpm exec wrangler whoami
+pnpm exec wrangler tail notetracker-topic-images --status error
 ```
 
 Nie wklejaj do zgłoszeń tokenów JWT, zawartości `.env.local`, sekretów Workera

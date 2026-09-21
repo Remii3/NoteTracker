@@ -1,2 +1,7 @@
+packages:
+  - workers/topic-images
+
 allowBuilds:
-  '@sentry/cli': true
+  "@sentry/cli": true
+  esbuild: true
+  workerd: true

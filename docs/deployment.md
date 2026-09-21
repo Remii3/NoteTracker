@@ -5,8 +5,7 @@ frontendu wymaga aktualizacji obu stron.
 
 ## Frontend — Vercel
 
-Skonfiguruj projekt jako Vite z katalogiem głównym repozytorium. Komenda buildu
-to `npm run build`, a katalog wynikowy to `dist`.
+Skonfiguruj projekt jako Vite z katalogiem głównym repozytorium.
 
 W ustawieniach środowiska dodaj:
 
@@ -21,6 +20,9 @@ SENTRY_AUTH_TOKEN               # opcjonalny sekret builda
 SENTRY_ORG                      # wymagane do source map
 SENTRY_PROJECT                  # wymagane do source map
 ```
+
+Komenda instalacji to `pnpm install --frozen-lockfile`, komenda buildu to
+`pnpm build`, a katalog wynikowy to `dist`.
 
 Po zmianie zmiennych wykonaj nowy deploy — Vite wstawia wartości `VITE_*` w
 czasie budowania. `vercel.json` zapewnia fallback SPA i nagłówki
@@ -41,11 +43,9 @@ Pierwsze wdrożenie wykonaj według
 kolejnych zmianach:
 
 ```bash
-cd workers/topic-images
-npm ci
-npm run typecheck
-npx wrangler deploy --dry-run
-npm run deploy
+pnpm --filter notetracker-topic-images-worker typecheck
+pnpm --filter notetracker-topic-images-worker exec wrangler deploy --dry-run
+pnpm --filter notetracker-topic-images-worker deploy
 ```
 
 Nie uruchamiaj `wrangler types` w tym projekcie. Typy środowiska są utrzymywane
@@ -55,9 +55,10 @@ w kodzie Workera.
 ## Checklista przed wdrożeniem
 
 - working tree zawiera wyłącznie zamierzone zmiany;
-- `npm test`, `npm run lint`, `npm run format:check` i `npm run build` kończą
+- `pnpm test`, `pnpm lint`, `pnpm format:check` i `pnpm build` kończą
   się powodzeniem;
-- Worker przechodzi `npm run typecheck` i dry run;
+- Worker przechodzi `pnpm --filter notetracker-topic-images-worker typecheck`
+  i dry run;
 - wymagane skrypty SQL zostały sprawdzone na projekcie testowym;
 - wykonano backup przed zmianą schematu;
 - `Authentication > URL Configuration` w Supabase zawiera produkcyjny origin
@@ -95,8 +96,8 @@ Worker można cofnąć interaktywnie:
 
 ```bash
 cd workers/topic-images
-npx wrangler versions list
-npx wrangler rollback
+pnpm exec wrangler versions list
+pnpm exec wrangler rollback
 ```
 
 Nie cofaj migracji SQL bez przygotowanego i przetestowanego skryptu odwrotnego.

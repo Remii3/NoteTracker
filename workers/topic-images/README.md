@@ -15,7 +15,8 @@ utrudnić nadużycia i niekontrolowany wzrost kosztów.
 
 ## Konfiguracja
 
-Wymagane są Node.js 22+ i npm. Zainstaluj zależności Workera przez `npm ci`.
+Wymagane są Node.js 22+ i pnpm 12. Zależności całego workspace'u instaluj
+z katalogu głównego przez `pnpm install --frozen-lockfile`.
 
 1. Uruchom w Supabase SQL Editor:
 
@@ -25,8 +26,8 @@ Wymagane są Node.js 22+ i npm. Zainstaluj zależności Workera przez `npm ci`.
 
    ```bash
    cd workers/topic-images
-   npx wrangler login
-   npx wrangler r2 bucket create notetracker-images
+   pnpm exec wrangler login
+   pnpm exec wrangler r2 bucket create notetracker-images
    ```
 
    Nie włączaj publicznego adresu `r2.dev` ani publicznej domeny bucketu.
@@ -34,10 +35,10 @@ Wymagane są Node.js 22+ i npm. Zainstaluj zależności Workera przez `npm ci`.
 3. Dodaj zmienne Workera:
 
    ```bash
-   npx wrangler secret put SUPABASE_URL
-   npx wrangler secret put SUPABASE_PUBLISHABLE_KEY
-   npx wrangler secret put SUPABASE_SECRET_KEY
-   npx wrangler secret put ALLOWED_ORIGINS
+   pnpm exec wrangler secret put SUPABASE_URL
+   pnpm exec wrangler secret put SUPABASE_PUBLISHABLE_KEY
+   pnpm exec wrangler secret put SUPABASE_SECRET_KEY
+   pnpm exec wrangler secret put ALLOWED_ORIGINS
    ```
 
    `ALLOWED_ORIGINS` powinno mieć wartość:
@@ -49,7 +50,7 @@ Wymagane są Node.js 22+ i npm. Zainstaluj zależności Workera przez `npm ci`.
 4. Wdróż Worker:
 
    ```bash
-   npm run deploy
+   pnpm deploy
    ```
 
 5. Dodaj otrzymany adres Workera do `.env.local` i do zmiennych projektu w
@@ -66,7 +67,7 @@ i uzupełnij wartości. Nie dodawaj `.dev.vars` do repozytorium.
 
 ```bash
 cp .dev.vars.example .dev.vars
-npm run dev
+pnpm dev
 ```
 
 Worker korzysta z `@cloudflare/workers-types`. Nie uruchamiaj `wrangler types`

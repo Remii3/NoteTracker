@@ -25,7 +25,7 @@ supabase status
 
 `db reset --local` usuwa dane lokalnego środowiska i odtwarza migracje.
 Uzupełnij `.env.local` adresem API i publicznym kluczem lokalnego projektu,
-a następnie uruchom `npm run dev`.
+a następnie uruchom `pnpm dev`.
 
 ## Nowy projekt hostowany
 
@@ -60,7 +60,7 @@ Kolejne zmiany zapisuj jako nowe migracje tworzone przez
 ## Automatyczna weryfikacja
 
 ```bash
-npm run test:db
+pnpm test:db
 ```
 
 Komenda tworzy jednorazowy kontener Postgresa 17, odtwarza wszystkie migracje

@@ -22,11 +22,11 @@ Na planach z automatycznymi backupami sprawdź w Supabase Dashboard:
 Dla planu Free lub dodatkowej kopii poza Supabase połącz CLI z projektem:
 
 ```bash
-npx supabase login
-npx supabase link --project-ref <PROJECT_REF>
-npx supabase db dump --linked --file backup/schema.sql
-npx supabase db dump --linked --data-only --use-copy --file backup/data.sql
-npx supabase db dump --linked --role-only --file backup/roles.sql
+supabase login
+supabase link --project-ref <PROJECT_REF>
+supabase db dump --linked --file backup/schema.sql
+supabase db dump --linked --data-only --use-copy --file backup/data.sql
+supabase db dump --linked --role-only --file backup/roles.sql
 ```
 
 Po eksporcie zaszyfruj katalog i przenieś go poza komputer oraz poza konto
