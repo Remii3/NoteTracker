@@ -5,6 +5,7 @@ import { TableKit } from "@tiptap/extension-table";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyleKit } from "@tiptap/extension-text-style";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { useEffect } from "react";
 import StarterKit from "@tiptap/starter-kit";
 import type { NoteContent } from "../types/model";
 import { EditorToolbar } from "./editor-toolbar";
@@ -67,6 +68,12 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
     onUpdate: ({ editor: currentEditor }) => onChange(currentEditor.getJSON()),
   });
 
+  useEffect(() => {
+    if (!editor) return;
+    if (JSON.stringify(editor.getJSON()) !== JSON.stringify(content))
+      editor.commands.setContent(content, { emitUpdate: false });
+  }, [content, editor]);
+
   if (!editor) return null;
 
   return (
@@ -90,6 +97,12 @@ export function RichTextViewer({ content }: { content: NoteContent }) {
       },
     },
   });
+
+  useEffect(() => {
+    if (!editor) return;
+    if (JSON.stringify(editor.getJSON()) !== JSON.stringify(content))
+      editor.commands.setContent(content, { emitUpdate: false });
+  }, [content, editor]);
 
   if (editor?.isEmpty) {
     return (

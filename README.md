@@ -6,6 +6,11 @@ treść w TipTap, dodawać zdjęcia oraz korzystać z banku pytań i sesji nauki
 Statystyki modułowe i globalne pokazują aktywność, skuteczność, serie nauki,
 słabe obszary oraz realizację celu tygodniowego.
 
+Aplikację można zainstalować jako PWA na telefonie lub komputerze. Interfejs
+i statyczne zasoby są dostępne po utracie połączenia, ale dane użytkownika nie
+są cache'owane przez service workera. Zapisy do Supabase i operacje na zdjęciach
+wymagają internetu. Lokalne szkice notatek są przechowywane w IndexedDB.
+
 ## Stos technologiczny
 
 - React 19, TypeScript, Vite i Tailwind CSS;

@@ -26,6 +26,14 @@ Po zmianie zmiennych wykonaj nowy deploy — Vite wstawia wartości `VITE_*` w
 czasie budowania. `vercel.json` zapewnia fallback SPA i nagłówki
 bezpieczeństwa.
 
+Build generuje również `manifest.webmanifest` oraz `sw.js`. Vercel nie może
+długotrwale cache'ować tych dwóch plików; reguły w `vercel.json` wymuszają ich
+rewalidację. Wersjonowane pliki z `/assets` mogą być cache'owane bezterminowo.
+
+Aktualizacja service workera oczekuje na zgodę użytkownika. Po wdrożeniu nowej
+wersji aplikacja pokazuje komunikat z akcją odświeżenia, dzięki czemu nie
+przerywa automatycznie edycji notatki ani budowania planu egzaminu.
+
 ## Zdjęcia — Cloudflare Worker
 
 Pierwsze wdrożenie wykonaj według
@@ -73,6 +81,12 @@ w kodzie Workera.
 5. Sprawdź konsolę przeglądarki, Sentry oraz błędy Workera w Cloudflare.
 6. Potwierdź, że niezalogowane żądanie do Workera zwraca `401`, a origin spoza
    allowlisty nie otrzymuje nagłówka CORS.
+7. Zainstaluj PWA, uruchom je w osobnym oknie i sprawdź ikonę oraz ekran
+   startowy.
+8. Po wcześniejszym otwarciu aplikacji odłącz sieć: shell powinien się otworzyć,
+   a interfejs powinien pokazać stan offline bez potwierdzania zapisów.
+9. Wdróż kolejną wersję i sprawdź, że aplikacja proponuje aktualizację zamiast
+   przeładować się automatycznie.
 
 ## Rollback
 

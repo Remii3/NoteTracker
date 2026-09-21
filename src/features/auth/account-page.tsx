@@ -26,6 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { PreferencesPanel } from "@/features/preferences/components/preferences-panel";
+import { InstallAppButton } from "@/features/pwa";
 import {
   clearDeletedUserLocalData,
   clearUserMemoryCache,
@@ -365,6 +366,8 @@ export function AccountSettings() {
                 <LogOut /> Wyloguj
               </Button>
             </section>
+
+            <InstallAppButton />
 
             <section className="rounded-xl border border-destructive/40 bg-destructive/5 p-5 sm:p-6">
               <h2 className="font-semibold text-destructive">

@@ -19,6 +19,8 @@ vi.mock("./auth-context", () => ({
   }),
 }));
 
+vi.mock("@/features/pwa", () => ({ InstallAppButton: () => null }));
+
 afterEach(cleanup);
 
 function CurrentPath() {

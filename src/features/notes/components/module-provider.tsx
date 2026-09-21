@@ -74,6 +74,8 @@ export function ModuleProvider({
     loadOnMount,
     cacheKey: draftScope ? `notes:${draftScope}` : undefined,
   });
+  const loadNotes = notesStore.load;
+  const notesLoadFailed = notesStore.loadFailed;
   const {
     chapters,
     clearError: clearNotesError,
@@ -240,6 +242,13 @@ export function ModuleProvider({
     });
     clearNotesError();
   }, [clearNotesError, notesError]);
+
+  useEffect(() => {
+    if (!notesLoadFailed) return;
+    const retryWhenOnline = () => void loadNotes();
+    window.addEventListener("online", retryWhenOnline, { once: true });
+    return () => window.removeEventListener("online", retryWhenOnline);
+  }, [loadNotes, notesLoadFailed]);
 
   function changeSearch(value: string) {
     setSearch(value);

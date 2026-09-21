@@ -22,6 +22,12 @@ za logowanie i dane relacyjne. Zdjęcia nie przechodzą przez Vercel: frontend
 wysyła je do Workera, który weryfikuje token Supabase i zapisuje plik w
 prywatnym R2.
 
+Frontend jest instalowalną aplikacją PWA. Service worker przechowuje wyłącznie
+statyczny shell aplikacji: HTML, wersjonowane skrypty, style, fonty i ikony.
+Żądania Supabase, Auth, Workera zdjęć, Turnstile oraz Sentry pozostają
+network-only. Brak internetu nie uruchamia kolejki zapisów ani automatycznej
+synchronizacji.
+
 ## Granice bezpieczeństwa
 
 - Klient używa wyłącznie publishable key Supabase. `service_role` nie może
@@ -80,10 +86,10 @@ Supabase Auth i operacje na prawdziwym R2 wymagają smoke testów środowiska.
 Treść notatki staje się zapisaną wersją dopiero po potwierdzeniu serwera.
 Szkic dopisany podczas zapisu pozostaje niezapisany i blokuje opuszczenie
 notatki. Wylogowanie z niezapisanymi zmianami wymaga ich jawnego odrzucenia.
-Szkice są przechowywane w sessionStorage, z kluczem konta i modułu. Wracają po
-odświeżeniu lub przywróceniu sesji karty; każda karta ma oddzielny magazyn.
-Nie jest to synchronizacja offline ani autosave na serwerze. Brak miejsca lub
-niedostępny magazyn powoduje widoczny komunikat. Jawne odrzucenie usuwa szkic.
+Szkice są przechowywane w IndexedDB, z kluczem konta i modułu. Wracają po
+odświeżeniu oraz ponownym uruchomieniu zainstalowanej aplikacji. Nie jest to
+synchronizacja offline ani autosave na serwerze. Brak miejsca lub niedostępny
+magazyn powoduje widoczny komunikat. Jawne odrzucenie usuwa szkic.
 Szkic zachowuje oryginalną treść jako bazę zapisu. UPDATE porównuje ją atomowo
 z treścią na serwerze; brak pasującego rekordu zatrzymuje zapis i zachowuje szkic.
 Kolejność rozdziałów jest zapisywana pojedynczym RPC reorder_chapters.

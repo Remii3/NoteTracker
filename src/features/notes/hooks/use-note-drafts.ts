@@ -1,24 +1,33 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { NoteContent, Topic } from "../types/model";
+import {
+  readDrafts,
+  removeDrafts,
+  supportsDraftStorage,
+  writeDrafts,
+} from "@/lib/draft-storage";
 
 type Draft = { content: NoteContent; base: NoteContent };
 type Drafts = Record<string, Draft>;
 
-function readDrafts(key?: string): Drafts {
+function normalizeDrafts(value: unknown): Drafts {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      ([, entry]) =>
+        entry &&
+        typeof entry === "object" &&
+        entry.content?.type === "doc" &&
+        entry.base?.type === "doc",
+    ),
+  );
+}
+
+function readLegacyDrafts(key?: string): Drafts {
   if (!key) return {};
   try {
-    const value: unknown = JSON.parse(
-      window.sessionStorage.getItem(key) ?? "{}",
-    );
-    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-    return Object.fromEntries(
-      Object.entries(value).filter(
-        ([, entry]) =>
-          entry &&
-          typeof entry === "object" &&
-          entry.content?.type === "doc" &&
-          entry.base?.type === "doc",
-      ),
+    return normalizeDrafts(
+      JSON.parse(window.sessionStorage.getItem(key) ?? "{}") as unknown,
     );
   } catch {
     return {};
@@ -26,13 +35,19 @@ function readDrafts(key?: string): Drafts {
 }
 
 function storageKey(scope?: string) {
+  return scope ? `notetracker:drafts:v3:${scope}` : undefined;
+}
+
+function legacyStorageKey(scope?: string) {
   return scope ? `notetracker:drafts:v2:${scope}` : undefined;
 }
 
 export function useNoteDrafts(scope?: string) {
   const [key] = useState(() => storageKey(scope));
-  const [initial] = useState(() => readDrafts(key));
+  const [legacyKey] = useState(() => legacyStorageKey(scope));
+  const [initial] = useState(() => readLegacyDrafts(legacyKey));
   const drafts = useRef<Drafts>(initial);
+  const persistQueue = useRef(Promise.resolve());
   const [dirtyTopicIds, setDirtyTopicIds] = useState(
     () => new Set(Object.keys(initial)),
   );
@@ -40,18 +55,46 @@ export function useNoteDrafts(scope?: string) {
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persist = useCallback(() => {
     if (!scope) return;
+    if (!key) return;
+    const snapshot = structuredClone(drafts.current);
+    let fallbackSaved = true;
     try {
-      if (!key) throw new Error("Storage unavailable");
-      if (Object.keys(drafts.current).length)
-        window.sessionStorage.setItem(key, JSON.stringify(drafts.current));
-      else window.sessionStorage.removeItem(key);
-      setStorageError(null);
+      if (Object.keys(snapshot).length)
+        window.sessionStorage.setItem(
+          legacyKey ?? key,
+          JSON.stringify(snapshot),
+        );
+      else window.sessionStorage.removeItem(legacyKey ?? key);
     } catch {
-      setStorageError(
-        "Nie udało się zachować szkicu na tym urządzeniu. Zapisz notatkę przed zamknięciem strony.",
-      );
+      fallbackSaved = false;
     }
-  }, [key, scope]);
+    if (!supportsDraftStorage()) {
+      setStorageError(
+        fallbackSaved
+          ? null
+          : "Nie udało się zachować szkicu na tym urządzeniu. Zapisz notatkę przed zamknięciem strony.",
+      );
+      return;
+    }
+    persistQueue.current = persistQueue.current
+      .catch(() => undefined)
+      .then(() =>
+        Object.keys(snapshot).length
+          ? writeDrafts(key, snapshot)
+          : removeDrafts(key),
+      );
+    void persistQueue.current.then(
+      () => {
+        if (legacyKey) window.sessionStorage.removeItem(legacyKey);
+        setStorageError(null);
+      },
+      () => {
+        setStorageError(
+          "Nie udało się zachować szkicu na tym urządzeniu. Zapisz notatkę przed zamknięciem strony.",
+        );
+      },
+    );
+  }, [key, legacyKey, scope]);
   const schedulePersist = useCallback(() => {
     if (persistTimer.current) clearTimeout(persistTimer.current);
     persistTimer.current = setTimeout(() => {
@@ -72,6 +115,29 @@ export function useNoteDrafts(scope?: string) {
     },
     [persist],
   );
+
+  useEffect(() => {
+    if (!key || !supportsDraftStorage()) return;
+    let active = true;
+    void readDrafts<Drafts>(key).then(
+      (stored) => {
+        if (!active) return;
+        const recovered = normalizeDrafts(stored);
+        drafts.current = { ...recovered, ...drafts.current };
+        setDirtyTopicIds(new Set(Object.keys(drafts.current)));
+        if (Object.keys(initial).length) persist();
+      },
+      () => {
+        if (active)
+          setStorageError(
+            "Nie udało się odczytać lokalnych szkiców na tym urządzeniu.",
+          );
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [initial, key, persist]);
 
   const clearDraft = useCallback(
     (topicId: string) => {

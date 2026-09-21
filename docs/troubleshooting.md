@@ -67,3 +67,23 @@ npx wrangler tail notetracker-topic-images --status error
 
 Nie wklejaj do zgłoszeń tokenów JWT, zawartości `.env.local`, sekretów Workera
 ani pełnej treści prywatnych notatek.
+
+## PWA i aktualizacje
+
+Jeśli po wdrożeniu aplikacja nadal pokazuje starą wersję, najpierw zamknij
+wszystkie jej karty i uruchom ją ponownie. Następnie w narzędziach
+deweloperskich wybierz `Application > Service Workers > Update`.
+
+W środowisku testowym service worker można całkowicie usunąć przez
+`Application > Service Workers > Unregister`, a jego pliki przez
+`Application > Storage > Clear site data`. Usuwa to również lokalne szkice,
+więc nie wykonuj tej operacji przed ich zapisaniem.
+
+Jeśli przeglądarka nie oferuje instalacji, sprawdź kolejno:
+
+- czy aplikacja działa po HTTPS;
+- czy `/manifest.webmanifest` zwraca status 200 i typ
+  `application/manifest+json`;
+- czy `/sw.js` zwraca JavaScript zamiast fallbacku `index.html`;
+- czy ikony 192×192 i 512×512 są dostępne;
+- błędy w `Application > Manifest` i `Application > Service Workers`.

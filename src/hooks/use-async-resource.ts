@@ -32,6 +32,12 @@ export function useAsyncResource<T>(
   const current =
     result?.load === load && result.attempt === attempt ? result : null;
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  useEffect(() => {
+    if (!current?.failed) return;
+    const retryWhenOnline = () => setAttempt((value) => value + 1);
+    window.addEventListener("online", retryWhenOnline, { once: true });
+    return () => window.removeEventListener("online", retryWhenOnline);
+  }, [current?.failed]);
   const hasInitialValue = options.initialValue !== undefined;
   return {
     value: current && !current.failed ? current.value : options.initialValue,

@@ -33,6 +33,20 @@ it("exposes loading, error and retry states", async () => {
   expect(hook.result.current.failed).toBe(false);
 });
 
+it("retries a failed request when the browser comes back online", async () => {
+  const load = vi
+    .fn()
+    .mockRejectedValueOnce(new Error("offline"))
+    .mockResolvedValue("module");
+  const hook = renderHook(() => useAsyncResource(load));
+  await waitFor(() => expect(hook.result.current.failed).toBe(true));
+
+  act(() => window.dispatchEvent(new Event("online")));
+
+  await waitFor(() => expect(hook.result.current.value).toBe("module"));
+  expect(load).toHaveBeenCalledTimes(2);
+});
+
 it("serves a cached value while refreshing it in the background", async () => {
   let resolve!: (value: string) => void;
   const load = () =>

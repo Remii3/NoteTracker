@@ -42,6 +42,8 @@ vi.mock("./turnstile-widget", () => ({
   ),
 }));
 
+vi.mock("@/features/pwa", () => ({ InstallAppButton: () => null }));
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();

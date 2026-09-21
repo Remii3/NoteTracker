@@ -1,3 +1,5 @@
+import { removeDraftsByPrefix, supportsDraftStorage } from "./draft-storage";
+
 const entries = new Map<string, unknown>();
 
 export type RecentModule = {
@@ -56,6 +58,9 @@ export function clearUserMemoryCache(userId: string) {
 export function clearDeletedUserLocalData(userId: string) {
   clearUserMemoryCache(userId);
   if (typeof window === "undefined") return;
+
+  if (supportsDraftStorage())
+    void removeDraftsByPrefix(`notetracker:drafts:v3:${userId}:`);
 
   try {
     window.localStorage.removeItem(recentModulesKey(userId));
