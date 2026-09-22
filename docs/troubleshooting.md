@@ -88,3 +88,8 @@ Jeśli przeglądarka nie oferuje instalacji, sprawdź kolejno:
 - czy `/sw.js` zwraca JavaScript zamiast fallbacku `index.html`;
 - czy ikony 192×192 i 512×512 są dostępne;
 - błędy w `Application > Manifest` i `Application > Service Workers`.
+
+Jeśli zapisany moduł nie działa offline, sprawdź w `Application > IndexedDB >
+notetracker-local`, czy istnieją magazyny `offline-modules` i `offline-images`.
+Przeglądarka może usunąć dane typu best-effort przy braku miejsca. Ponowne
+wybranie akcji „Synchronizuj” odbudowuje kopię i pobiera tylko zmienioną treść.

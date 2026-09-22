@@ -6,6 +6,7 @@ import { toast } from "@/components/ui/toast";
 import { useAuth } from "./auth-context";
 import { useState } from "react";
 import { useSidebar } from "@/components/ui/sidebar";
+import { removeOfflineDataByUser } from "@/features/notes/offline/offline-storage";
 
 type Props = {
   userName?: string;
@@ -30,7 +31,10 @@ export function AccountMenu({ userName, userEmail, onOpenAccount }: Props) {
     setIsSigningOut(true);
     try {
       await signOut();
-      if (user) clearUserMemoryCache(user.id);
+      if (user) {
+        clearUserMemoryCache(user.id);
+        await removeOfflineDataByUser(user.id).catch(() => undefined);
+      }
     } catch {
       toast.add({
         data: { type: "error" },

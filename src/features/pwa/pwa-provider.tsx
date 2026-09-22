@@ -214,7 +214,8 @@ function OfflineBanner() {
       className="fixed inset-x-3 top-3 z-[100] mx-auto flex w-fit max-w-[calc(100%-1.5rem)] items-center gap-2 rounded-full border bg-popover px-4 py-2 text-sm text-popover-foreground shadow-lg"
     >
       <CloudOff className="size-4 text-destructive" aria-hidden="true" />
-      Brak połączenia. Zmiany wymagające serwera nie zostaną zapisane.
+      Brak połączenia. Edycje notatek zapisujemy lokalnie i zsynchronizujemy po
+      powrocie sieci.
     </div>
   );
 }

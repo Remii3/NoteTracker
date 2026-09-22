@@ -16,6 +16,7 @@ import type {
 import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
 import { throwIfPostgrestError } from "./supabase-error";
 import { clearMemoryCacheByPrefix } from "@/lib/memory-cache";
+import type { OfflineModuleChanges } from "../offline/offline-types";
 
 export class SupabaseNotesRepository implements NotesRepository {
   private readonly client: SupabaseClient<Database>;
@@ -35,6 +36,20 @@ export class SupabaseNotesRepository implements NotesRepository {
     this.client = client;
     this.userId = userId;
     this.moduleId = moduleId;
+  }
+
+  async getOfflineChanges(changedSince?: string, includeImages = false) {
+    const { data, error } = await this.client.rpc(
+      "get_offline_module_changes",
+      {
+        target_module_id: this.moduleId,
+        changed_since: changedSince ?? null,
+        include_images: includeImages,
+      },
+    );
+    throwIfPostgrestError(error);
+    if (!data) throw new Error("Moduł nie istnieje lub jest niedostępny.");
+    return data as unknown as OfflineModuleChanges;
   }
 
   async listChapters() {

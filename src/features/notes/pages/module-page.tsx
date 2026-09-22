@@ -12,6 +12,9 @@ import { LoadError } from "@/components/load-error";
 import { SupabaseModulesRepository } from "@/features/modules/data/supabase-modules-repository";
 import { SupabaseStatisticsRepository } from "@/features/statistics/data/supabase-statistics-repository";
 import { ModuleProvider } from "../components/module-provider";
+import { OfflineModuleService } from "../offline/offline-module-service";
+import { OfflineNotesRepository } from "../data/offline-notes-repository";
+import { OfflineTopicImagesService } from "../data/offline-topic-images-service";
 import {
   readMemoryCache,
   rememberRecentModule,
@@ -47,17 +50,49 @@ export function ModulePage() {
     () => new SupabaseModulesRepository(supabase, userId ?? ""),
     [userId],
   );
+  const imagesApiUrl = import.meta.env.VITE_R2_IMAGES_API_URL as
+    string | undefined;
+  const onlineImagesService = useMemo(
+    () =>
+      imagesApiUrl
+        ? new R2TopicImagesService(supabase, imagesApiUrl.replace(/\/$/, ""))
+        : undefined,
+    [imagesApiUrl],
+  );
+  const offlineService = useMemo(
+    () =>
+      new OfflineModuleService(
+        userId ?? "",
+        (id) => new SupabaseNotesRepository(supabase, userId ?? "", id),
+        onlineImagesService,
+      ),
+    [onlineImagesService, userId],
+  );
   const statisticsRepository = useMemo(
     () => new SupabaseStatisticsRepository(supabase, userId ?? ""),
     [userId],
   );
   const loadModule = useCallback(async () => {
     if (!moduleSlug) return null;
-    const loadedModule = routedModuleId
-      ? await modulesRepository.get(routedModuleId)
-      : UUID_PATTERN.test(moduleSlug)
-        ? await modulesRepository.get(moduleSlug)
-        : await modulesRepository.getBySlug(moduleSlug);
+    let loadedModule: Module | null = null;
+    let requestFailed = false;
+    try {
+      loadedModule = routedModuleId
+        ? await modulesRepository.get(routedModuleId)
+        : UUID_PATTERN.test(moduleSlug)
+          ? await modulesRepository.get(moduleSlug)
+          : await modulesRepository.getBySlug(moduleSlug);
+    } catch {
+      requestFailed = true;
+      // A persisted module remains usable when connectivity detection lags.
+    }
+    if (
+      !loadedModule &&
+      (requestFailed || (typeof navigator !== "undefined" && !navigator.onLine))
+    ) {
+      const offline = await offlineService.find(routedModuleId ?? moduleSlug);
+      loadedModule = offline?.module ?? null;
+    }
     if (loadedModule) {
       const cached = readMemoryCache<Module[]>(modulesCacheKey) ?? [];
       writeMemoryCache(
@@ -70,7 +105,13 @@ export function ModulePage() {
       );
     }
     return loadedModule;
-  }, [moduleSlug, modulesCacheKey, modulesRepository, routedModuleId]);
+  }, [
+    moduleSlug,
+    modulesCacheKey,
+    modulesRepository,
+    offlineService,
+    routedModuleId,
+  ]);
   const moduleResource = useAsyncResource(loadModule, {
     initialValue: cachedModule,
   });
@@ -132,24 +173,40 @@ export function ModulePage() {
     selectedModule,
   ]);
 
-  const repository = useMemo(
-    () => new SupabaseNotesRepository(supabase, userId ?? "", moduleId ?? ""),
-    [moduleId, userId],
+  const repository = useMemo(() => {
+    const online = new SupabaseNotesRepository(
+      supabase,
+      userId ?? "",
+      moduleId ?? "",
+    );
+    return new OfflineNotesRepository(online, moduleId ?? "", offlineService);
+  }, [moduleId, offlineService, userId]);
+  const imagesService = useMemo(
+    () =>
+      onlineImagesService && userId
+        ? new OfflineTopicImagesService(
+            onlineImagesService,
+            userId,
+            offlineService,
+            moduleId ?? "",
+          )
+        : undefined,
+    [moduleId, offlineService, onlineImagesService, userId],
   );
   const questionsRepository = useMemo(
     () =>
       new SupabaseQuestionsRepository(supabase, userId ?? "", moduleId ?? ""),
     [moduleId, userId],
   );
-  const imagesApiUrl = import.meta.env.VITE_R2_IMAGES_API_URL as
-    string | undefined;
-  const imagesService = useMemo(
-    () =>
-      imagesApiUrl
-        ? new R2TopicImagesService(supabase, imagesApiUrl.replace(/\/$/, ""))
-        : undefined,
-    [imagesApiUrl],
-  );
+
+  useEffect(() => {
+    if (!moduleId || !navigator.onLine) return;
+    const sync = () =>
+      void offlineService.syncStored(moduleId).catch(() => undefined);
+    sync();
+    window.addEventListener("online", sync);
+    return () => window.removeEventListener("online", sync);
+  }, [moduleId, offlineService]);
 
   if (!user || !moduleSlug) return null;
   if (moduleResource.loading && !selectedModule) return <AppLoading />;

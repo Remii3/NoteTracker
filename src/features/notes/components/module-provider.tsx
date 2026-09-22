@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet } from "react-router";
 import { LoadError } from "@/components/load-error";
 import { toast } from "@/components/ui/toast";
@@ -26,6 +26,7 @@ import {
 import { WorkspaceHeader } from "./workspace-header";
 import { WorkspaceLoadingSkeleton } from "./workspace-loading-skeleton";
 import { WorkspaceSidebar } from "./workspace-sidebar";
+import { usePwa } from "@/features/pwa";
 type Props = {
   moduleId: string;
   draftScope?: string;
@@ -65,6 +66,8 @@ export function ModuleProvider({
   onOpenModules,
   onModuleProgressChange,
 }: Props) {
+  const { isOnline } = usePwa();
+  const syncingDraftsRef = useRef(false);
   const [isSearchPending, setIsSearchPending] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [movedChapter, setMovedChapter] = useState<Chapter | null>(null);
@@ -115,10 +118,12 @@ export function ModuleProvider({
     clearDraft,
     flushDrafts,
     getBaseContent: getDraftBase,
+    getPendingDrafts,
     storageError,
     getContent: getDraftContent,
     reconcileDraft,
     hasDirtyDrafts,
+    isReady: draftsReady,
     isTopicDirty,
     updateDraft,
   } = useNoteDrafts(draftScope);
@@ -148,7 +153,46 @@ export function ModuleProvider({
     isLoading: notesStore.isLoading,
     loadFailed: notesStore.loadFailed,
     resolveChapterTopics: loadChapterTopics,
+    blockDirtyNavigation: isOnline,
   });
+
+  const saveStoredContent = notesStore.saveContent;
+  useEffect(() => {
+    if (!draftsReady) return;
+    const syncDrafts = async () => {
+      if (syncingDraftsRef.current || !navigator.onLine) return;
+      syncingDraftsRef.current = true;
+      try {
+        for (const draft of getPendingDrafts()) {
+          const resolvedChapterId =
+            draft.chapterId ??
+            chapters.find((item) =>
+              item.topics.some((candidate) => candidate.id === draft.topicId),
+            )?.id;
+          if (!resolvedChapterId) continue;
+          const saved = await saveStoredContent(
+            resolvedChapterId,
+            draft.topicId,
+            draft.content,
+            draft.base,
+          );
+          if (saved) acknowledgeSave(draft.topicId, draft.content);
+        }
+      } finally {
+        syncingDraftsRef.current = false;
+      }
+    };
+    if (isOnline) void syncDrafts();
+    window.addEventListener("online", syncDrafts);
+    return () => window.removeEventListener("online", syncDrafts);
+  }, [
+    acknowledgeSave,
+    chapters,
+    draftsReady,
+    getPendingDrafts,
+    isOnline,
+    saveStoredContent,
+  ]);
   const { richTextModule, preloadRichTextEditor } = useRichTextModule(
     activeView === "notes",
   );

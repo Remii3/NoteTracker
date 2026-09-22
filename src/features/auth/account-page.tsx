@@ -31,6 +31,7 @@ import {
   clearDeletedUserLocalData,
   clearUserMemoryCache,
 } from "@/lib/memory-cache";
+import { removeOfflineDataByUser } from "@/features/notes/offline/offline-storage";
 import { getAuthErrorMessage } from "./auth-error";
 import { nameSchema, passwordSchema } from "./auth-schema";
 import { useAuth } from "./auth-context";
@@ -124,6 +125,7 @@ export function AccountSettings() {
     try {
       await signOut();
       clearUserMemoryCache(userId);
+      await removeOfflineDataByUser(userId).catch(() => undefined);
       navigate("/");
     } catch {
       toast.add({
@@ -141,6 +143,7 @@ export function AccountSettings() {
     try {
       await deleteAccount(deletePassword, deleteCaptchaToken);
       clearDeletedUserLocalData(userId);
+      await removeOfflineDataByUser(userId).catch(() => undefined);
       setDeleteOpen(false);
       try {
         await signOut();

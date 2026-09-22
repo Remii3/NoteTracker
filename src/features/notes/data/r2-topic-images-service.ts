@@ -61,6 +61,11 @@ export class R2TopicImagesService implements TopicImagesService {
     );
   }
 
+  async download(imageId: string) {
+    const response = await this.request(`/images/${imageId}`);
+    return response.blob();
+  }
+
   async list(topicId: string) {
     const response = await this.request(`/topics/${topicId}/images`);
     const { images } = (await response.json()) as { images: ImageMetadata[] };

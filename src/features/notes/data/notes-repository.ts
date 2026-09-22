@@ -5,6 +5,7 @@ import type {
   Topic,
   TopicNavigation,
 } from "../types/model";
+import type { OfflineModuleChanges } from "../offline/offline-types";
 
 export type ChapterUpdate = Partial<Pick<ChapterSummary, "title" | "position">>;
 export type TopicUpdate = Partial<
@@ -12,6 +13,10 @@ export type TopicUpdate = Partial<
 >;
 
 export interface NotesRepository {
+  getOfflineChanges(
+    changedSince?: string,
+    includeImages?: boolean,
+  ): Promise<OfflineModuleChanges>;
   listChapters(): Promise<import("../types/model").Chapter[]>;
   listChapterTopics(chapterId: string): Promise<Topic[]>;
   getTopicContent(chapterId: string, topicId: string): Promise<NoteContent>;

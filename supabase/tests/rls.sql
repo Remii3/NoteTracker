@@ -149,6 +149,46 @@ select pg_temp.assert_true(
    from public.get_module_summaries(target_module_slug => 'module-1')),
   'module summaries RPC: resolves the current user module by slug'
 );
+select pg_temp.assert_true(
+  jsonb_array_length(public.get_offline_module_changes(
+    '10000001-0000-4000-8000-000000000000'
+  )->'chapters') = 1
+  and jsonb_array_length(public.get_offline_module_changes(
+    '10000001-0000-4000-8000-000000000000'
+  )->'topics') = 1
+  and jsonb_array_length(public.get_offline_module_changes(
+    '10000001-0000-4000-8000-000000000000'
+  )->'images') = 0,
+  'offline sync RPC: returns owned text without optional images'
+);
+select pg_temp.assert_true(
+  jsonb_array_length(public.get_offline_module_changes(
+    '10000001-0000-4000-8000-000000000000', null, true
+  )->'images') = 1,
+  'offline sync RPC: includes image metadata only when requested'
+);
+select pg_temp.assert_true(
+  public.get_offline_module_changes(
+    '20000001-0000-4000-8000-000000000000'
+  ) is null,
+  'offline sync RPC: hides another user module'
+);
+select set_config(
+  'test.offline_cursor',
+  public.get_offline_module_changes(
+    '10000001-0000-4000-8000-000000000000'
+  )->>'serverTime',
+  true
+);
+update public.topics set title = 'Topic updated offline'
+where id = '10000003-0000-4000-8000-000000000000';
+select pg_temp.assert_true(
+  jsonb_array_length(public.get_offline_module_changes(
+    '10000001-0000-4000-8000-000000000000',
+    current_setting('test.offline_cursor')::timestamptz
+  )->'topics') = 1,
+  'offline sync RPC: returns topics changed after the cursor'
+);
 select pg_temp.assert_true((select count(*) = 1 and min(weekly_minutes) = 180 from public.study_goals), 'study_goals: user 1 sees only own goal');
 select pg_temp.assert_true(
   (select weekly_topics_enabled and not review_reminders_enabled

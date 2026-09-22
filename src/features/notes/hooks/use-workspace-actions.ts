@@ -123,6 +123,14 @@ export function useWorkspaceActions({
   async function saveContent() {
     if (isSaving || !topic || topic.contentLoaded === false || !editorDirty)
       return false;
+    if (!navigator.onLine) {
+      toast.add({
+        data: { type: "warning" },
+        description:
+          "Szkic zapisano na urządzeniu. Zostanie wysłany po odzyskaniu połączenia.",
+      });
+      return false;
+    }
     const contentToSave = getDraftContent(topic);
     const saved = await commands.saveContent(
       chapterId,

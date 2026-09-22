@@ -224,3 +224,20 @@ it("clears a recovered draft when the server contains the same content", () => {
   );
   expect(second.result.current.hasDirtyDrafts).toBe(false);
 });
+
+it("keeps the chapter identifier needed for background synchronization", () => {
+  const topic = initialChapters[0].topics[0];
+  const hook = renderHook(() => useNoteDrafts("account:module"));
+  act(() =>
+    hook.result.current.updateDraft(topic, { type: "doc" }, "chapter-id"),
+  );
+
+  expect(hook.result.current.getPendingDrafts()).toEqual([
+    expect.objectContaining({
+      topicId: topic.id,
+      chapterId: "chapter-id",
+      content: { type: "doc" },
+      base: topic.content,
+    }),
+  ]);
+});

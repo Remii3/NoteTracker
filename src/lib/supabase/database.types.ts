@@ -151,6 +151,7 @@ export type Database = {
           created_at: string;
           exam_date: string | null;
           trash_id: string | null;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -162,6 +163,7 @@ export type Database = {
           created_at?: string;
           exam_date?: string | null;
           trash_id?: string | null;
+          updated_at?: string;
         };
         Update: {
           is_pinned?: boolean;
@@ -170,6 +172,7 @@ export type Database = {
           position?: number;
           exam_date?: string | null;
           trash_id?: string | null;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -457,6 +460,7 @@ export type Database = {
           title: string;
           user_id: string;
           trash_id: string | null;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -466,6 +470,7 @@ export type Database = {
           title: string;
           user_id: string;
           trash_id?: string | null;
+          updated_at?: string;
         };
         Update: {
           id?: string;
@@ -475,6 +480,7 @@ export type Database = {
           title?: string;
           user_id?: string;
           trash_id?: string | null;
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -498,6 +504,7 @@ export type Database = {
           title: string;
           user_id: string;
           trash_id: string | null;
+          updated_at: string;
         };
         Insert: {
           chapter_id: string;
@@ -510,6 +517,7 @@ export type Database = {
           title: string;
           user_id: string;
           trash_id?: string | null;
+          updated_at?: string;
         };
         Update: {
           chapter_id?: string;
@@ -522,6 +530,7 @@ export type Database = {
           title?: string;
           user_id?: string;
           trash_id?: string | null;
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -655,6 +664,14 @@ export type Database = {
           topics_count: number;
           completed_topics_count: number;
         }[];
+      };
+      get_offline_module_changes: {
+        Args: {
+          target_module_id: string;
+          changed_since?: string | null;
+          include_images?: boolean;
+        };
+        Returns: Json;
       };
       get_progress_statistics: {
         Args: {

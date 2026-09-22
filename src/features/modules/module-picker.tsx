@@ -2,6 +2,7 @@ import {
   BookOpen,
   Download,
   FileUp,
+  HardDriveDownload,
   LoaderCircle,
   Pencil,
   Pin,
@@ -29,6 +30,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -58,6 +60,8 @@ import { parseDocxFile, type ImportedModuleDraft } from "./import/docx-import";
 import { DocxImportDialog } from "./import/docx-import-dialog";
 import type { TopicImagesService } from "@/features/notes/data/topic-images-service";
 import type { TopicImage } from "@/features/notes/types/topic-image";
+import type { OfflineModuleService } from "@/features/notes/offline/offline-module-service";
+import type { OfflineModuleSnapshot } from "@/features/notes/offline/offline-types";
 
 type Props = {
   repository: ModulesRepository;
@@ -66,6 +70,7 @@ type Props = {
   cacheKey?: string;
   onDeleted?: (module: Module) => void;
   onLoaded?: (modules: Module[]) => void;
+  offlineService?: OfflineModuleService;
 };
 
 const PAGE_SIZE = 12;
@@ -77,6 +82,7 @@ export function ModulePicker({
   cacheKey,
   onDeleted,
   onLoaded,
+  offlineService,
 }: Props) {
   const cachedModules = cacheKey
     ? readMemoryCache<Module[]>(cacheKey)
@@ -101,6 +107,10 @@ export function ModulePicker({
   const [error, setError] = useState<string | null>(null);
   const [renamedModule, setRenamedModule] = useState<Module | null>(null);
   const [deletedModule, setDeletedModule] = useState<Module | null>(null);
+  const [offlineModule, setOfflineModule] = useState<Module | null>(null);
+  const [offlineSnapshots, setOfflineSnapshots] = useState<
+    OfflineModuleSnapshot[]
+  >([]);
   const [importDraft, setImportDraft] = useState<ImportedModuleDraft | null>(
     null,
   );
@@ -110,6 +120,22 @@ export function ModulePicker({
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const requestIdRef = useRef(0);
   const loadingMoreRef = useRef(false);
+
+  const refreshOfflineSnapshots = useCallback(async () => {
+    if (!offlineService) return [];
+    try {
+      const snapshots = await offlineService.list();
+      setOfflineSnapshots(snapshots);
+      return snapshots;
+    } catch {
+      setOfflineSnapshots([]);
+      return [];
+    }
+  }, [offlineService]);
+
+  useEffect(() => {
+    queueMicrotask(() => void refreshOfflineSnapshots());
+  }, [refreshOfflineSnapshots]);
   const sortedModules = useMemo(
     () => [...pinnedModules, ...modules].sort(compareModules),
     [modules, pinnedModules],
@@ -157,9 +183,32 @@ export function ModulePicker({
           if (!query && cacheKey) writeMemoryCache(cacheKey, loadedModules);
           if (!query && !page.hasMore) onLoaded?.(loadedModules);
         })
-        .catch(() => {
-          if (active && requestId === requestIdRef.current)
-            setError("Nie udało się pobrać modułów.");
+        .catch(async () => {
+          if (!active || requestId !== requestIdRef.current) return;
+          const offline = await refreshOfflineSnapshots();
+          if (!active || requestId !== requestIdRef.current) return;
+          if (offline.length) {
+            const normalizedQuery = query.toLocaleLowerCase("pl");
+            const visibleOffline = normalizedQuery
+              ? offline.filter((item) =>
+                  item.module.name
+                    .toLocaleLowerCase("pl")
+                    .includes(normalizedQuery),
+                )
+              : offline;
+            setPinnedModules(
+              visibleOffline
+                .filter((item) => item.module.isPinned)
+                .map((item) => item.module),
+            );
+            setModules(
+              visibleOffline
+                .filter((item) => !item.module.isPinned)
+                .map((item) => item.module),
+            );
+            setHasMore(false);
+            setError(null);
+          } else setError("Nie udało się pobrać modułów.");
         })
         .finally(() => {
           if (active && requestId === requestIdRef.current) setIsLoading(false);
@@ -168,7 +217,14 @@ export function ModulePicker({
     return () => {
       active = false;
     };
-  }, [cacheKey, onLoaded, query, reloadKey, repository]);
+  }, [
+    cacheKey,
+    onLoaded,
+    query,
+    refreshOfflineSnapshots,
+    reloadKey,
+    repository,
+  ]);
 
   const loadMore = useCallback(async () => {
     if (loadingMoreRef.current || !hasMore || isLoading) return;
@@ -577,6 +633,28 @@ export function ModulePicker({
                           />
                         )}
                       </Button>
+                      {offlineService && (
+                        <Button
+                          size="icon-sm"
+                          variant={
+                            offlineSnapshots.some(
+                              (snapshot) => snapshot.module.id === module.id,
+                            )
+                              ? "secondary"
+                              : "ghost"
+                          }
+                          aria-label={
+                            offlineSnapshots.some(
+                              (snapshot) => snapshot.module.id === module.id,
+                            )
+                              ? `Zarządzaj dostępem offline modułu ${module.name}`
+                              : `Pobierz moduł ${module.name} do użycia offline`
+                          }
+                          onClick={() => setOfflineModule(module)}
+                        >
+                          <HardDriveDownload />
+                        </Button>
+                      )}
                       <Button
                         size="icon-sm"
                         variant="ghost"
@@ -666,8 +744,22 @@ export function ModulePicker({
                   cacheKey,
                   sortedModules.filter((item) => item.id !== deletedModule.id),
                 );
+              await offlineService
+                ?.remove(deletedModule.id)
+                .catch(() => undefined);
               onDeleted?.(deletedModule);
             }}
+          />
+        )}
+        {offlineModule && offlineService && (
+          <OfflineModuleDialog
+            module={offlineModule}
+            snapshot={offlineSnapshots.find(
+              (item) => item.module.id === offlineModule.id,
+            )}
+            service={offlineService}
+            onClose={() => setOfflineModule(null)}
+            onChanged={refreshOfflineSnapshots}
           />
         )}
         {createOpen && (
@@ -687,6 +779,125 @@ export function ModulePicker({
         )}
       </main>
     </>
+  );
+}
+
+function OfflineModuleDialog({
+  module,
+  snapshot,
+  service,
+  onClose,
+  onChanged,
+}: {
+  module: Module;
+  snapshot?: OfflineModuleSnapshot;
+  service: OfflineModuleService;
+  onClose: () => void;
+  onChanged: () => Promise<OfflineModuleSnapshot[]>;
+}) {
+  const [includeImages, setIncludeImages] = useState(
+    snapshot?.includesImages ?? false,
+  );
+  const [isWorking, setIsWorking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    if (isWorking) return;
+    setIsWorking(true);
+    setError(null);
+    try {
+      await service.sync(module, includeImages);
+      await onChanged();
+      toast.add({
+        data: { type: "success" },
+        description: `Moduł „${module.name}” jest dostępny offline.`,
+      });
+      onClose();
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Nie udało się pobrać modułu.",
+      );
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
+  async function remove() {
+    if (isWorking) return;
+    setIsWorking(true);
+    setError(null);
+    try {
+      await service.remove(module.id);
+      await onChanged();
+      onClose();
+    } catch {
+      setError("Nie udało się usunąć lokalnej kopii modułu.");
+      setIsWorking(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && !isWorking && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Dostęp offline</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {snapshot
+              ? `Moduł „${module.name}” jest zapisany na tym urządzeniu.`
+              : `Pobierz treść modułu „${module.name}”, aby korzystać z niej bez internetu.`}
+          </p>
+          <label className="flex items-start gap-3 rounded-lg border p-3">
+            <Checkbox
+              checked={includeImages}
+              disabled={isWorking}
+              onCheckedChange={setIncludeImages}
+            />
+            <span>
+              <span className="block text-sm font-medium">Dołącz zdjęcia</span>
+              <span className="block text-xs text-muted-foreground">
+                Zdjęcia mogą zajmować znacznie więcej miejsca i transferu niż
+                tekst.
+              </span>
+            </span>
+          </label>
+          {snapshot && (
+            <p className="text-xs text-muted-foreground">
+              Ostatnia synchronizacja:{" "}
+              {new Date(snapshot.syncedAt).toLocaleString("pl-PL")}
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
+        </div>
+        <DialogFooter>
+          {snapshot && (
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isWorking}
+              onClick={() => void remove()}
+            >
+              Usuń z urządzenia
+            </Button>
+          )}
+          <Button
+            type="button"
+            disabled={isWorking}
+            onClick={() => void save()}
+          >
+            {isWorking && <LoaderCircle className="animate-spin" />}
+            {snapshot ? "Synchronizuj" : "Pobierz"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -7,7 +7,11 @@ import {
   writeDrafts,
 } from "@/lib/draft-storage";
 
-type Draft = { content: NoteContent; base: NoteContent };
+type Draft = {
+  content: NoteContent;
+  base: NoteContent;
+  chapterId?: string;
+};
 type Drafts = Record<string, Draft>;
 
 function normalizeDrafts(value: unknown): Drafts {
@@ -52,6 +56,7 @@ export function useNoteDrafts(scope?: string) {
     () => new Set(Object.keys(initial)),
   );
   const [storageError, setStorageError] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(() => !key || !supportsDraftStorage());
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persist = useCallback(() => {
     if (!scope) return;
@@ -126,12 +131,15 @@ export function useNoteDrafts(scope?: string) {
         drafts.current = { ...recovered, ...drafts.current };
         setDirtyTopicIds(new Set(Object.keys(drafts.current)));
         if (Object.keys(initial).length) persist();
+        setIsReady(true);
       },
       () => {
-        if (active)
+        if (active) {
           setStorageError(
             "Nie udało się odczytać lokalnych szkiców na tym urządzeniu.",
           );
+          setIsReady(true);
+        }
       },
     );
     return () => {
@@ -159,10 +167,11 @@ export function useNoteDrafts(scope?: string) {
   }, [flushDrafts]);
 
   const updateDraft = useCallback(
-    (topic: Topic, content: NoteContent) => {
+    (topic: Topic, content: NoteContent, chapterId?: string) => {
       drafts.current[topic.id] = {
         content,
         base: drafts.current[topic.id]?.base ?? topic.content,
+        chapterId: chapterId ?? drafts.current[topic.id]?.chapterId,
       };
       schedulePersist();
       setDirtyTopicIds((current) => {
@@ -209,6 +218,16 @@ export function useNoteDrafts(scope?: string) {
     },
     [clearDraft, flushDrafts],
   );
+  const getPendingDrafts = useCallback(
+    () =>
+      Object.entries(drafts.current).map(([topicId, draft]) => ({
+        topicId,
+        chapterId: draft.chapterId,
+        content: structuredClone(draft.content),
+        base: structuredClone(draft.base),
+      })),
+    [],
+  );
 
   return {
     acknowledgeSave,
@@ -216,10 +235,12 @@ export function useNoteDrafts(scope?: string) {
     clearAllDrafts,
     getContent,
     getBaseContent,
+    getPendingDrafts,
     flushDrafts,
     reconcileDraft,
     storageError,
     hasDirtyDrafts: dirtyTopicIds.size > 0,
+    isReady,
     isTopicDirty: (topicId: string) => dirtyTopicIds.has(topicId),
     updateDraft,
   };

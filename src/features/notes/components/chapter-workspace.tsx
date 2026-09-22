@@ -48,7 +48,7 @@ type Props = {
     completed: boolean,
   ) => Promise<boolean>;
   reconcileDraft: (topic: Topic) => void;
-  updateDraft: (topic: Topic, content: NoteContent) => void;
+  updateDraft: (topic: Topic, content: NoteContent, chapterId?: string) => void;
 };
 
 export function ChapterWorkspace({
@@ -166,7 +166,7 @@ export function ChapterWorkspace({
           chapters={chapters}
           loadChapterTopics={loadChapterTopics}
           onContentChange={(content) => {
-            if (isEditing && topic) updateDraft(topic, content);
+            if (isEditing && topic) updateDraft(topic, content, chapterId);
           }}
           onSaveContent={onSaveContent}
           onToggleCompleted={(completed) =>

@@ -22,11 +22,19 @@ za logowanie i dane relacyjne. Zdjęcia nie przechodzą przez Vercel: frontend
 wysyła je do Workera, który weryfikuje token Supabase i zapisuje plik w
 prywatnym R2.
 
-Frontend jest instalowalną aplikacją PWA. Service worker przechowuje wyłącznie
-statyczny shell aplikacji: HTML, wersjonowane skrypty, style, fonty i ikony.
+Frontend jest instalowalną aplikacją PWA. Service worker przechowuje statyczny
+shell aplikacji: HTML, wersjonowane skrypty, style, fonty i ikony. Wybrane przez
+użytkownika moduły są przechowywane osobno w IndexedDB. Synchronizacja używa
+kursora czasu serwera i pobiera pełną treść tylko dla nowych lub zmienionych
+tematów; lekka lista aktywnych identyfikatorów usuwa nieaktualne rekordy.
+Zdjęcia są pobierane wyłącznie po włączeniu osobnej opcji.
+
 Żądania Supabase, Auth, Workera zdjęć, Turnstile oraz Sentry pozostają
-network-only. Brak internetu nie uruchamia kolejki zapisów ani automatycznej
-synchronizacji.
+network-only na poziomie service workera. Podczas braku internetu repozytoria
+notatek korzystają z jawnie pobranej kopii lokalnej. Edycje są zachowywane jako
+szkice wraz z bazową wersją treści i automatycznie wysyłane po odzyskaniu sieci.
+Atomowe porównanie wersji bazowej zapobiega cichemu nadpisaniu zmian z innego
+urządzenia. Pozostałe mutacje wymagają połączenia.
 
 ## Granice bezpieczeństwa
 
@@ -87,9 +95,9 @@ Treść notatki staje się zapisaną wersją dopiero po potwierdzeniu serwera.
 Szkic dopisany podczas zapisu pozostaje niezapisany i blokuje opuszczenie
 notatki. Wylogowanie z niezapisanymi zmianami wymaga ich jawnego odrzucenia.
 Szkice są przechowywane w IndexedDB, z kluczem konta i modułu. Wracają po
-odświeżeniu oraz ponownym uruchomieniu zainstalowanej aplikacji. Nie jest to
-synchronizacja offline ani autosave na serwerze. Brak miejsca lub niedostępny
-magazyn powoduje widoczny komunikat. Jawne odrzucenie usuwa szkic.
+odświeżeniu oraz ponownym uruchomieniu zainstalowanej aplikacji. Po zdarzeniu
+`online` są wysyłane kolejno na serwer. Brak miejsca lub niedostępny magazyn
+powoduje widoczny komunikat. Jawne odrzucenie usuwa szkic.
 Szkic zachowuje oryginalną treść jako bazę zapisu. UPDATE porównuje ją atomowo
 z treścią na serwerze; brak pasującego rekordu zatrzymuje zapis i zachowuje szkic.
 Kolejność rozdziałów jest zapisywana pojedynczym RPC reorder_chapters.

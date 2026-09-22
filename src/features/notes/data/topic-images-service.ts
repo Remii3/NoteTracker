@@ -32,6 +32,7 @@ export type GallerySectionsPage = {
 };
 
 export interface TopicImagesService {
+  download?(imageId: string): Promise<Blob>;
   list(topicId: string): Promise<TopicImage[]>;
   listGallerySections(
     moduleId: string,

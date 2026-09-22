@@ -13,6 +13,7 @@ import type {
   TopicNavigation,
 } from "../types/model";
 import { createTopicNavigation } from "../lib/topic-navigation";
+import type { OfflineModuleChanges } from "../offline/offline-types";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -23,6 +24,10 @@ class MemoryNotesRepository implements NotesRepository {
 
   getSnapshot() {
     return clone(this.chapters);
+  }
+
+  async getOfflineChanges(): Promise<OfflineModuleChanges> {
+    throw new Error("Synchronizacja offline nie jest dostępna w pamięci.");
   }
 
   async listChapters() {

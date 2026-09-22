@@ -6,10 +6,11 @@ treść w TipTap, dodawać zdjęcia oraz korzystać z banku pytań i sesji nauki
 Statystyki modułowe i globalne pokazują aktywność, skuteczność, serie nauki,
 słabe obszary oraz realizację celu tygodniowego.
 
-Aplikację można zainstalować jako PWA na telefonie lub komputerze. Interfejs
-i statyczne zasoby są dostępne po utracie połączenia, ale dane użytkownika nie
-są cache'owane przez service workera. Zapisy do Supabase i operacje na zdjęciach
-wymagają internetu. Lokalne szkice notatek są przechowywane w IndexedDB.
+Aplikację można zainstalować jako PWA na telefonie lub komputerze. Użytkownik
+może oznaczyć wybrane moduły jako dostępne offline i opcjonalnie pobrać ich
+zdjęcia. Dane są przechowywane w IndexedDB, synchronizowane różnicowo, a lokalne
+szkice notatek są automatycznie wysyłane po odzyskaniu połączenia. Operacje inne
+niż edycja treści notatki nadal wymagają internetu.
 
 ## Stos technologiczny
 

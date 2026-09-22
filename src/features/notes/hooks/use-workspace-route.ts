@@ -10,6 +10,7 @@ type Options = {
   isLoading?: boolean;
   loadFailed?: boolean;
   resolveChapterTopics: (chapterId: string) => Promise<unknown>;
+  blockDirtyNavigation?: boolean;
 };
 
 export function useWorkspaceRoute({
@@ -18,6 +19,7 @@ export function useWorkspaceRoute({
   isLoading = false,
   loadFailed = false,
   resolveChapterTopics,
+  blockDirtyNavigation = true,
 }: Options) {
   const matches = useMatches();
   const navigate = useNavigate();
@@ -94,7 +96,9 @@ export function useWorkspaceRoute({
 
   const navigationBlocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      editorDirty && currentLocation.pathname !== nextLocation.pathname,
+      blockDirtyNavigation &&
+      editorDirty &&
+      currentLocation.pathname !== nextLocation.pathname,
   );
 
   useEffect(() => {

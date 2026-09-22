@@ -84,10 +84,12 @@ w kodzie Workera.
    allowlisty nie otrzymuje nagłówka CORS.
 7. Zainstaluj PWA, uruchom je w osobnym oknie i sprawdź ikonę oraz ekran
    startowy.
-8. Po wcześniejszym otwarciu aplikacji odłącz sieć: shell powinien się otworzyć,
-   a interfejs powinien pokazać stan offline bez potwierdzania zapisów.
-9. Wdróż kolejną wersję i sprawdź, że aplikacja proponuje aktualizację zamiast
-   przeładować się automatycznie.
+8. Oznacz moduł jako dostępny offline, odłącz sieć i sprawdź nawigację oraz
+   odczyt jego tematów. Powtórz próbę z opcją zdjęć wyłączoną i włączoną.
+9. Zmień notatkę offline, przywróć sieć i sprawdź automatyczny zapis oraz
+   zachowanie szkicu w przypadku konfliktu z wersją serwerową.
+10. Wdróż kolejną wersję i sprawdź, że aplikacja proponuje aktualizację zamiast
+    przeładować się automatycznie.
 
 ## Rollback
 

@@ -1,5 +1,5 @@
 import { forgetRecentModule, reconcileRecentModules } from "@/lib/memory-cache";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import type { Module } from "../data/modules-repository";
 import { ModulePicker } from "../module-picker";
@@ -8,6 +8,8 @@ import { SupabaseModulesRepository } from "../data/supabase-modules-repository";
 import { supabase } from "@/lib/supabase/client";
 import { useNavigate } from "react-router";
 import { useUser } from "@/features/auth";
+import { OfflineModuleService } from "@/features/notes/offline/offline-module-service";
+import { SupabaseNotesRepository } from "@/features/notes/data/supabase-notes-repository";
 
 export function ModulesPage() {
   const user = useUser();
@@ -26,6 +28,28 @@ export function ModulesPage() {
         : undefined,
     [imagesApiUrl],
   );
+  const offlineService = useMemo(
+    () =>
+      new OfflineModuleService(
+        userId,
+        (moduleId) => new SupabaseNotesRepository(supabase, userId, moduleId),
+        imagesService,
+      ),
+    [imagesService, userId],
+  );
+
+  useEffect(() => {
+    const sync = async () => {
+      if (!navigator.onLine) return;
+      const snapshots = await offlineService.list();
+      for (const snapshot of snapshots)
+        await offlineService
+          .syncStored(snapshot.module.id)
+          .catch(() => undefined);
+    };
+    window.addEventListener("online", sync);
+    return () => window.removeEventListener("online", sync);
+  }, [offlineService]);
   const handleModulesLoaded = useCallback(
     (modules: Module[]) => {
       if (userId) reconcileRecentModules(userId, modules);
@@ -37,6 +61,7 @@ export function ModulesPage() {
     <ModulePicker
       repository={repository}
       imagesService={imagesService}
+      offlineService={offlineService}
       cacheKey={`modules:${user.id}`}
       onLoaded={handleModulesLoaded}
       onDeleted={(module) => forgetRecentModule(user.id, module.id)}

@@ -132,3 +132,27 @@ it("loads summaries and navigation with module-scoped RPCs", async () => {
     expect(JSON.parse(init.body).target_module_id).toBe("module");
   }
 });
+
+it("requests only offline changes newer than the server cursor", async () => {
+  const response = {
+    serverTime: "2026-09-21T12:00:00Z",
+    module: { id: "module" },
+    chapters: [],
+    topics: [],
+    activeChapterIds: [],
+    activeTopicIds: [],
+    images: [],
+  };
+  const { fetch, repository } = setup(response);
+
+  await repository.getOfflineChanges("2026-09-20T12:00:00Z", true);
+
+  expect(String(fetch.mock.calls[0][0])).toContain(
+    "/rpc/get_offline_module_changes",
+  );
+  expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+    target_module_id: "module",
+    changed_since: "2026-09-20T12:00:00Z",
+    include_images: true,
+  });
+});
