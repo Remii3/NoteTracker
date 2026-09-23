@@ -84,3 +84,18 @@ it("updates the offline copy after a queued note is accepted", async () => {
 
   expect(updateTopicContent).toHaveBeenCalledWith("module", "topic", content);
 });
+
+it("fetches conflict content only from the server and refreshes the cache", async () => {
+  const content = { type: "doc", text: "server version" };
+  const online = Object.create(memoryNotesRepository);
+  online.getFreshTopicContent = vi.fn().mockResolvedValue(content);
+  const updateTopicContent = vi.fn().mockResolvedValue(undefined);
+  const offline = { updateTopicContent } as unknown as OfflineModuleService;
+  const repository = new OfflineNotesRepository(online, "module", offline);
+
+  await expect(
+    repository.getFreshTopicContent("chapter", "topic"),
+  ).resolves.toEqual(content);
+  expect(online.getFreshTopicContent).toHaveBeenCalledWith("chapter", "topic");
+  expect(updateTopicContent).toHaveBeenCalledWith("module", "topic", content);
+});

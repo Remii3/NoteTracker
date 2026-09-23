@@ -27,6 +27,7 @@ type Options = {
       topicId: string,
       content: NoteContent,
       expectedContent: NoteContent,
+      onError?: (error: unknown) => void,
     ) => Promise<boolean>;
     toggleChapter: (chapterId: string, completed: boolean) => Promise<boolean>;
     toggleTopic: (
@@ -40,6 +41,16 @@ type Options = {
   acknowledgeSave: (topicId: string, content: NoteContent) => boolean;
   getDraftBase?: (topic: Topic) => NoteContent;
   getDraftContent: (topic: Topic) => Topic["content"];
+  onContentSaveError?: (
+    draft: {
+      chapterId: string;
+      topicId: string;
+      content: NoteContent;
+      base: NoteContent;
+    },
+    error: unknown,
+  ) => Promise<void> | void;
+  onContentSaved?: () => void;
   navigateToChapter: (
     chapterId: string,
     topicId?: string,
@@ -61,6 +72,8 @@ export function useWorkspaceActions({
   acknowledgeSave,
   getDraftContent,
   getDraftBase,
+  onContentSaveError,
+  onContentSaved,
   navigateToChapter,
   navigateHome,
 }: Options) {
@@ -132,14 +145,31 @@ export function useWorkspaceActions({
       return false;
     }
     const contentToSave = getDraftContent(topic);
+    const baseContent = getDraftBase?.(topic) ?? topic.content;
+    let saveError: unknown;
     const saved = await commands.saveContent(
       chapterId,
       topic.id,
       contentToSave,
-      getDraftBase?.(topic) ?? topic.content,
+      baseContent,
+      (caught) => {
+        saveError = caught;
+      },
     );
-    if (!saved) return false;
+    if (!saved) {
+      await onContentSaveError?.(
+        {
+          chapterId,
+          topicId: topic.id,
+          content: contentToSave,
+          base: baseContent,
+        },
+        saveError,
+      );
+      return false;
+    }
     const fullySaved = acknowledgeSave(topic.id, contentToSave);
+    onContentSaved?.();
     toast.add({
       data: { type: "success" },
       description: fullySaved

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Outlet } from "react-router";
 import { LoadError } from "@/components/load-error";
 import { toast } from "@/components/ui/toast";
@@ -6,6 +6,7 @@ import { AccountMenu } from "@/features/auth";
 import { AppLayout } from "@/layout/app-layout";
 import { useWorkspaceActions } from "../hooks/use-workspace-actions";
 import { useNoteDrafts } from "../hooks/use-note-drafts";
+import { useNoteSync } from "../hooks/use-note-sync";
 import { useNotesStore } from "../hooks/use-notes-store";
 import { useRichTextModule } from "../hooks/use-rich-text-module";
 import { useWorkspaceDnd } from "../hooks/use-workspace-dnd";
@@ -67,9 +68,11 @@ export function ModuleProvider({
   onModuleProgressChange,
 }: Props) {
   const { isOnline } = usePwa();
-  const syncingDraftsRef = useRef(false);
   const [isSearchPending, setIsSearchPending] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [dismissedSyncConflictId, setDismissedSyncConflictId] = useState<
+    string | null
+  >(null);
   const [movedChapter, setMovedChapter] = useState<Chapter | null>(null);
   const notesStore = useNotesStore({
     repository,
@@ -123,6 +126,7 @@ export function ModuleProvider({
     getContent: getDraftContent,
     reconcileDraft,
     hasDirtyDrafts,
+    pendingDraftCount,
     isReady: draftsReady,
     isTopicDirty,
     updateDraft,
@@ -156,43 +160,24 @@ export function ModuleProvider({
     blockDirtyNavigation: isOnline,
   });
 
-  const saveStoredContent = notesStore.saveContent;
-  useEffect(() => {
-    if (!draftsReady) return;
-    const syncDrafts = async () => {
-      if (syncingDraftsRef.current || !navigator.onLine) return;
-      syncingDraftsRef.current = true;
-      try {
-        for (const draft of getPendingDrafts()) {
-          const resolvedChapterId =
-            draft.chapterId ??
-            chapters.find((item) =>
-              item.topics.some((candidate) => candidate.id === draft.topicId),
-            )?.id;
-          if (!resolvedChapterId) continue;
-          const saved = await saveStoredContent(
-            resolvedChapterId,
-            draft.topicId,
-            draft.content,
-            draft.base,
-          );
-          if (saved) acknowledgeSave(draft.topicId, draft.content);
-        }
-      } finally {
-        syncingDraftsRef.current = false;
-      }
-    };
-    if (isOnline) void syncDrafts();
-    window.addEventListener("online", syncDrafts);
-    return () => window.removeEventListener("online", syncDrafts);
-  }, [
-    acknowledgeSave,
+  const noteSync = useNoteSync({
+    scope: draftScope,
+    repository,
     chapters,
     draftsReady,
-    getPendingDrafts,
     isOnline,
-    saveStoredContent,
-  ]);
+    getPendingDrafts,
+    acknowledgeSave,
+    clearDraft,
+    clearStoreError: notesStore.clearError,
+    replaceTopicContent: notesStore.replaceTopicContent,
+    saveContent: notesStore.saveContent,
+  });
+  const currentSyncConflict = noteSync.conflicts[0];
+  const syncConflictOpen = Boolean(
+    currentSyncConflict &&
+    currentSyncConflict.topicId !== dismissedSyncConflictId,
+  );
   const { richTextModule, preloadRichTextEditor } = useRichTextModule(
     activeView === "notes",
   );
@@ -264,6 +249,8 @@ export function ModuleProvider({
     acknowledgeSave,
     getDraftContent,
     getDraftBase,
+    onContentSaveError: noteSync.handleSaveFailure,
+    onContentSaved: noteSync.recordSuccessfulSync,
     navigateToChapter,
     navigateHome,
   });
@@ -515,6 +502,16 @@ export function ModuleProvider({
         hasUnsavedChanges: editorDirty,
         onChangeEditingMode: changeEditingMode,
         onPreloadEditor: preloadRichTextEditor,
+        syncStatus: {
+          isOnline,
+          pendingCount: pendingDraftCount,
+          conflictCount: noteSync.conflicts.length,
+          isSyncing: noteSync.isSyncing,
+          error: noteSync.error,
+          lastSyncedAt: noteSync.lastSyncedAt,
+          onRetry: () => void noteSync.retry(),
+          onOpenConflicts: () => setDismissedSyncConflictId(null),
+        },
       };
 
   const dialogs: WorkspaceDialogsProps = {
@@ -577,6 +574,19 @@ export function ModuleProvider({
               navigateHome();
               await notesStore.load();
             },
+          }
+        : null,
+    syncConflict:
+      syncConflictOpen && currentSyncConflict
+        ? {
+            conflict: currentSyncConflict,
+            conflictCount: noteSync.conflicts.length,
+            isWorking: noteSync.isSyncing,
+            error: noteSync.error,
+            onClose: () =>
+              setDismissedSyncConflictId(currentSyncConflict.topicId),
+            onKeepLocal: noteSync.keepLocalVersion,
+            onUseServer: noteSync.useServerVersion,
           }
         : null,
   };

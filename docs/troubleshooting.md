@@ -93,3 +93,8 @@ Jeśli zapisany moduł nie działa offline, sprawdź w `Application > IndexedDB 
 notetracker-local`, czy istnieją magazyny `offline-modules` i `offline-images`.
 Przeglądarka może usunąć dane typu best-effort przy braku miejsca. Ponowne
 wybranie akcji „Synchronizuj” odbudowuje kopię i pobiera tylko zmienioną treść.
+
+Jeśli wskaźnik synchronizacji pokazuje konflikt, otwórz go i porównaj wersję
+lokalną z serwerową. „Zachowaj wersję lokalną” zastępuje wersję aktualnie
+widoczną na serwerze, a „Użyj wersji serwerowej” usuwa lokalny szkic. Nie czyść
+danych witryny przed rozstrzygnięciem konfliktu.

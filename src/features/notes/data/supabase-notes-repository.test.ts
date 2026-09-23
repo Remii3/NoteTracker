@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { expect, it, vi } from "vitest";
 import type { Database } from "@/lib/supabase/database.types";
 import { SupabaseNotesRepository } from "./supabase-notes-repository";
+import { NoteContentConflictError } from "./notes-repository";
 import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
 function setup(body: unknown = []) {
   const fetch = vi.fn().mockImplementation(
@@ -105,7 +106,7 @@ it("sends note content in an RPC body and rejects a stale write", async () => {
       { type: "doc" },
       original,
     ),
-  ).rejects.toThrow("innej karcie");
+  ).rejects.toBeInstanceOf(NoteContentConflictError);
   const url = new URL(fetch.mock.calls[0][0]);
   expect(url.pathname).toContain("/rpc/save_topic_content");
   expect(url.toString().length).toBeLessThan(200);

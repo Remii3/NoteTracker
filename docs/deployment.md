@@ -87,7 +87,8 @@ w kodzie Workera.
 8. Oznacz moduł jako dostępny offline, odłącz sieć i sprawdź nawigację oraz
    odczyt jego tematów. Powtórz próbę z opcją zdjęć wyłączoną i włączoną.
 9. Zmień notatkę offline, przywróć sieć i sprawdź automatyczny zapis oraz
-   zachowanie szkicu w przypadku konfliktu z wersją serwerową.
+   zachowanie szkicu w przypadku konfliktu z wersją serwerową. Wywołaj konflikt
+   zmianą tej samej notatki w drugiej karcie i sprawdź obie decyzje w dialogu.
 10. Wdróż kolejną wersję i sprawdź, że aplikacja proponuje aktualizację zamiast
     przeładować się automatycznie.
 

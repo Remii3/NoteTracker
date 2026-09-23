@@ -48,6 +48,10 @@ class MemoryNotesRepository implements NotesRepository {
     return clone(this.getTopic(chapterId, topicId).content);
   }
 
+  getFreshTopicContent(chapterId: string, topicId: string) {
+    return this.getTopicContent(chapterId, topicId);
+  }
+
   async getTopicNavigation(topicId: string): Promise<TopicNavigation> {
     const topics = this.chapters.flatMap((chapter) =>
       chapter.topics.map((topic) => ({

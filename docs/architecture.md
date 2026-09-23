@@ -100,5 +100,8 @@ odświeżeniu oraz ponownym uruchomieniu zainstalowanej aplikacji. Po zdarzeniu
 powoduje widoczny komunikat. Jawne odrzucenie usuwa szkic.
 Szkic zachowuje oryginalną treść jako bazę zapisu. UPDATE porównuje ją atomowo
 z treścią na serwerze; brak pasującego rekordu zatrzymuje zapis i zachowuje szkic.
+Klient pobiera wtedy świeżą treść bez fallbacku offline i pokazuje obie wersje.
+Wybór wersji lokalnej wykonuje ponowny zapis warunkowy względem właśnie pobranej
+wersji, więc kolejna równoległa zmiana ponownie zatrzyma zapis.
 Kolejność rozdziałów jest zapisywana pojedynczym RPC reorder_chapters.
 Błąd odświeżenia podsumowania po zapisie nie cofa zatwierdzonej operacji w UI.

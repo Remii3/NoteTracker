@@ -27,6 +27,11 @@ const BulkDeleteDialog = lazy(() =>
     default: module.BulkDeleteDialog,
   })),
 );
+const NoteSyncConflictDialog = lazy(() =>
+  import("./note-sync-conflict-dialog").then((module) => ({
+    default: module.NoteSyncConflictDialog,
+  })),
+);
 
 export type WorkspaceDialogsProps = {
   add: ComponentProps<typeof AddContentDialog> | null;
@@ -36,6 +41,7 @@ export type WorkspaceDialogsProps = {
   navigation: ComponentProps<typeof UnsavedChangesDialog> | null;
   preview: ComponentProps<typeof UnsavedChangesDialog> | null;
   moveChapter: ComponentProps<typeof MoveChapterDialog> | null;
+  syncConflict: ComponentProps<typeof NoteSyncConflictDialog> | null;
 };
 
 export function WorkspaceDialogs({
@@ -46,6 +52,7 @@ export function WorkspaceDialogs({
   navigation,
   preview,
   moveChapter,
+  syncConflict,
 }: WorkspaceDialogsProps) {
   return (
     <Suspense fallback={null}>
@@ -66,6 +73,12 @@ export function WorkspaceDialogs({
       {navigation && <UnsavedChangesDialog {...navigation} />}
       {preview && <UnsavedChangesDialog {...preview} />}
       {moveChapter && <MoveChapterDialog {...moveChapter} />}
+      {syncConflict && (
+        <NoteSyncConflictDialog
+          key={syncConflict.conflict.topicId}
+          {...syncConflict}
+        />
+      )}
     </Suspense>
   );
 }

@@ -10,7 +10,8 @@ Aplikację można zainstalować jako PWA na telefonie lub komputerze. Użytkowni
 może oznaczyć wybrane moduły jako dostępne offline i opcjonalnie pobrać ich
 zdjęcia. Dane są przechowywane w IndexedDB, synchronizowane różnicowo, a lokalne
 szkice notatek są automatycznie wysyłane po odzyskaniu połączenia. Operacje inne
-niż edycja treści notatki nadal wymagają internetu.
+niż edycja treści notatki nadal wymagają internetu. Wskaźnik w nagłówku pokazuje
+liczbę oczekujących zmian, ostatnią synchronizację i konflikty wymagające decyzji.
 
 ## Stos technologiczny
 
@@ -112,7 +113,8 @@ Notatki nie mają autosave. Zmiany w edytorze są utrwalane po użyciu akcji
 zapisu. Szkice są zachowywane lokalnie osobno dla konta, modułu i karty
 przeglądarki; wracają po odświeżeniu lub przywróceniu tej karty. Nie są
 synchronizowane pomiędzy urządzeniami. Zapis odrzuca nadpisanie treści
-zmienionej w innej karcie i zachowuje szkic użytkownika.
+zmienionej w innej karcie i zachowuje szkic użytkownika. Dialog konfliktu
+pozwala porównać tekst obu wersji i zachować lokalną albo serwerową.
 
 Po zmianie schematu uruchom również `pnpm test:db` (wymaga Dockera).
 Testy `pnpm test` obejmują m.in. zapis podczas dalszej edycji, ochronę szkiców

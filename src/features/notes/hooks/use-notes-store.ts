@@ -148,6 +148,7 @@ export function useNotesStore({
       persist: (next: Chapter[]) => Promise<void>,
       errorMessage: string,
       refreshChapterData = false,
+      onError?: (error: unknown) => void,
     ) => {
       if (operationLockRef.current) return false;
       operationLockRef.current = true;
@@ -163,6 +164,7 @@ export function useNotesStore({
       } catch (caughtError) {
         applyChapters(previous);
         setError(getErrorMessage(caughtError, errorMessage));
+        onError?.(caughtError);
         return false;
       } finally {
         operationLockRef.current = false;
@@ -515,6 +517,7 @@ export function useNotesStore({
       topicId: string,
       content: NoteContent,
       expectedContent: NoteContent,
+      onError?: (error: unknown) => void,
     ) =>
       runOptimistic(
         (current) => current,
@@ -535,8 +538,22 @@ export function useNotesStore({
           );
         },
         "Nie udało się zapisać notatki.",
+        false,
+        onError,
       ),
     [applyChapters, repository, runOptimistic],
+  );
+  const replaceTopicContent = useCallback(
+    (chapterId: string, topicId: string, content: NoteContent) =>
+      applyChapters(
+        saveTopicContent(
+          materializeChapters(stateRef.current),
+          chapterId,
+          topicId,
+          content,
+        ),
+      ),
+    [applyChapters],
   );
   const toggleChapter = useCallback(
     (chapterId: string, completed: boolean) =>
@@ -588,6 +605,7 @@ export function useNotesStore({
     removeItems,
     renameItem,
     restoreChapters,
+    replaceTopicContent,
     saveContent,
     toggleChapter,
     toggleTopic,

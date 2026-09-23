@@ -137,6 +137,14 @@ export function PwaProvider({ children }: { children: ReactNode }) {
     };
     const handleOffline = () => {
       wasOffline = true;
+      toast.add({
+        data: {
+          type: "error",
+        },
+        timeout: 0,
+        description:
+          "Brak połączenia. Edycje notatek zapisujemy lokalnie i zsynchronizujemy po powrocie sieci.",
+      });
       setIsOnline(false);
     };
     window.addEventListener("online", handleOnline);

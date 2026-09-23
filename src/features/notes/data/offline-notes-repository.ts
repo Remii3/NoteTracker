@@ -56,6 +56,14 @@ export class OfflineNotesRepository implements NotesRepository {
     );
   }
 
+  async getFreshTopicContent(chapterId: string, topicId: string) {
+    const content = await this.online.getFreshTopicContent(chapterId, topicId);
+    await this.offline
+      .updateTopicContent(this.moduleId, topicId, content)
+      .catch(() => undefined);
+    return content;
+  }
+
   async getTopicNavigation(topicId: string) {
     return this.withFallback(
       () => this.online.getTopicNavigation(topicId),

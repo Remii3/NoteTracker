@@ -240,6 +240,7 @@ export function useNoteDrafts(scope?: string) {
     reconcileDraft,
     storageError,
     hasDirtyDrafts: dirtyTopicIds.size > 0,
+    pendingDraftCount: dirtyTopicIds.size,
     isReady,
     isTopicDirty: (topicId: string) => dirtyTopicIds.has(topicId),
     updateDraft,

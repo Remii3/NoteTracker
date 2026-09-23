@@ -6,6 +6,7 @@ import type {
   NotesRepository,
   TopicUpdate,
 } from "./notes-repository";
+import { NoteContentConflictError } from "./notes-repository";
 import type {
   ChapterSummary,
   LearningSummary,
@@ -93,6 +94,10 @@ export class SupabaseNotesRepository implements NotesRepository {
     throwIfPostgrestError(error);
     if (!data) throw new Error("Nie znaleziono notatki.");
     return data.content as NoteContent;
+  }
+
+  getFreshTopicContent(chapterId: string, topicId: string) {
+    return this.getTopicContent(chapterId, topicId);
   }
 
   async getTopicNavigation(topicId: string) {
@@ -275,10 +280,7 @@ export class SupabaseNotesRepository implements NotesRepository {
       expected_content: expectedContent as Json,
     });
     throwIfPostgrestError(error);
-    if (!data)
-      throw new Error(
-        "Notatka zmieniła się w innej karcie lub jest niedostępna. Twój szkic pozostał zachowany. Skopiuj potrzebne fragmenty, a następnie odrzuć szkic i odśwież stronę, aby pobrać aktualną wersję.",
-      );
+    if (!data) throw new NoteContentConflictError();
   }
 
   async deleteTopic(chapterId: string, topicId: string) {

@@ -12,6 +12,13 @@ export type TopicUpdate = Partial<
   Pick<Topic, "title" | "completed" | "position">
 >;
 
+export class NoteContentConflictError extends Error {
+  constructor() {
+    super("Treść notatki zmieniła się na serwerze.");
+    this.name = "NoteContentConflictError";
+  }
+}
+
 export interface NotesRepository {
   getOfflineChanges(
     changedSince?: string,
@@ -20,6 +27,10 @@ export interface NotesRepository {
   listChapters(): Promise<import("../types/model").Chapter[]>;
   listChapterTopics(chapterId: string): Promise<Topic[]>;
   getTopicContent(chapterId: string, topicId: string): Promise<NoteContent>;
+  getFreshTopicContent(
+    chapterId: string,
+    topicId: string,
+  ): Promise<NoteContent>;
   getTopicNavigation(topicId: string): Promise<TopicNavigation>;
   searchChapters(
     query: string,
