@@ -55,7 +55,7 @@ import {
   normalizeModuleName,
   validateModuleName,
 } from "./lib/module-validation";
-import type { ImportedModuleDraft } from "./import/docx-import";
+import type { ModuleImportDraft } from "./import/import-model";
 import { ModuleImportDialog } from "./import/module-import-dialog";
 import type { TopicImagesService } from "@/features/notes/data/topic-images-service";
 import type { TopicImage } from "@/features/notes/types/topic-image";
@@ -283,11 +283,12 @@ export function ModulePicker({
     }
   }
 
-  async function importDocx(draft: ImportedModuleDraft) {
-    const imported = await repository.importDocx(
-      draft,
-      await getNextPosition(),
-    );
+  async function importModule(draft: ModuleImportDraft) {
+    const position = await getNextPosition();
+    const imported =
+      draft.kind === "content"
+        ? await repository.importDocx(draft, position)
+        : await repository.importFlashcards(draft, position);
     updateModules((current) => [...current, imported]);
     if (!query && cacheKey)
       writeMemoryCache(cacheKey, [...pinnedModules, ...modules, imported]);
@@ -729,7 +730,7 @@ export function ModulePicker({
           <ModuleImportDialog
             existingModuleNames={sortedModules.map((module) => module.name)}
             onClose={() => setImportOpen(false)}
-            onImport={importDocx}
+            onImport={importModule}
           />
         )}
       </main>

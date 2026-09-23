@@ -1,4 +1,7 @@
-import type { ImportedModuleDraft } from "../import/docx-import";
+import type {
+  ContentModuleImportDraft,
+  FlashcardModuleImportDraft,
+} from "../import/import-model";
 import type { NoteContent } from "@/features/notes/types/model";
 
 export type Module = {
@@ -47,7 +50,14 @@ export interface ModulesRepository {
   getBySlug(slug: string): Promise<Module | null>;
   getExportData(id: string): Promise<ModuleExportData>;
   create(name: string, position: number): Promise<Module>;
-  importDocx(draft: ImportedModuleDraft, position: number): Promise<Module>;
+  importDocx(
+    draft: ContentModuleImportDraft,
+    position: number,
+  ): Promise<Module>;
+  importFlashcards(
+    draft: FlashcardModuleImportDraft,
+    position: number,
+  ): Promise<Module>;
   rename(id: string, name: string): Promise<void>;
   setPinned(id: string, isPinned: boolean): Promise<void>;
   remove(id: string): Promise<void>;

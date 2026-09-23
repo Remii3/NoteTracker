@@ -1,13 +1,16 @@
 import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import {
   ArrowLeft,
+  ArrowLeftRight,
   BookOpen,
+  BookOpenText,
   Check,
   ChevronDown,
   ChevronRight,
   FileCheck2,
   FileText,
   FileUp,
+  Layers3,
   LoaderCircle,
   Pencil,
 } from "lucide-react";
@@ -23,25 +26,36 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   useRichTextModule,
   type RichTextModule,
 } from "@/features/notes/hooks/use-rich-text-module";
 import { cn } from "@/lib/utils";
 import { MODULE_NAME_MAX_LENGTH } from "../lib/module-validation";
+import { parseAnkiFile } from "./anki-import";
+import { parseDocxFile } from "./docx-import";
 import {
-  normalizeImportedDraftTitles,
-  parseDocxFile,
-  type ImportedModuleDraft,
-} from "./docx-import";
+  normalizeContentImportDraft,
+  normalizeFlashcardImportDraft,
+  type ContentModuleImportDraft,
+  type FlashcardModuleImportDraft,
+  type ModuleImportDraft,
+} from "./import-model";
+import {
+  parseQuizletText,
+  type QuizletRowSeparator,
+  type QuizletTermSeparator,
+} from "./quizlet-import";
 
 type Props = {
   existingModuleNames: string[];
   onClose: () => void;
-  onImport: (draft: ImportedModuleDraft) => Promise<void>;
+  onImport: (draft: ModuleImportDraft) => Promise<void>;
 };
 
 type ImportStep = "source" | "preview";
+type SupportedImportSource = "docx" | "quizlet" | "anki";
 type PreviewSelection = { chapter: number; topic: number };
 
 export function ModuleImportDialog({
@@ -50,8 +64,17 @@ export function ModuleImportDialog({
   onImport,
 }: Props) {
   const [step, setStep] = useState<ImportStep>("source");
-  const [draft, setDraft] = useState<ImportedModuleDraft | null>(null);
+  const [source, setSource] = useState<SupportedImportSource>("docx");
+  const [draft, setDraft] = useState<ModuleImportDraft | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [ankiFileName, setAnkiFileName] = useState<string | null>(null);
+  const [quizletName, setQuizletName] = useState("Import z Quizleta");
+  const [quizletText, setQuizletText] = useState("");
+  const [quizletTermSeparator, setQuizletTermSeparator] =
+    useState<QuizletTermSeparator>("auto");
+  const [quizletRowSeparator, setQuizletRowSeparator] =
+    useState<QuizletRowSeparator>("newline");
+  const [quizletSwapSides, setQuizletSwapSides] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -62,11 +85,16 @@ export function ModuleImportDialog({
   });
   const { richTextModule } = useRichTextModule(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const selectedTopic = draft?.chapters[preview.chapter]?.topics[preview.topic];
+  const ankiFileInputRef = useRef<HTMLInputElement>(null);
+  const contentDraft = draft?.kind === "content" ? draft : null;
+  const selectedTopic =
+    contentDraft?.chapters[preview.chapter]?.topics[preview.topic];
   const validationError = draft ? validateDraft(draft) : null;
   const topicsCount =
-    draft?.chapters.reduce((sum, chapter) => sum + chapter.topics.length, 0) ??
-    0;
+    contentDraft?.chapters.reduce(
+      (sum, chapter) => sum + chapter.topics.length,
+      0,
+    ) ?? 0;
 
   async function readDocx(file: File) {
     setError(null);
@@ -105,19 +133,78 @@ export function ModuleImportDialog({
     if (file) void readDocx(file);
   }
 
+  async function readAnki(file: File) {
+    setError(null);
+    setIsParsing(true);
+    try {
+      const parsed = await parseAnkiFile(file, existingModuleNames);
+      setDraft(parsed);
+      setAnkiFileName(file.name);
+      setStep("preview");
+    } catch (parseError) {
+      setError(
+        parseError instanceof Error
+          ? parseError.message
+          : "Nie udało się odczytać eksportu Anki.",
+      );
+    } finally {
+      setIsParsing(false);
+    }
+  }
+
+  function selectAnki(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) void readAnki(file);
+  }
+
+  function dropAnki(event: DragEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    setIsDragging(false);
+    const file = event.dataTransfer.files?.[0];
+    if (file) void readAnki(file);
+  }
+
+  function prepareQuizletPreview() {
+    setError(null);
+    try {
+      const parsed = parseQuizletText(
+        quizletText,
+        quizletName,
+        existingModuleNames,
+        {
+          termSeparator: quizletTermSeparator,
+          rowSeparator: quizletRowSeparator,
+          swapSides: quizletSwapSides,
+        },
+      );
+      setDraft(parsed);
+      setStep("preview");
+    } catch (parseError) {
+      setError(
+        parseError instanceof Error
+          ? parseError.message
+          : "Nie udało się odczytać tekstu z Quizleta.",
+      );
+    }
+  }
+
   async function submit() {
     if (!draft || validationError) {
       setError(validationError);
       return;
     }
-    const normalized = normalizeImportedDraftTitles(draft);
+    const normalized =
+      draft.kind === "content"
+        ? normalizeContentImportDraft(draft)
+        : normalizeFlashcardImportDraft(draft);
     setDraft(normalized);
     setIsImporting(true);
     setError(null);
     try {
       await onImport(normalized);
     } catch {
-      setError("Nie udało się zaimportować dokumentu. Spróbuj ponownie.");
+      setError("Nie udało się zaimportować materiałów. Spróbuj ponownie.");
       setIsImporting(false);
     }
   }
@@ -132,35 +219,63 @@ export function ModuleImportDialog({
           <DialogTitle>Importuj moduł</DialogTitle>
           <DialogDescription>
             {step === "preview"
-              ? "Sprawdź strukturę i treść przed utworzeniem modułu."
-              : "Dodaj dokument Word, a następnie sprawdź wynik importu."}
+              ? "Sprawdź materiały przed utworzeniem modułu."
+              : "Wybierz źródło materiałów, a następnie sprawdź wynik importu."}
           </DialogDescription>
         </DialogHeader>
 
         <ImportSteps currentStep={step === "source" ? 1 : 2} />
 
         {step === "preview" && draft ? (
-          <ImportPreview
-            draft={draft}
-            selectedTopic={selectedTopic}
-            preview={preview}
-            topicsCount={topicsCount}
-            isImporting={isImporting}
-            richTextModule={richTextModule}
-            onDraftChange={setDraft}
-            onPreviewChange={setPreview}
-            onErrorClear={() => setError(null)}
-          />
+          draft.kind === "content" ? (
+            <ContentImportPreview
+              draft={draft}
+              selectedTopic={selectedTopic}
+              preview={preview}
+              topicsCount={topicsCount}
+              isImporting={isImporting}
+              richTextModule={richTextModule}
+              onDraftChange={setDraft}
+              onPreviewChange={setPreview}
+              onErrorClear={() => setError(null)}
+            />
+          ) : (
+            <FlashcardImportPreview
+              draft={draft}
+              isImporting={isImporting}
+              onDraftChange={setDraft}
+              onErrorClear={() => setError(null)}
+            />
+          )
         ) : (
           <ImportSourceStep
-            draftReady={Boolean(draft)}
+            source={source}
+            draftReady={draft?.source === source}
             fileName={fileName}
+            ankiFileName={ankiFileName}
             isDragging={isDragging}
             isParsing={isParsing}
+            quizletName={quizletName}
+            quizletText={quizletText}
+            quizletTermSeparator={quizletTermSeparator}
+            quizletRowSeparator={quizletRowSeparator}
+            quizletSwapSides={quizletSwapSides}
             fileInputRef={fileInputRef}
+            ankiFileInputRef={ankiFileInputRef}
+            onSourceChange={(nextSource) => {
+              setSource(nextSource);
+              setError(null);
+            }}
             onDragStateChange={setIsDragging}
             onDrop={dropDocx}
             onFileChange={selectDocx}
+            onAnkiDrop={dropAnki}
+            onAnkiFileChange={selectAnki}
+            onQuizletNameChange={setQuizletName}
+            onQuizletTextChange={setQuizletText}
+            onQuizletTermSeparatorChange={setQuizletTermSeparator}
+            onQuizletRowSeparatorChange={setQuizletRowSeparator}
+            onQuizletSwapSidesChange={setQuizletSwapSides}
           />
         )}
 
@@ -200,17 +315,27 @@ export function ModuleImportDialog({
               >
                 Anuluj
               </Button>
-              {draft && (
+              {source === "quizlet" ? (
                 <Button
                   type="button"
                   disabled={isParsing}
-                  onClick={() => {
-                    setStep("preview");
-                    setError(null);
-                  }}
+                  onClick={prepareQuizletPreview}
                 >
                   Przejdź do podglądu
                 </Button>
+              ) : (
+                draft?.source === source && (
+                  <Button
+                    type="button"
+                    disabled={isParsing}
+                    onClick={() => {
+                      setStep("preview");
+                      setError(null);
+                    }}
+                  >
+                    Przejdź do podglądu
+                  </Button>
+                )
               )}
             </>
           )}
@@ -274,17 +399,172 @@ function ImportSteps({ currentStep }: { currentStep: 1 | 2 }) {
 }
 
 type ImportSourceStepProps = {
+  source: SupportedImportSource;
   draftReady: boolean;
   fileName: string | null;
+  ankiFileName: string | null;
   isDragging: boolean;
   isParsing: boolean;
+  quizletName: string;
+  quizletText: string;
+  quizletTermSeparator: QuizletTermSeparator;
+  quizletRowSeparator: QuizletRowSeparator;
+  quizletSwapSides: boolean;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
+  ankiFileInputRef: React.RefObject<HTMLInputElement | null>;
+  onSourceChange: (source: SupportedImportSource) => void;
   onDragStateChange: (dragging: boolean) => void;
   onDrop: (event: DragEvent<HTMLButtonElement>) => void;
   onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onAnkiDrop: (event: DragEvent<HTMLButtonElement>) => void;
+  onAnkiFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onQuizletNameChange: (name: string) => void;
+  onQuizletTextChange: (text: string) => void;
+  onQuizletTermSeparatorChange: (separator: QuizletTermSeparator) => void;
+  onQuizletRowSeparatorChange: (separator: QuizletRowSeparator) => void;
+  onQuizletSwapSidesChange: (swap: boolean) => void;
 };
 
 function ImportSourceStep({
+  source,
+  draftReady,
+  fileName,
+  ankiFileName,
+  isDragging,
+  isParsing,
+  quizletName,
+  quizletText,
+  quizletTermSeparator,
+  quizletRowSeparator,
+  quizletSwapSides,
+  fileInputRef,
+  ankiFileInputRef,
+  onSourceChange,
+  onDragStateChange,
+  onDrop,
+  onFileChange,
+  onAnkiDrop,
+  onAnkiFileChange,
+  onQuizletNameChange,
+  onQuizletTextChange,
+  onQuizletTermSeparatorChange,
+  onQuizletRowSeparatorChange,
+  onQuizletSwapSidesChange,
+}: ImportSourceStepProps) {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto py-2">
+      <div
+        className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+        aria-label="Źródło importu"
+      >
+        <SourceCard
+          active={source === "docx"}
+          icon={<FileText />}
+          title="Microsoft Word"
+          description="Dokument DOCX"
+          onClick={() => onSourceChange("docx")}
+        />
+        <SourceCard
+          active={source === "quizlet"}
+          icon={<BookOpenText />}
+          title="Quizlet"
+          description="Skopiowany tekst"
+          onClick={() => onSourceChange("quizlet")}
+        />
+        <SourceCard
+          active={source === "anki"}
+          icon={<Layers3 />}
+          title="Anki"
+          description="APKG, TXT lub CSV"
+          onClick={() => onSourceChange("anki")}
+        />
+      </div>
+
+      {source === "docx" ? (
+        <WordSourceForm
+          draftReady={draftReady}
+          fileName={fileName}
+          isDragging={isDragging}
+          isParsing={isParsing}
+          fileInputRef={fileInputRef}
+          onDragStateChange={onDragStateChange}
+          onDrop={onDrop}
+          onFileChange={onFileChange}
+        />
+      ) : source === "quizlet" ? (
+        <QuizletSourceForm
+          name={quizletName}
+          text={quizletText}
+          termSeparator={quizletTermSeparator}
+          rowSeparator={quizletRowSeparator}
+          swapSides={quizletSwapSides}
+          onNameChange={onQuizletNameChange}
+          onTextChange={onQuizletTextChange}
+          onTermSeparatorChange={onQuizletTermSeparatorChange}
+          onRowSeparatorChange={onQuizletRowSeparatorChange}
+          onSwapSidesChange={onQuizletSwapSidesChange}
+        />
+      ) : (
+        <AnkiSourceForm
+          draftReady={draftReady}
+          fileName={ankiFileName}
+          isDragging={isDragging}
+          isParsing={isParsing}
+          fileInputRef={ankiFileInputRef}
+          onDragStateChange={onDragStateChange}
+          onDrop={onAnkiDrop}
+          onFileChange={onAnkiFileChange}
+        />
+      )}
+    </div>
+  );
+}
+
+function SourceCard({
+  active,
+  icon,
+  title,
+  description,
+  onClick,
+}: {
+  active: boolean;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        "flex items-center gap-3 rounded-xl border p-3 text-left outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:p-4",
+        active
+          ? "border-primary bg-primary/5"
+          : "bg-background hover:bg-muted/40",
+      )}
+      aria-label={`${title}: ${description}`}
+      aria-pressed={active}
+      onClick={onClick}
+    >
+      <span
+        className={cn(
+          "rounded-lg border bg-background p-2.5",
+          active ? "text-primary" : "text-muted-foreground",
+        )}
+      >
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block font-semibold">{title}</span>
+        <span className="block truncate text-xs text-muted-foreground">
+          {description}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function WordSourceForm({
   draftReady,
   fileName,
   isDragging,
@@ -293,9 +573,19 @@ function ImportSourceStep({
   onDragStateChange,
   onDrop,
   onFileChange,
-}: ImportSourceStepProps) {
+}: Pick<
+  ImportSourceStepProps,
+  | "draftReady"
+  | "fileName"
+  | "isDragging"
+  | "isParsing"
+  | "fileInputRef"
+  | "onDragStateChange"
+  | "onDrop"
+  | "onFileChange"
+>) {
   return (
-    <div className="grid min-h-0 flex-1 items-stretch gap-5 overflow-y-auto py-2 md:grid-cols-[minmax(0,1fr)_20rem]">
+    <div className="mt-5 grid items-stretch gap-5 md:grid-cols-[minmax(0,1fr)_20rem]">
       <section className="flex min-h-80 flex-col rounded-xl border bg-muted/10 p-5 sm:p-7">
         <div>
           <h3 className="font-semibold">Wybierz dokument</h3>
@@ -393,20 +683,253 @@ function ImportSourceStep({
   );
 }
 
-type ImportPreviewProps = {
-  draft: ImportedModuleDraft;
+type QuizletSourceFormProps = {
+  name: string;
+  text: string;
+  termSeparator: QuizletTermSeparator;
+  rowSeparator: QuizletRowSeparator;
+  swapSides: boolean;
+  onNameChange: (name: string) => void;
+  onTextChange: (text: string) => void;
+  onTermSeparatorChange: (separator: QuizletTermSeparator) => void;
+  onRowSeparatorChange: (separator: QuizletRowSeparator) => void;
+  onSwapSidesChange: (swap: boolean) => void;
+};
+
+function QuizletSourceForm({
+  name,
+  text,
+  termSeparator,
+  rowSeparator,
+  swapSides,
+  onNameChange,
+  onTextChange,
+  onTermSeparatorChange,
+  onRowSeparatorChange,
+  onSwapSidesChange,
+}: QuizletSourceFormProps) {
+  return (
+    <div className="mt-5 grid items-stretch gap-5 md:grid-cols-[minmax(0,1fr)_20rem]">
+      <section className="rounded-xl border bg-muted/10 p-5 sm:p-7">
+        <label className="block space-y-2 text-sm font-medium">
+          <span>Nazwa modułu</span>
+          <Input
+            value={name}
+            maxLength={MODULE_NAME_MAX_LENGTH}
+            onChange={(event) => onNameChange(event.target.value)}
+          />
+        </label>
+        <label className="mt-5 block space-y-2 text-sm font-medium">
+          <span>Fiszki z Quizleta</span>
+          <Textarea
+            className="min-h-52 resize-y font-mono text-sm"
+            value={text}
+            placeholder={
+              "Mitochondrium\tElektrownia komórki\nJądro\tPrzechowuje DNA"
+            }
+            onChange={(event) => onTextChange(event.target.value)}
+          />
+        </label>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <label className="space-y-2 text-sm font-medium">
+            <span>Termin i definicja</span>
+            <select
+              className="h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              value={termSeparator}
+              onChange={(event) =>
+                onTermSeparatorChange(
+                  event.target.value as QuizletTermSeparator,
+                )
+              }
+            >
+              <option value="auto">Wykryj automatycznie</option>
+              <option value="tab">Tabulator</option>
+              <option value="comma">Przecinek</option>
+              <option value="dash">Myślnik</option>
+            </select>
+          </label>
+          <label className="space-y-2 text-sm font-medium">
+            <span>Kolejne fiszki</span>
+            <select
+              className="h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              value={rowSeparator}
+              onChange={(event) =>
+                onRowSeparatorChange(event.target.value as QuizletRowSeparator)
+              }
+            >
+              <option value="newline">Nowa linia</option>
+              <option value="semicolon">Średnik</option>
+            </select>
+          </label>
+        </div>
+
+        <label className="mt-5 flex cursor-pointer items-center gap-3 text-sm">
+          <input
+            type="checkbox"
+            className="size-4 accent-primary"
+            checked={swapSides}
+            onChange={(event) => onSwapSidesChange(event.target.checked)}
+          />
+          Zamień termin z definicją
+        </label>
+      </section>
+
+      <aside className="rounded-xl border bg-muted/20 p-5 sm:p-6">
+        <div className="flex items-start gap-3">
+          <div className="rounded-lg border bg-background p-2.5 text-primary">
+            <BookOpenText className="size-5" />
+          </div>
+          <div>
+            <h3 className="font-semibold">Quizlet</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Import przez kopiowanie tekstu
+            </p>
+          </div>
+        </div>
+        <ol className="mt-6 list-decimal space-y-3 pl-4 text-sm text-muted-foreground">
+          <li>Otwórz własny zestaw na stronie Quizleta.</li>
+          <li>Wybierz eksport i skopiuj terminy z definicjami.</li>
+          <li>Wklej tekst, ustaw separatory i sprawdź podgląd.</li>
+        </ol>
+        <div className="mt-6 rounded-lg border bg-background p-3 text-xs text-muted-foreground">
+          Każdy wiersz zostanie zapisany jako fiszka z jedną poprawną
+          odpowiedzią.
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function AnkiSourceForm({
+  draftReady,
+  fileName,
+  isDragging,
+  isParsing,
+  fileInputRef,
+  onDragStateChange,
+  onDrop,
+  onFileChange,
+}: Pick<
+  ImportSourceStepProps,
+  "draftReady" | "isDragging" | "isParsing" | "onDragStateChange"
+> & {
+  fileName: string | null;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  onDrop: (event: DragEvent<HTMLButtonElement>) => void;
+  onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div className="mt-5 grid items-stretch gap-5 md:grid-cols-[minmax(0,1fr)_20rem]">
+      <section className="flex min-h-80 flex-col rounded-xl border bg-muted/10 p-5 sm:p-7">
+        <div>
+          <h3 className="font-semibold">Wybierz eksport Anki</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Przeciągnij plik z notatkami albo wybierz go z urządzenia.
+          </p>
+        </div>
+        <input
+          ref={fileInputRef}
+          className="sr-only"
+          type="file"
+          accept=".apkg,.txt,.csv,application/zip,text/plain,text/csv"
+          aria-label="Plik eksportu Anki"
+          tabIndex={-1}
+          onChange={onFileChange}
+        />
+        <button
+          type="button"
+          className={cn(
+            "mt-5 flex min-h-52 flex-1 flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-8 text-center outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+            isDragging && "border-primary bg-primary/5",
+            draftReady &&
+              !isDragging &&
+              "border-emerald-500/50 bg-emerald-500/5",
+            !draftReady &&
+              !isDragging &&
+              "border-border hover:border-primary/60 hover:bg-muted/30",
+          )}
+          disabled={isParsing}
+          aria-describedby="anki-format-help"
+          onClick={() => fileInputRef.current?.click()}
+          onDragEnter={(event) => {
+            event.preventDefault();
+            onDragStateChange(true);
+          }}
+          onDragOver={(event) => event.preventDefault()}
+          onDragLeave={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+              onDragStateChange(false);
+            }
+          }}
+          onDrop={onDrop}
+        >
+          {isParsing ? (
+            <LoaderCircle className="size-9 animate-spin text-primary" />
+          ) : draftReady ? (
+            <FileCheck2 className="size-9 text-emerald-600" />
+          ) : (
+            <FileUp className="size-9 text-primary" />
+          )}
+          <span className="mt-4 font-medium">
+            {isParsing
+              ? "Odczytywanie eksportu…"
+              : draftReady
+                ? fileName
+                : "Przeciągnij eksport Anki"}
+          </span>
+          <span className="mt-1 text-sm text-muted-foreground">
+            {draftReady
+              ? "Eksport jest gotowy. Kliknij, aby wybrać inny plik."
+              : "lub kliknij, aby wybrać plik"}
+          </span>
+        </button>
+        <p id="anki-format-help" className="mt-3 text-xs text-muted-foreground">
+          Obsługiwane formaty: paczka Anki (.apkg) oraz eksport tekstowy (.txt
+          lub .csv)
+        </p>
+      </section>
+
+      <aside className="rounded-xl border bg-muted/20 p-5 sm:p-6">
+        <div className="flex items-start gap-3">
+          <div className="rounded-lg border bg-background p-2.5 text-primary">
+            <Layers3 className="size-5" />
+          </div>
+          <div>
+            <h3 className="font-semibold">Anki</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Import notatek jako fiszek
+            </p>
+          </div>
+        </div>
+        <ol className="mt-6 list-decimal space-y-3 pl-4 text-sm text-muted-foreground">
+          <li>W Anki wybierz talię i otwórz eksport.</li>
+          <li>Wybierz paczkę Anki lub „Notes in Plain Text”.</li>
+          <li>Zapisz plik i dodaj go tutaj.</li>
+        </ol>
+        <div className="mt-6 rounded-lg border bg-background p-3 text-xs text-muted-foreground">
+          Pierwsze dwa pola notatki staną się przodem i tyłem fiszki. Luki cloze
+          z paczek .apkg zostaną rozbite na osobne fiszki.
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+type ContentImportPreviewProps = {
+  draft: ContentModuleImportDraft;
   selectedTopic:
-    ImportedModuleDraft["chapters"][number]["topics"][number] | undefined;
+    ContentModuleImportDraft["chapters"][number]["topics"][number] | undefined;
   preview: PreviewSelection;
   topicsCount: number;
   isImporting: boolean;
   richTextModule: RichTextModule | null;
-  onDraftChange: (draft: ImportedModuleDraft) => void;
+  onDraftChange: (draft: ContentModuleImportDraft) => void;
   onPreviewChange: (preview: PreviewSelection) => void;
   onErrorClear: () => void;
 };
 
-function ImportPreview({
+function ContentImportPreview({
   draft,
   selectedTopic,
   preview,
@@ -416,7 +939,7 @@ function ImportPreview({
   onDraftChange,
   onPreviewChange,
   onErrorClear,
-}: ImportPreviewProps) {
+}: ContentImportPreviewProps) {
   const [expandedChapters, setExpandedChapters] = useState<Set<number>>(
     () => new Set([preview.chapter]),
   );
@@ -635,10 +1158,135 @@ function ImportPreview({
   );
 }
 
-function validateDraft(draft: ImportedModuleDraft) {
+function FlashcardImportPreview({
+  draft,
+  isImporting,
+  onDraftChange,
+  onErrorClear,
+}: {
+  draft: FlashcardModuleImportDraft;
+  isImporting: boolean;
+  onDraftChange: (draft: FlashcardModuleImportDraft) => void;
+  onErrorClear: () => void;
+}) {
+  const [selectedCard, setSelectedCard] = useState(0);
+  const card = draft.cards[selectedCard];
+
+  function updateCard(update: Partial<{ front: string; back: string }>) {
+    onDraftChange({
+      ...draft,
+      cards: draft.cards.map((item, index) =>
+        index === selectedCard ? { ...item, ...update } : item,
+      ),
+    });
+    onErrorClear();
+  }
+
+  return (
+    <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-5 overflow-hidden lg:grid-cols-[minmax(20rem,0.85fr)_minmax(22rem,1.15fr)] lg:grid-rows-1">
+      <section className="min-h-0 overflow-y-auto rounded-xl border bg-muted/10 p-4 sm:p-5">
+        <label className="block space-y-2 text-sm font-medium">
+          <span>Nazwa modułu</span>
+          <Input
+            value={draft.name}
+            maxLength={MODULE_NAME_MAX_LENGTH}
+            disabled={isImporting}
+            aria-invalid={!draft.name.trim()}
+            onChange={(event) => {
+              onDraftChange({ ...draft, name: event.target.value });
+              onErrorClear();
+            }}
+          />
+        </label>
+
+        <p className="mt-3 text-xs text-muted-foreground">
+          Wykryto{" "}
+          {formatCount(draft.cards.length, "fiszkę", "fiszki", "fiszek")}.
+        </p>
+
+        {draft.warnings.length > 0 && (
+          <div className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+            <p className="font-medium">Uwagi do importu:</p>
+            <ul className="mt-1 list-disc space-y-1 pl-4 text-muted-foreground">
+              {draft.warnings.map((warning, index) => (
+                <li key={`${warning}-${index}`}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <h3 className="mt-5 mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+          Fiszki
+        </h3>
+        <div className="space-y-1 rounded-lg border bg-background p-1.5">
+          {draft.cards.map((item, index) => (
+            <Button
+              key={index}
+              type="button"
+              variant={selectedCard === index ? "secondary" : "ghost"}
+              className="h-auto min-h-10 w-full justify-start px-3 py-2 text-left font-normal"
+              aria-pressed={selectedCard === index}
+              onClick={() => setSelectedCard(index)}
+            >
+              <span className="w-7 shrink-0 text-xs text-muted-foreground">
+                {index + 1}.
+              </span>
+              <span className="truncate">{item.front}</span>
+            </Button>
+          ))}
+        </div>
+      </section>
+
+      <section className="min-h-0 overflow-y-auto rounded-xl border p-4 sm:p-5">
+        {card && (
+          <>
+            <div className="flex items-center gap-2">
+              <ArrowLeftRight className="size-4 text-primary" />
+              <h3 className="font-semibold">Fiszka {selectedCard + 1}</h3>
+            </div>
+            <label className="mt-5 block space-y-2 text-sm font-medium">
+              <span>Termin</span>
+              <Textarea
+                className="min-h-28 resize-y"
+                value={card.front}
+                disabled={isImporting}
+                aria-invalid={!card.front.trim()}
+                onChange={(event) => updateCard({ front: event.target.value })}
+              />
+            </label>
+            <label className="mt-5 block space-y-2 text-sm font-medium">
+              <span>Definicja</span>
+              <Textarea
+                className="min-h-28 resize-y"
+                value={card.back}
+                disabled={isImporting}
+                aria-invalid={!card.back.trim()}
+                onChange={(event) => updateCard({ back: event.target.value })}
+              />
+            </label>
+            <p className="mt-4 text-xs text-muted-foreground">
+              Termin stanie się pytaniem, a definicja jedyną poprawną
+              odpowiedzią.
+            </p>
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function validateDraft(draft: ModuleImportDraft) {
   if (!draft.name.trim()) return "Podaj nazwę modułu.";
   if (draft.name.trim().length > MODULE_NAME_MAX_LENGTH) {
     return `Nazwa modułu może mieć maksymalnie ${MODULE_NAME_MAX_LENGTH} znaków.`;
+  }
+  if (draft.kind === "flashcards") {
+    if (!draft.cards.length)
+      return "Import musi zawierać co najmniej jedną fiszkę.";
+    if (draft.cards.some((card) => !card.front.trim() || !card.back.trim())) {
+      return "Każda fiszka musi mieć termin i definicję.";
+    }
+    return null;
   }
   if (draft.chapters.some((chapter) => !chapter.title.trim())) {
     return "Każdy rozdział musi mieć nazwę.";

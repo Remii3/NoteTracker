@@ -8,7 +8,10 @@ import type {
   ModulesRepository,
 } from "./modules-repository";
 import { clearMemoryCacheByPrefix } from "@/lib/memory-cache";
-import type { ImportedModuleDraft } from "../import/docx-import";
+import type {
+  ContentModuleImportDraft,
+  FlashcardModuleImportDraft,
+} from "../import/import-model";
 import { createUniqueSlug } from "@/features/notes/lib/slug-utils";
 import { toModuleNameSearchPattern } from "../lib/module-search";
 
@@ -175,7 +178,7 @@ export class SupabaseModulesRepository implements ModulesRepository {
     };
   }
 
-  async importDocx(draft: ImportedModuleDraft, position: number) {
+  async importDocx(draft: ContentModuleImportDraft, position: number) {
     const chapterSlugs = new Set<string>();
     const chapters = draft.chapters.map((chapter, chapterIndex) => {
       const chapterSlug = createUniqueSlug(
@@ -208,6 +211,21 @@ export class SupabaseModulesRepository implements ModulesRepository {
     });
     throwIfPostgrestError(error);
     if (!data) throw new Error("Nie udało się zaimportować modułu.");
+    this.clearStatisticsCache();
+    const imported = await this.get(data);
+    if (!imported)
+      throw new Error("Nie udało się odczytać modułu po imporcie.");
+    return imported;
+  }
+
+  async importFlashcards(draft: FlashcardModuleImportDraft, position: number) {
+    const { data, error } = await this.client.rpc("import_flashcard_module", {
+      target_name: draft.name,
+      target_position: position,
+      imported_cards: draft.cards as unknown as Json,
+    });
+    throwIfPostgrestError(error);
+    if (!data) throw new Error("Nie udało się zaimportować fiszek.");
     this.clearStatisticsCache();
     const imported = await this.get(data);
     if (!imported)

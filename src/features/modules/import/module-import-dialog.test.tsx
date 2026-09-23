@@ -4,7 +4,13 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { ModuleImportDialog } from "./module-import-dialog";
+import { parseAnkiFile } from "./anki-import";
 import { parseDocxFile } from "./docx-import";
+
+vi.mock("./anki-import", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./anki-import")>()),
+  parseAnkiFile: vi.fn(),
+}));
 
 vi.mock("./docx-import", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./docx-import")>()),
@@ -22,6 +28,8 @@ afterEach(() => {
 
 it("keeps the parsed Word document when returning from preview", async () => {
   vi.mocked(parseDocxFile).mockResolvedValue({
+    kind: "content",
+    source: "docx",
     name: "Biologia",
     warnings: [],
     chapters: [
@@ -49,7 +57,9 @@ it("keeps the parsed Word document when returning from preview", async () => {
     />,
   );
 
-  expect(screen.getByText("Microsoft Word")).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "Microsoft Word: Dokument DOCX" }),
+  ).toBeTruthy();
   expect(
     screen.getByText("Import").closest("li")?.getAttribute("aria-current"),
   ).toBe("step");
@@ -86,6 +96,8 @@ it("keeps the parsed Word document when returning from preview", async () => {
 
 it("accepts a DOCX file dropped into the import area", async () => {
   vi.mocked(parseDocxFile).mockResolvedValue({
+    kind: "content",
+    source: "docx",
     name: "Chemia",
     warnings: [],
     chapters: [
@@ -116,4 +128,91 @@ it("accepts a DOCX file dropped into the import area", async () => {
 
   expect(await screen.findByText("Wykryto 1 rozdział i 1 temat.")).toBeTruthy();
   expect(parseDocxFile).toHaveBeenCalledWith(expect.any(File), []);
+});
+
+it("previews, edits and submits copied Quizlet cards", async () => {
+  const onImport = vi.fn().mockResolvedValue(undefined);
+  render(
+    <ModuleImportDialog
+      existingModuleNames={["Biologia"]}
+      onClose={vi.fn()}
+      onImport={onImport}
+    />,
+  );
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Quizlet: Skopiowany tekst" }),
+  );
+  fireEvent.change(screen.getByLabelText("Nazwa modułu"), {
+    target: { value: "Biologia" },
+  });
+  fireEvent.change(screen.getByLabelText("Fiszki z Quizleta"), {
+    target: {
+      value: "Mitochondrium\tElektrownia komórki\nJądro\tPrzechowuje DNA",
+    },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Przejdź do podglądu" }));
+
+  expect(await screen.findByText("Wykryto 2 fiszki.")).toBeTruthy();
+  expect(screen.getByDisplayValue("Biologia (2)")).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Definicja"), {
+    target: { value: "Miejsce produkcji ATP" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Importuj moduł" }));
+
+  expect(onImport).toHaveBeenCalledWith(
+    expect.objectContaining({
+      kind: "flashcards",
+      source: "quizlet",
+      name: "Biologia (2)",
+      cards: [
+        { front: "Mitochondrium", back: "Miejsce produkcji ATP" },
+        { front: "Jądro", back: "Przechowuje DNA" },
+      ],
+    }),
+  );
+});
+
+it("previews and submits an Anki text export", async () => {
+  vi.mocked(parseAnkiFile).mockResolvedValue({
+    kind: "flashcards",
+    source: "anki",
+    name: "Anatomia",
+    warnings: [],
+    cards: [
+      { front: "Kość udowa", back: "Najdłuższa kość człowieka" },
+      { front: "Łopatka", back: "Kość obręczy barkowej" },
+    ],
+  });
+  const onImport = vi.fn().mockResolvedValue(undefined);
+  render(
+    <ModuleImportDialog
+      existingModuleNames={[]}
+      onClose={vi.fn()}
+      onImport={onImport}
+    />,
+  );
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Anki: APKG, TXT lub CSV" }),
+  );
+  const file = new File(["dane"], "Anatomia.txt", { type: "text/plain" });
+  fireEvent.change(screen.getByLabelText("Plik eksportu Anki"), {
+    target: { files: [file] },
+  });
+
+  expect(await screen.findByText("Wykryto 2 fiszki.")).toBeTruthy();
+  expect(parseAnkiFile).toHaveBeenCalledWith(file, []);
+  fireEvent.click(screen.getByRole("button", { name: "Wróć do importu" }));
+  expect(screen.getByText("Anatomia.txt")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Przejdź do podglądu" }));
+  fireEvent.click(screen.getByRole("button", { name: "Importuj moduł" }));
+
+  expect(onImport).toHaveBeenCalledWith(
+    expect.objectContaining({
+      kind: "flashcards",
+      source: "anki",
+      name: "Anatomia",
+    }),
+  );
 });

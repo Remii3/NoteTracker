@@ -1,22 +1,11 @@
 import type { NoteContent } from "@/features/notes/types/model";
 import { normalizeModuleName } from "../lib/module-validation";
-import { normalizeTitle } from "@/features/notes/lib/title-utils";
-
-export type ImportedTopicDraft = {
-  title: string;
-  content: NoteContent;
-};
-
-export type ImportedChapterDraft = {
-  title: string;
-  topics: ImportedTopicDraft[];
-};
-
-export type ImportedModuleDraft = {
-  name: string;
-  chapters: ImportedChapterDraft[];
-  warnings: string[];
-};
+import {
+  createUniqueImportTitle,
+  type ContentModuleImportDraft,
+  type ImportedChapterDraft,
+  type ImportedTopicDraft,
+} from "./import-model";
 
 type MammothParagraph = {
   type: string;
@@ -41,7 +30,7 @@ const STRUCTURE_STYLE_NAMES = [
 export async function parseDocxFile(
   file: File,
   existingModuleNames: string[],
-): Promise<ImportedModuleDraft> {
+): Promise<ContentModuleImportDraft> {
   if (!file.name.toLocaleLowerCase("pl").endsWith(".docx")) {
     throw new Error("Wybierz dokument programu Word w formacie .docx.");
   }
@@ -70,7 +59,7 @@ export async function parseDocxFile(
 
   const warnings = result.messages.map((message) => message.message);
   return parseImportedHtml(
-    uniqueName(moduleNameFromFile(file.name), existingModuleNames),
+    createUniqueImportTitle(moduleNameFromFile(file.name), existingModuleNames),
     result.value,
     warnings,
   );
@@ -80,7 +69,7 @@ export function parseImportedHtml(
   moduleName: string,
   html: string,
   sourceWarnings: string[] = [],
-): ImportedModuleDraft {
+): ContentModuleImportDraft {
   const document = new DOMParser().parseFromString(html, "text/html");
   const chapters: ImportedChapterDraft[] = [];
   const warnings = [...sourceWarnings];
@@ -92,7 +81,7 @@ export function parseImportedHtml(
     const boundary = readBoundary(element);
     if (boundary?.depth === 1) {
       currentChapter = {
-        title: uniqueName(
+        title: createUniqueImportTitle(
           boundary.title,
           chapters.map((chapter) => chapter.title),
         ),
@@ -108,7 +97,7 @@ export function parseImportedHtml(
         continue;
       }
       currentTopic = {
-        title: uniqueName(
+        title: createUniqueImportTitle(
           boundary.title,
           currentChapter.topics.map((topic) => topic.title),
         ),
@@ -147,44 +136,17 @@ export function parseImportedHtml(
     );
   }
 
-  return { name: normalizeModuleName(moduleName), chapters, warnings };
-}
-
-export function normalizeImportedDraftTitles(
-  draft: ImportedModuleDraft,
-): ImportedModuleDraft {
-  const chapterNames: string[] = [];
   return {
-    ...draft,
-    name: normalizeModuleName(draft.name),
-    chapters: draft.chapters.map((chapter) => {
-      const title = uniqueName(chapter.title, chapterNames);
-      chapterNames.push(title);
-      const topicNames: string[] = [];
-      return {
-        ...chapter,
-        title,
-        topics: chapter.topics.map((topic) => {
-          const topicTitle = uniqueName(topic.title, topicNames);
-          topicNames.push(topicTitle);
-          return { ...topic, title: topicTitle };
-        }),
-      };
-    }),
+    kind: "content",
+    source: "docx",
+    name: normalizeModuleName(moduleName),
+    chapters,
+    warnings,
   };
 }
 
 function moduleNameFromFile(filename: string) {
   return normalizeModuleName(filename.replace(/\.docx$/i, ""));
-}
-
-function uniqueName(value: string, usedNames: string[]) {
-  const trimmed = value.trim().replace(/\s+/g, " ") || "Bez tytułu";
-  const used = new Set(usedNames.map(normalizeTitle));
-  if (!used.has(normalizeTitle(trimmed))) return trimmed;
-  let suffix = 2;
-  while (used.has(normalizeTitle(`${trimmed} (${suffix})`))) suffix += 1;
-  return `${trimmed} (${suffix})`;
 }
 
 function readBoundary(element: Element) {

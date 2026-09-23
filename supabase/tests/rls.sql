@@ -926,6 +926,55 @@ begin
  );
 end;
 $$;
+do $$
+declare
+ flashcard_module_id uuid;
+begin
+ flashcard_module_id := public.import_flashcard_module(
+  'Quizlet import',
+  5000,
+  '[{"front":"Mitochondrium","back":"Elektrownia komórki"},{"front":"Jądro","back":"Przechowuje DNA"}]'::jsonb
+ );
+ perform pg_temp.assert_true(
+  (select user_id = '10000000-0000-4000-8000-000000000000'
+   from public.modules where id = flashcard_module_id),
+  'Flashcard import: creates an owned module'
+ );
+ perform pg_temp.assert_true(
+  (select count(*) = 2 and bool_and(chapter_id is null and topic_id is null)
+   from public.questions where module_id = flashcard_module_id),
+  'Flashcard import: creates unassigned questions'
+ );
+ perform pg_temp.assert_true(
+  (select count(*) = 2 and bool_and(option_count = 1 and correct_count = 1)
+   from (
+    select question.id,
+      count(option.id) as option_count,
+      count(option.id) filter (where option.is_correct) as correct_count
+    from public.questions as question
+    left join public.question_options as option on option.question_id = question.id
+    where question.module_id = flashcard_module_id
+    group by question.id
+   ) as imported_questions),
+  'Flashcard import: creates one correct answer per card'
+ );
+
+ begin
+  perform public.import_flashcard_module(
+   'Broken flashcards',
+   6000,
+   '[{"front":"Valid","back":"Answer"},{"front":"","back":"Missing front"}]'::jsonb
+  );
+  raise exception 'Invalid flashcard import was accepted';
+ exception when raise_exception then
+  if SQLERRM = 'Invalid flashcard import was accepted' then raise; end if;
+ end;
+ perform pg_temp.assert_true(
+  not exists (select 1 from public.modules where name = 'Broken flashcards'),
+  'Flashcard import: invalid nested data rolls back the whole module'
+ );
+end;
+$$;
 do $$ declare test_question_id uuid; test_session_id uuid; test_trash_id uuid; begin
  test_question_id := public.save_question('10000001-0000-4000-8000-000000000000',null,'New question','',null,null,
   '[{"content":"Yes","isCorrect":true},{"content":"No","isCorrect":false}]'::jsonb);

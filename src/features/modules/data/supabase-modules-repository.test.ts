@@ -108,3 +108,49 @@ it("updates pinning only for a module owned by the current user", async () => {
   expect(url.searchParams.get("user_id")).toBe("eq.user");
   expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ is_pinned: true });
 });
+
+it("imports flashcards through the atomic database function", async () => {
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify("imported-module"), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify([moduleRow("imported-module", "Biologia")]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  const client = createClient<Database>(
+    "https://example.supabase.co",
+    "test-key",
+    {
+      global: { fetch },
+      auth: { persistSession: false, autoRefreshToken: false },
+    },
+  );
+  const repository = new SupabaseModulesRepository(client, "user");
+
+  const imported = await repository.importFlashcards(
+    {
+      kind: "flashcards",
+      source: "quizlet",
+      name: "Biologia",
+      warnings: [],
+      cards: [{ front: "Mitochondrium", back: "Elektrownia komórki" }],
+    },
+    2000,
+  );
+
+  expect(imported.id).toBe("imported-module");
+  const rpcUrl = new URL(fetch.mock.calls[0][0]);
+  expect(rpcUrl.pathname).toContain("/rpc/import_flashcard_module");
+  expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+    target_name: "Biologia",
+    target_position: 2000,
+    imported_cards: [{ front: "Mitochondrium", back: "Elektrownia komórki" }],
+  });
+});

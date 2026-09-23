@@ -648,6 +648,14 @@ export type Database = {
         };
         Returns: string;
       };
+      import_flashcard_module: {
+        Args: {
+          imported_cards: Json;
+          target_name: string;
+          target_position: number;
+        };
+        Returns: string;
+      };
       get_module_summaries: {
         Args: {
           target_module_id?: string | null;

@@ -17,6 +17,7 @@ describe("parseImportedHtml", () => {
       ].join(""),
     );
 
+    expect(result).toMatchObject({ kind: "content", source: "docx" });
     expect(result.chapters).toHaveLength(1);
     expect(result.chapters[0].title).toBe("Komórka");
     expect(result.chapters[0].topics[0].title).toBe("Budowa komórki");
