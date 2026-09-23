@@ -17,7 +17,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ChangeEvent,
   type FormEvent,
 } from "react";
 import {
@@ -56,7 +55,7 @@ import {
   normalizeModuleName,
   validateModuleName,
 } from "./lib/module-validation";
-import { parseDocxFile, type ImportedModuleDraft } from "./import/docx-import";
+import type { ImportedModuleDraft } from "./import/docx-import";
 import { DocxImportDialog } from "./import/docx-import-dialog";
 import type { TopicImagesService } from "@/features/notes/data/topic-images-service";
 import type { TopicImage } from "@/features/notes/types/topic-image";
@@ -111,12 +110,8 @@ export function ModulePicker({
   const [offlineSnapshots, setOfflineSnapshots] = useState<
     OfflineModuleSnapshot[]
   >([]);
-  const [importDraft, setImportDraft] = useState<ImportedModuleDraft | null>(
-    null,
-  );
-  const [isParsingDocx, setIsParsingDocx] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const requestIdRef = useRef(0);
   const loadingMoreRef = useRef(false);
@@ -288,30 +283,6 @@ export function ModulePicker({
     }
   }
 
-  async function selectDocx(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    setError(null);
-    setIsParsingDocx(true);
-    try {
-      setImportDraft(
-        await parseDocxFile(
-          file,
-          sortedModules.map((module) => module.name),
-        ),
-      );
-    } catch (parseError) {
-      setError(
-        parseError instanceof Error
-          ? parseError.message
-          : "Nie udało się odczytać dokumentu Word.",
-      );
-    } finally {
-      setIsParsingDocx(false);
-    }
-  }
-
   async function importDocx(draft: ImportedModuleDraft) {
     const imported = await repository.importDocx(
       draft,
@@ -320,7 +291,7 @@ export function ModulePicker({
     updateModules((current) => [...current, imported]);
     if (!query && cacheKey)
       writeMemoryCache(cacheKey, [...pinnedModules, ...modules, imported]);
-    setImportDraft(null);
+    setImportOpen(false);
     toast.add({
       data: { type: "success" },
       description: `Zaimportowano moduł „${imported.name}”.`,
@@ -469,29 +440,14 @@ export function ModulePicker({
             {searchInput(undefined, true)}
           </PopoverContent>
         </Popover>
-        <input
-          ref={fileInputRef}
-          className="sr-only"
-          type="file"
-          accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          tabIndex={-1}
-          onChange={(event) => void selectDocx(event)}
-        />
         <Button
           size="sm"
           variant="outline"
-          aria-label="Importuj dokument Word"
-          disabled={isParsingDocx}
-          onClick={() => fileInputRef.current?.click()}
+          aria-label="Importuj materiały"
+          onClick={() => setImportOpen(true)}
         >
-          {isParsingDocx ? (
-            <LoaderCircle className="animate-spin" />
-          ) : (
-            <FileUp />
-          )}
-          <span className="hidden lg:inline">
-            {isParsingDocx ? "Odczytywanie…" : "Importuj Word"}
-          </span>
+          <FileUp />
+          <span className="hidden lg:inline">Importuj</span>
         </Button>
         <Button
           size="sm"
@@ -769,11 +725,10 @@ export function ModulePicker({
             onCreate={createModule}
           />
         )}
-        {importDraft && (
+        {importOpen && (
           <DocxImportDialog
-            draft={importDraft}
-            onChange={setImportDraft}
-            onClose={() => setImportDraft(null)}
+            existingModuleNames={sortedModules.map((module) => module.name)}
+            onClose={() => setImportOpen(false)}
             onImport={importDocx}
           />
         )}
