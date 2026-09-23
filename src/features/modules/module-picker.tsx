@@ -56,7 +56,7 @@ import {
   validateModuleName,
 } from "./lib/module-validation";
 import type { ImportedModuleDraft } from "./import/docx-import";
-import { DocxImportDialog } from "./import/docx-import-dialog";
+import { ModuleImportDialog } from "./import/module-import-dialog";
 import type { TopicImagesService } from "@/features/notes/data/topic-images-service";
 import type { TopicImage } from "@/features/notes/types/topic-image";
 import type { OfflineModuleService } from "@/features/notes/offline/offline-module-service";
@@ -726,7 +726,7 @@ export function ModulePicker({
           />
         )}
         {importOpen && (
-          <DocxImportDialog
+          <ModuleImportDialog
             existingModuleNames={sortedModules.map((module) => module.name)}
             onClose={() => setImportOpen(false)}
             onImport={importDocx}
