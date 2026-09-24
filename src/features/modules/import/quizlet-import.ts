@@ -98,7 +98,7 @@ export function parseQuizletText(
   }
   if (duplicateRows) {
     warnings.push(
-      `Wykryto ${duplicateRows} ${duplicateRows === 1 ? "powtórzoną fiszkę" : "powtórzonych fiszek"}; zostaną zaimportowane.`,
+      `Wykryto ${duplicateRows} ${duplicateRows === 1 ? "powtórzoną fiszkę" : "powtórzonych fiszek"}; zostaną pominięte.`,
     );
   }
 

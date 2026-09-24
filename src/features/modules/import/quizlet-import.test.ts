@@ -65,7 +65,7 @@ describe("parseQuizletText", () => {
     expect(result.questions).toHaveLength(2);
     expect(result.warnings).toEqual([
       "Pominięto 1 niepełny wiersz.",
-      "Wykryto 1 powtórzoną fiszkę; zostaną zaimportowane.",
+      "Wykryto 1 powtórzoną fiszkę; zostaną pominięte.",
     ]);
   });
 

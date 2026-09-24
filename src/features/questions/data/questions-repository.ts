@@ -33,6 +33,11 @@ export interface QuestionsRepository {
     explanation: string | null;
     options: QuestionOption[];
   }): Promise<string>;
+  getDuplicateStatus(input: {
+    id?: string;
+    content: string;
+    options: QuestionOption[];
+  }): Promise<{ kind: "exact" | "same_content"; questionId: string } | null>;
   remove(id: string): Promise<void>;
   importQuestions(draft: QuestionModuleImportDraft): Promise<number>;
   createSession(input: {

@@ -70,6 +70,9 @@ export function QuestionDialog({
   const [topicsLoading, setTopicsLoading] = useState(Boolean(chapterId));
   const [topicsError, setTopicsError] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [duplicateStatus, setDuplicateStatus] = useState<
+    "exact" | "same_content" | null
+  >(null);
   const chapterOptions: SelectOption[] = chapters.map((chapter) => ({
     value: chapter.id,
     label: chapter.title,
@@ -113,6 +116,51 @@ export function QuestionDialog({
   }, [chapterId, loadTopics]);
   const validationError = validateQuestionForm(form);
 
+  async function saveQuestion(allowSameContent = false) {
+    const normalized = normalizeQuestionForm(form);
+    setSaving(true);
+    try {
+      const duplicate = await repository.getDuplicateStatus({
+        id: question?.id,
+        content: normalized.content,
+        options: normalized.options,
+      });
+      if (duplicate?.kind === "exact") {
+        setDuplicateStatus("exact");
+        return;
+      }
+      if (duplicate?.kind === "same_content" && !allowSameContent) {
+        setDuplicateStatus("same_content");
+        return;
+      }
+
+      await repository.save({
+        id: question?.id,
+        chapterId: chapterId || null,
+        topicId: topicId || null,
+        content: normalized.content,
+        explanation: normalized.explanation || null,
+        options: normalized.options,
+      });
+      onSaved();
+      onClose();
+      toast.add({
+        data: { type: "success" },
+        description: "Zapisano pytanie.",
+      });
+    } catch (error: unknown) {
+      toast.add({
+        data: { type: "error" },
+        description:
+          error instanceof Error
+            ? error.message
+            : "Nie udało się zapisać pytania.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl">
@@ -125,7 +173,14 @@ export function QuestionDialog({
             udostępnią materiał również w testach.
           </DialogDescription>
         </DialogHeader>
-        <QuestionFormFields value={form} onChange={setForm} disabled={saving} />
+        <QuestionFormFields
+          value={form}
+          onChange={(value) => {
+            setForm(value);
+            setDuplicateStatus(null);
+          }}
+          disabled={saving}
+        />
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <span className="font-medium">Rozdział</span>
@@ -214,46 +269,33 @@ export function QuestionDialog({
             )}
           </div>
         </div>
+        {duplicateStatus && (
+          <div
+            className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm"
+            role="alert"
+          >
+            {duplicateStatus === "exact"
+              ? "Identyczne pytanie już istnieje w tym module. Zmień jego treść lub odpowiedzi."
+              : "Pytanie o tej samej treści już istnieje w tym module, ale ma inne odpowiedzi. Możesz zapisać je mimo to."}
+          </div>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Anuluj
           </Button>
           <Button
-            disabled={Boolean(validationError) || saving}
-            onClick={() => {
-              const normalized = normalizeQuestionForm(form);
-              setSaving(true);
-              void repository
-                .save({
-                  id: question?.id,
-                  chapterId: chapterId || null,
-                  topicId: topicId || null,
-                  content: normalized.content,
-                  explanation: normalized.explanation || null,
-                  options: normalized.options,
-                })
-                .then(() => {
-                  onSaved();
-                  onClose();
-                  toast.add({
-                    data: { type: "success" },
-                    description: "Zapisano pytanie.",
-                  });
-                })
-                .catch((error: unknown) => {
-                  setSaving(false);
-
-                  toast.add({
-                    data: { type: "error" },
-                    description:
-                      error instanceof Error
-                        ? error.message
-                        : "Nie udało się zapisać pytania.",
-                  });
-                });
-            }}
+            disabled={
+              Boolean(validationError) || saving || duplicateStatus === "exact"
+            }
+            onClick={() =>
+              void saveQuestion(duplicateStatus === "same_content")
+            }
           >
-            {saving ? "Zapisywanie…" : "Zapisz pytanie"}
+            {saving
+              ? "Zapisywanie…"
+              : duplicateStatus === "same_content"
+                ? "Zapisz mimo to"
+                : "Zapisz pytanie"}
           </Button>
         </DialogFooter>
       </DialogContent>

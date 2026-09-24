@@ -243,7 +243,7 @@ export function parseAnkiText(
   }
   if (duplicateRows) {
     warnings.push(
-      `Wykryto ${duplicateRows} ${duplicateRows === 1 ? "powtórzoną fiszkę" : "powtórzonych fiszek"}; zostaną zaimportowane.`,
+      `Wykryto ${duplicateRows} ${duplicateRows === 1 ? "powtórzoną fiszkę" : "powtórzonych fiszek"}; zostaną pominięte.`,
     );
   }
   if (ignoredFields) {
@@ -341,7 +341,7 @@ function createPackageDraft(
   }
   if (duplicateCards) {
     warnings.push(
-      `Wykryto ${duplicateCards} ${duplicateCards === 1 ? "powtórzoną fiszkę" : "powtórzonych fiszek"}; zostaną zaimportowane.`,
+      `Wykryto ${duplicateCards} ${duplicateCards === 1 ? "powtórzoną fiszkę" : "powtórzonych fiszek"}; zostaną pominięte.`,
     );
   }
   if (clozeCards) {

@@ -28,6 +28,18 @@ describe("Supabase error mapping", () => {
     );
   });
 
+  it("maps the active question duplicate index", () => {
+    const error = postgrestError(
+      "23505",
+      "duplicate key value violates unique constraint",
+      "questions_active_dedupe_idx",
+    );
+
+    expect(() => throwIfPostgrestError(error)).toThrow(
+      "Identyczne pytanie już istnieje w tym module.",
+    );
+  });
+
   it.each([
     ["23503", "Powiązany element już nie istnieje."],
     ["23505", "Taki element już istnieje."],

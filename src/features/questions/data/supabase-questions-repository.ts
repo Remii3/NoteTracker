@@ -111,6 +111,29 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
     return data;
   }
 
+  async getDuplicateStatus(
+    input: Parameters<QuestionsRepository["getDuplicateStatus"]>[0],
+  ) {
+    const { data, error } = await this.client.rpc(
+      "get_question_duplicate_status",
+      {
+        target_module_id: this.moduleId,
+        excluded_question_id: input.id ?? null,
+        question_content: input.content,
+        options: input.options.map((option) => ({
+          content: option.content,
+          isCorrect: option.isCorrect,
+        })) as Json,
+      },
+    );
+    throwIfPostgrestError(error);
+    if (!data) return null;
+    return data as unknown as {
+      kind: "exact" | "same_content";
+      questionId: string;
+    };
+  }
+
   async remove(id: string) {
     const { error } = await this.client.rpc("move_to_trash", {
       target_type: "question",

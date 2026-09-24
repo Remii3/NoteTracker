@@ -1108,6 +1108,100 @@ do $$ declare test_question_id uuid; test_session_id uuid; flashcard_session_id 
 end; $$;
 do $$
 declare
+ exact_question_id uuid;
+ replacement_question_id uuid;
+ duplicate_trash_id uuid;
+ duplicate_rejected boolean := false;
+ restore_rejected boolean := false;
+ duplicate_status jsonb;
+begin
+ exact_question_id := public.save_question(
+  '10000001-0000-4000-8000-000000000000', null, 'Duplicate   check', '', null, null,
+  '[{"content":"Yes","isCorrect":true},{"content":"No","isCorrect":false}]'::jsonb
+ );
+
+ update public.questions set dedupe_key = null where id = exact_question_id;
+ set constraints refresh_question_dedupe_key_after_question_change immediate;
+ perform pg_temp.assert_true(
+  (select dedupe_key is not null from public.questions where id = exact_question_id),
+  'Question duplicates: deferred trigger repairs direct fingerprint changes'
+ );
+ set constraints refresh_question_dedupe_key_after_question_change deferred;
+
+ duplicate_status := public.get_question_duplicate_status(
+  '10000001-0000-4000-8000-000000000000', null, ' duplicate check ',
+  '[{"content":" no ","isCorrect":false},{"content":"yes","isCorrect":true}]'::jsonb
+ );
+ perform pg_temp.assert_true(
+  duplicate_status->>'kind' = 'exact'
+   and (duplicate_status->>'questionId')::uuid = exact_question_id,
+  'Question duplicates: ignores case, whitespace and option order'
+ );
+
+ begin
+  perform public.save_question(
+   '10000001-0000-4000-8000-000000000000', null, 'duplicate check', '', null, null,
+   '[{"content":"No","isCorrect":false},{"content":"Yes","isCorrect":true}]'::jsonb
+  );
+ exception when unique_violation then
+  duplicate_rejected := true;
+ end;
+ perform pg_temp.assert_true(
+  duplicate_rejected,
+  'Question duplicates: exact manual duplicates are rejected'
+ );
+
+ duplicate_status := public.get_question_duplicate_status(
+  '10000001-0000-4000-8000-000000000000', null, 'Duplicate check',
+  '[{"content":"Maybe","isCorrect":true},{"content":"Never","isCorrect":false}]'::jsonb
+ );
+ perform pg_temp.assert_true(
+  duplicate_status->>'kind' = 'same_content',
+  'Question duplicates: same content with different answers is only a warning'
+ );
+ perform public.save_question(
+  '10000001-0000-4000-8000-000000000000', null, 'Duplicate check', '', null, null,
+  '[{"content":"Maybe","isCorrect":true},{"content":"Never","isCorrect":false}]'::jsonb
+ );
+
+ perform pg_temp.assert_true(
+  public.import_questions_into_module(
+   '10000001-0000-4000-8000-000000000000',
+   '[
+     {"content":"Duplicate check","options":[{"content":"Yes","isCorrect":true},{"content":"No","isCorrect":false}]},
+     {"content":"Unique imported duplicate test","options":[{"content":"Answer","isCorrect":true}]},
+     {"content":"Unique imported duplicate test","options":[{"content":"Answer","isCorrect":true}]}
+   ]'::jsonb
+  ) = 1,
+  'Question duplicates: imports skip existing and in-file exact duplicates'
+ );
+
+ duplicate_trash_id := public.move_to_trash('question', exact_question_id);
+ replacement_question_id := public.save_question(
+  '10000001-0000-4000-8000-000000000000', null, 'Duplicate check', '', null, null,
+  '[{"content":"Yes","isCorrect":true},{"content":"No","isCorrect":false}]'::jsonb
+ );
+ perform pg_temp.assert_true(
+  replacement_question_id is not null,
+  'Question duplicates: trashed questions do not block a replacement'
+ );
+ begin
+  perform public.restore_trash_item(duplicate_trash_id);
+ exception when unique_violation then
+  restore_rejected := true;
+ end;
+ perform pg_temp.assert_true(
+  restore_rejected
+   and not exists (
+    select 1 from public.questions
+    where id = exact_question_id and trash_id is null
+   ),
+  'Question duplicates: restoring an exact duplicate is rejected atomically'
+ );
+end;
+$$;
+do $$
+declare
  tree_chapter_trash_id uuid;
  tree_module_trash_id uuid;
  module_tree jsonb;

@@ -56,3 +56,41 @@ it("imports questions into the current module in one RPC", async () => {
     ],
   });
 });
+
+it("checks duplicate status in the current module", async () => {
+  const fetch = vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({ kind: "same_content", questionId: "existing" }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    ),
+  );
+  const client = createClient<Database>(
+    "https://example.supabase.co",
+    "test-key",
+    {
+      global: { fetch },
+      auth: { persistSession: false, autoRefreshToken: false },
+    },
+  );
+  const repository = new SupabaseQuestionsRepository(client, "user", "module");
+
+  await expect(
+    repository.getDuplicateStatus({
+      id: "edited",
+      content: "Question",
+      options: [{ id: "option", content: "Answer", isCorrect: true }],
+    }),
+  ).resolves.toEqual({ kind: "same_content", questionId: "existing" });
+
+  const request = fetch.mock.calls[0];
+  expect(String(request[0])).toContain("/rpc/get_question_duplicate_status");
+  expect(JSON.parse(request[1].body)).toEqual({
+    target_module_id: "module",
+    excluded_question_id: "edited",
+    question_content: "Question",
+    options: [{ content: "Answer", isCorrect: true }],
+  });
+});

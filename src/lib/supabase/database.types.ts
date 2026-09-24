@@ -184,6 +184,7 @@ export type Database = {
           chapter_id: string | null;
           topic_id: string | null;
           content: string;
+          dedupe_key: string | null;
           explanation: string | null;
           created_at: string;
           updated_at: string;
@@ -196,6 +197,7 @@ export type Database = {
           chapter_id?: string | null;
           topic_id?: string | null;
           content: string;
+          dedupe_key?: string | null;
           explanation?: string | null;
           trash_id?: string | null;
         };
@@ -204,6 +206,7 @@ export type Database = {
           chapter_id?: string | null;
           topic_id?: string | null;
           content?: string;
+          dedupe_key?: string | null;
           explanation?: string | null;
           updated_at?: string;
           trash_id?: string | null;
@@ -854,6 +857,15 @@ export type Database = {
           selected_chapter_id?: string | null;
           selected_topic_id?: string | null;
           only_unassigned?: boolean;
+        };
+        Returns: Json;
+      };
+      get_question_duplicate_status: {
+        Args: {
+          target_module_id: string;
+          excluded_question_id: string | null;
+          question_content: string;
+          options: Json;
         };
         Returns: Json;
       };
