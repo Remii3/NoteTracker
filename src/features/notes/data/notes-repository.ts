@@ -6,6 +6,7 @@ import type {
   TopicNavigation,
 } from "../types/model";
 import type { OfflineModuleChanges } from "../offline/offline-types";
+import type { ContentModuleImportDraft } from "@/features/modules/import/import-model";
 
 export type ChapterUpdate = Partial<Pick<ChapterSummary, "title" | "position">>;
 export type TopicUpdate = Partial<
@@ -37,6 +38,7 @@ export interface NotesRepository {
     limit?: number,
   ): Promise<import("../types/model").Chapter[]>;
   getLearningSummary(): Promise<LearningSummary>;
+  importDocx(draft: ContentModuleImportDraft): Promise<number>;
   createChapterWithTopics(
     chapter: ChapterSummary,
     topics: Topic[],

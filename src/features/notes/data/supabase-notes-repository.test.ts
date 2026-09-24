@@ -93,6 +93,49 @@ it("creates a chapter and its topics atomically in one RPC", async () => {
     ],
   });
 });
+
+it("imports DOCX chapters into the current module in one RPC", async () => {
+  const { fetch, repository } = setup(1);
+  const imported = await repository.importDocx({
+    kind: "content",
+    source: "docx",
+    name: "Ignored module name",
+    warnings: [],
+    chapters: [
+      {
+        title: "Postępowanie",
+        topics: [
+          {
+            title: "Pozew",
+            content: EMPTY_RICH_TEXT,
+          },
+        ],
+      },
+    ],
+  });
+
+  expect(imported).toBe(1);
+  const request = fetch.mock.calls[0];
+  expect(String(request[0])).toContain("/rpc/import_docx_into_module");
+  expect(JSON.parse(request[1].body)).toEqual({
+    target_module_id: "module",
+    imported_chapters: [
+      {
+        title: "Postępowanie",
+        slug: "postepowanie",
+        position: 1000,
+        topics: [
+          {
+            title: "Pozew",
+            slug: "pozew",
+            position: 1000,
+            content: EMPTY_RICH_TEXT,
+          },
+        ],
+      },
+    ],
+  });
+});
 it("sends note content in an RPC body and rejects a stale write", async () => {
   const { fetch, repository } = setup(false);
   const original = {

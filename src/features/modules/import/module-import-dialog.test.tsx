@@ -153,35 +153,88 @@ it("previews, edits and submits copied Quizlet cards", async () => {
   });
   fireEvent.click(screen.getByRole("button", { name: "Przejdź do podglądu" }));
 
-  expect(await screen.findByText("Wykryto 2 fiszki.")).toBeTruthy();
+  expect(await screen.findByText(/Wykryto 2 pozycje/)).toBeTruthy();
   expect(screen.getByDisplayValue("Biologia (2)")).toBeTruthy();
-  fireEvent.change(screen.getByLabelText("Definicja"), {
+  fireEvent.change(screen.getByLabelText("Odpowiedź 1"), {
     target: { value: "Miejsce produkcji ATP" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Importuj moduł" }));
 
   expect(onImport).toHaveBeenCalledWith(
     expect.objectContaining({
-      kind: "flashcards",
+      kind: "questions",
       source: "quizlet",
       name: "Biologia (2)",
-      cards: [
-        { front: "Mitochondrium", back: "Miejsce produkcji ATP" },
-        { front: "Jądro", back: "Przechowuje DNA" },
+      questions: [
+        {
+          mode: "flashcard",
+          content: "Mitochondrium",
+          explanation: "",
+          options: [{ content: "Miejsce produkcji ATP", isCorrect: true }],
+        },
+        {
+          mode: "flashcard",
+          content: "Jądro",
+          explanation: "",
+          options: [{ content: "Przechowuje DNA", isCorrect: true }],
+        },
       ],
+    }),
+  );
+});
+
+it("imports only Quizlet or Anki into the current module without renaming it", async () => {
+  const onImport = vi.fn().mockResolvedValue(undefined);
+  render(
+    <ModuleImportDialog
+      existingModuleNames={[]}
+      allowedSources={["quizlet", "anki"]}
+      destination="current-module"
+      targetModuleName="Prawo cywilne"
+      onClose={vi.fn()}
+      onImport={onImport}
+    />,
+  );
+
+  expect(screen.queryByText("Microsoft Word")).toBeNull();
+  expect(screen.queryByLabelText("Nazwa modułu")).toBeNull();
+  fireEvent.change(screen.getByLabelText("Fiszki z Quizleta"), {
+    target: { value: "Powód\tStrona postępowania" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Przejdź do podglądu" }));
+
+  expect(await screen.findByText(/Wykryto 1 pozycję/)).toBeTruthy();
+  expect(screen.queryByLabelText("Nazwa modułu")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Dodaj do modułu" }));
+
+  expect(onImport).toHaveBeenCalledWith(
+    expect.objectContaining({
+      kind: "questions",
+      source: "quizlet",
+      name: "Prawo cywilne",
     }),
   );
 });
 
 it("previews and submits an Anki text export", async () => {
   vi.mocked(parseAnkiFile).mockResolvedValue({
-    kind: "flashcards",
+    kind: "questions",
     source: "anki",
     name: "Anatomia",
     warnings: [],
-    cards: [
-      { front: "Kość udowa", back: "Najdłuższa kość człowieka" },
-      { front: "Łopatka", back: "Kość obręczy barkowej" },
+    questions: [
+      {
+        mode: "flashcard",
+        content: "Kość udowa",
+        explanation: "",
+        options: [{ content: "Najdłuższa kość człowieka", isCorrect: true }],
+      },
+      {
+        mode: "flashcard",
+        content: "Łopatka",
+        explanation: "",
+        options: [{ content: "Kość obręczy barkowej", isCorrect: true }],
+      },
     ],
   });
   const onImport = vi.fn().mockResolvedValue(undefined);
@@ -201,8 +254,12 @@ it("previews and submits an Anki text export", async () => {
     target: { files: [file] },
   });
 
-  expect(await screen.findByText("Wykryto 2 fiszki.")).toBeTruthy();
+  expect(await screen.findByText(/Wykryto 2 pozycje/)).toBeTruthy();
   expect(parseAnkiFile).toHaveBeenCalledWith(file, []);
+  fireEvent.click(screen.getByRole("button", { name: "Usuń pozycję 2" }));
+  expect(screen.getByText(/Wykryto 1 pozycję/)).toBeTruthy();
+  expect(screen.queryByText("Łopatka")).toBeNull();
+
   fireEvent.click(screen.getByRole("button", { name: "Wróć do importu" }));
   expect(screen.getByText("Anatomia.txt")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Przejdź do podglądu" }));
@@ -210,9 +267,17 @@ it("previews and submits an Anki text export", async () => {
 
   expect(onImport).toHaveBeenCalledWith(
     expect.objectContaining({
-      kind: "flashcards",
+      kind: "questions",
       source: "anki",
       name: "Anatomia",
+      questions: [
+        {
+          mode: "flashcard",
+          content: "Kość udowa",
+          explanation: "",
+          options: [{ content: "Najdłuższa kość człowieka", isCorrect: true }],
+        },
+      ],
     }),
   );
 });

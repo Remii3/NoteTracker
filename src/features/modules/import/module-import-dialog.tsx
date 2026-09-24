@@ -1,7 +1,6 @@
 import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import {
   ArrowLeft,
-  ArrowLeftRight,
   BookOpen,
   BookOpenText,
   Check,
@@ -13,6 +12,7 @@ import {
   Layers3,
   LoaderCircle,
   Pencil,
+  Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,14 +32,16 @@ import {
   type RichTextModule,
 } from "@/features/notes/hooks/use-rich-text-module";
 import { cn } from "@/lib/utils";
+import { QuestionFormFields } from "@/features/questions/components/question-form-fields";
+import { validateQuestionForm } from "@/features/questions/model/question-form";
 import { MODULE_NAME_MAX_LENGTH } from "../lib/module-validation";
 import { parseAnkiFile } from "./anki-import";
 import { parseDocxFile } from "./docx-import";
 import {
   normalizeContentImportDraft,
-  normalizeFlashcardImportDraft,
+  normalizeQuestionImportDraft,
   type ContentModuleImportDraft,
-  type FlashcardModuleImportDraft,
+  type QuestionModuleImportDraft,
   type ModuleImportDraft,
 } from "./import-model";
 import {
@@ -52,23 +54,36 @@ type Props = {
   existingModuleNames: string[];
   onClose: () => void;
   onImport: (draft: ModuleImportDraft) => Promise<void>;
+  allowedSources?: SupportedImportSource[];
+  destination?: "new-module" | "current-module";
+  targetModuleName?: string;
 };
 
 type ImportStep = "source" | "preview";
-type SupportedImportSource = "docx" | "quizlet" | "anki";
+export type SupportedImportSource = "docx" | "quizlet" | "anki";
 type PreviewSelection = { chapter: number; topic: number };
+
+const ALL_IMPORT_SOURCES: SupportedImportSource[] = ["docx", "quizlet", "anki"];
 
 export function ModuleImportDialog({
   existingModuleNames,
   onClose,
   onImport,
+  allowedSources = ALL_IMPORT_SOURCES,
+  destination = "new-module",
+  targetModuleName,
 }: Props) {
+  const importsIntoCurrentModule = destination === "current-module";
   const [step, setStep] = useState<ImportStep>("source");
-  const [source, setSource] = useState<SupportedImportSource>("docx");
+  const [source, setSource] = useState<SupportedImportSource>(
+    allowedSources[0] ?? "docx",
+  );
   const [draft, setDraft] = useState<ModuleImportDraft | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [ankiFileName, setAnkiFileName] = useState<string | null>(null);
-  const [quizletName, setQuizletName] = useState("Import z Quizleta");
+  const [quizletName, setQuizletName] = useState(
+    targetModuleName ?? "Import z Quizleta",
+  );
   const [quizletText, setQuizletText] = useState("");
   const [quizletTermSeparator, setQuizletTermSeparator] =
     useState<QuizletTermSeparator>("auto");
@@ -96,6 +111,11 @@ export function ModuleImportDialog({
       0,
     ) ?? 0;
 
+  function applyDestination<T extends ModuleImportDraft>(parsed: T): T {
+    if (!importsIntoCurrentModule || !targetModuleName?.trim()) return parsed;
+    return { ...parsed, name: targetModuleName.trim() };
+  }
+
   async function readDocx(file: File) {
     setError(null);
     setIsParsing(true);
@@ -105,7 +125,7 @@ export function ModuleImportDialog({
         0,
         parsed.chapters.findIndex((chapter) => chapter.topics.length > 0),
       );
-      setDraft(parsed);
+      setDraft(applyDestination(parsed));
       setFileName(file.name);
       setPreview({ chapter: firstChapterWithTopic, topic: 0 });
       setStep("preview");
@@ -138,7 +158,7 @@ export function ModuleImportDialog({
     setIsParsing(true);
     try {
       const parsed = await parseAnkiFile(file, existingModuleNames);
-      setDraft(parsed);
+      setDraft(applyDestination(parsed));
       setAnkiFileName(file.name);
       setStep("preview");
     } catch (parseError) {
@@ -178,7 +198,7 @@ export function ModuleImportDialog({
           swapSides: quizletSwapSides,
         },
       );
-      setDraft(parsed);
+      setDraft(applyDestination(parsed));
       setStep("preview");
     } catch (parseError) {
       setError(
@@ -197,7 +217,7 @@ export function ModuleImportDialog({
     const normalized =
       draft.kind === "content"
         ? normalizeContentImportDraft(draft)
-        : normalizeFlashcardImportDraft(draft);
+        : normalizeQuestionImportDraft(draft);
     setDraft(normalized);
     setIsImporting(true);
     setError(null);
@@ -216,10 +236,14 @@ export function ModuleImportDialog({
     >
       <DialogContent className="flex h-[min(52rem,calc(100dvh-2rem))] w-[min(70rem,calc(100vw-2rem))] max-w-none flex-col overflow-hidden sm:max-w-fit">
         <DialogHeader>
-          <DialogTitle>Importuj moduł</DialogTitle>
+          <DialogTitle>
+            {importsIntoCurrentModule ? "Importuj materiały" : "Importuj moduł"}
+          </DialogTitle>
           <DialogDescription>
             {step === "preview"
-              ? "Sprawdź materiały przed utworzeniem modułu."
+              ? importsIntoCurrentModule
+                ? `Sprawdź materiały przed dodaniem ich do modułu „${targetModuleName ?? ""}”.`
+                : "Sprawdź materiały przed utworzeniem modułu."
               : "Wybierz źródło materiałów, a następnie sprawdź wynik importu."}
           </DialogDescription>
         </DialogHeader>
@@ -235,14 +259,16 @@ export function ModuleImportDialog({
               topicsCount={topicsCount}
               isImporting={isImporting}
               richTextModule={richTextModule}
+              showModuleName={!importsIntoCurrentModule}
               onDraftChange={setDraft}
               onPreviewChange={setPreview}
               onErrorClear={() => setError(null)}
             />
           ) : (
-            <FlashcardImportPreview
+            <QuestionImportPreview
               draft={draft}
               isImporting={isImporting}
+              showModuleName={!importsIntoCurrentModule}
               onDraftChange={setDraft}
               onErrorClear={() => setError(null)}
             />
@@ -250,6 +276,8 @@ export function ModuleImportDialog({
         ) : (
           <ImportSourceStep
             source={source}
+            allowedSources={allowedSources}
+            showModuleName={!importsIntoCurrentModule}
             draftReady={draft?.source === source}
             fileName={fileName}
             ankiFileName={ankiFileName}
@@ -302,7 +330,9 @@ export function ModuleImportDialog({
                 onClick={() => void submit()}
               >
                 {isImporting && <LoaderCircle className="animate-spin" />}
-                Importuj moduł
+                {importsIntoCurrentModule
+                  ? "Dodaj do modułu"
+                  : "Importuj moduł"}
               </Button>
             </>
           ) : (
@@ -400,6 +430,8 @@ function ImportSteps({ currentStep }: { currentStep: 1 | 2 }) {
 
 type ImportSourceStepProps = {
   source: SupportedImportSource;
+  allowedSources: SupportedImportSource[];
+  showModuleName: boolean;
   draftReady: boolean;
   fileName: string | null;
   ankiFileName: string | null;
@@ -427,6 +459,8 @@ type ImportSourceStepProps = {
 
 function ImportSourceStep({
   source,
+  allowedSources,
+  showModuleName,
   draftReady,
   fileName,
   ankiFileName,
@@ -454,30 +488,43 @@ function ImportSourceStep({
   return (
     <div className="min-h-0 flex-1 overflow-y-auto py-2">
       <div
-        className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+        className={cn(
+          "grid grid-cols-1 gap-3",
+          allowedSources.length === 1
+            ? "max-w-sm"
+            : allowedSources.length === 2
+              ? "sm:grid-cols-2"
+              : "sm:grid-cols-3",
+        )}
         aria-label="Źródło importu"
       >
-        <SourceCard
-          active={source === "docx"}
-          icon={<FileText />}
-          title="Microsoft Word"
-          description="Dokument DOCX"
-          onClick={() => onSourceChange("docx")}
-        />
-        <SourceCard
-          active={source === "quizlet"}
-          icon={<BookOpenText />}
-          title="Quizlet"
-          description="Skopiowany tekst"
-          onClick={() => onSourceChange("quizlet")}
-        />
-        <SourceCard
-          active={source === "anki"}
-          icon={<Layers3 />}
-          title="Anki"
-          description="APKG, TXT lub CSV"
-          onClick={() => onSourceChange("anki")}
-        />
+        {allowedSources.includes("docx") && (
+          <SourceCard
+            active={source === "docx"}
+            icon={<FileText />}
+            title="Microsoft Word"
+            description="Dokument DOCX"
+            onClick={() => onSourceChange("docx")}
+          />
+        )}
+        {allowedSources.includes("quizlet") && (
+          <SourceCard
+            active={source === "quizlet"}
+            icon={<BookOpenText />}
+            title="Quizlet"
+            description="Skopiowany tekst"
+            onClick={() => onSourceChange("quizlet")}
+          />
+        )}
+        {allowedSources.includes("anki") && (
+          <SourceCard
+            active={source === "anki"}
+            icon={<Layers3 />}
+            title="Anki"
+            description="APKG, TXT lub CSV"
+            onClick={() => onSourceChange("anki")}
+          />
+        )}
       </div>
 
       {source === "docx" ? (
@@ -494,6 +541,7 @@ function ImportSourceStep({
       ) : source === "quizlet" ? (
         <QuizletSourceForm
           name={quizletName}
+          showModuleName={showModuleName}
           text={quizletText}
           termSeparator={quizletTermSeparator}
           rowSeparator={quizletRowSeparator}
@@ -685,6 +733,7 @@ function WordSourceForm({
 
 type QuizletSourceFormProps = {
   name: string;
+  showModuleName: boolean;
   text: string;
   termSeparator: QuizletTermSeparator;
   rowSeparator: QuizletRowSeparator;
@@ -698,6 +747,7 @@ type QuizletSourceFormProps = {
 
 function QuizletSourceForm({
   name,
+  showModuleName,
   text,
   termSeparator,
   rowSeparator,
@@ -711,15 +761,22 @@ function QuizletSourceForm({
   return (
     <div className="mt-5 grid items-stretch gap-5 md:grid-cols-[minmax(0,1fr)_20rem]">
       <section className="rounded-xl border bg-muted/10 p-5 sm:p-7">
-        <label className="block space-y-2 text-sm font-medium">
-          <span>Nazwa modułu</span>
-          <Input
-            value={name}
-            maxLength={MODULE_NAME_MAX_LENGTH}
-            onChange={(event) => onNameChange(event.target.value)}
-          />
-        </label>
-        <label className="mt-5 block space-y-2 text-sm font-medium">
+        {showModuleName && (
+          <label className="block space-y-2 text-sm font-medium">
+            <span>Nazwa modułu</span>
+            <Input
+              value={name}
+              maxLength={MODULE_NAME_MAX_LENGTH}
+              onChange={(event) => onNameChange(event.target.value)}
+            />
+          </label>
+        )}
+        <label
+          className={cn(
+            "block space-y-2 text-sm font-medium",
+            showModuleName && "mt-5",
+          )}
+        >
           <span>Fiszki z Quizleta</span>
           <Textarea
             className="min-h-52 resize-y font-mono text-sm"
@@ -924,6 +981,7 @@ type ContentImportPreviewProps = {
   topicsCount: number;
   isImporting: boolean;
   richTextModule: RichTextModule | null;
+  showModuleName: boolean;
   onDraftChange: (draft: ContentModuleImportDraft) => void;
   onPreviewChange: (preview: PreviewSelection) => void;
   onErrorClear: () => void;
@@ -936,6 +994,7 @@ function ContentImportPreview({
   topicsCount,
   isImporting,
   richTextModule,
+  showModuleName,
   onDraftChange,
   onPreviewChange,
   onErrorClear,
@@ -990,19 +1049,21 @@ function ContentImportPreview({
     <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-5 overflow-hidden lg:grid-cols-[minmax(20rem,0.85fr)_minmax(22rem,1.15fr)] lg:grid-rows-1">
       <section className="min-h-0 overflow-y-auto rounded-xl border bg-muted/10 p-4 pr-3 sm:p-5">
         <div className="space-y-4">
-          <label className="block space-y-2 text-sm font-medium">
-            <span>Nazwa modułu</span>
-            <Input
-              value={draft.name}
-              maxLength={MODULE_NAME_MAX_LENGTH}
-              disabled={isImporting}
-              aria-invalid={!draft.name.trim()}
-              onChange={(event) => {
-                onDraftChange({ ...draft, name: event.target.value });
-                onErrorClear();
-              }}
-            />
-          </label>
+          {showModuleName && (
+            <label className="block space-y-2 text-sm font-medium">
+              <span>Nazwa modułu</span>
+              <Input
+                value={draft.name}
+                maxLength={MODULE_NAME_MAX_LENGTH}
+                disabled={isImporting}
+                aria-invalid={!draft.name.trim()}
+                onChange={(event) => {
+                  onDraftChange({ ...draft, name: event.target.value });
+                  onErrorClear();
+                }}
+              />
+            </label>
+          )}
 
           <p className="text-xs text-muted-foreground">
             Wykryto{" "}
@@ -1158,26 +1219,47 @@ function ContentImportPreview({
   );
 }
 
-function FlashcardImportPreview({
+function QuestionImportPreview({
   draft,
   isImporting,
+  showModuleName,
   onDraftChange,
   onErrorClear,
 }: {
-  draft: FlashcardModuleImportDraft;
+  draft: QuestionModuleImportDraft;
   isImporting: boolean;
-  onDraftChange: (draft: FlashcardModuleImportDraft) => void;
+  showModuleName: boolean;
+  onDraftChange: (draft: QuestionModuleImportDraft) => void;
   onErrorClear: () => void;
 }) {
-  const [selectedCard, setSelectedCard] = useState(0);
-  const card = draft.cards[selectedCard];
+  const [selectedQuestion, setSelectedQuestion] = useState(0);
+  const question = draft.questions[selectedQuestion];
+  const testCount = draft.questions.filter(
+    (item) => item.mode === "test",
+  ).length;
 
-  function updateCard(update: Partial<{ front: string; back: string }>) {
+  function updateQuestion(
+    value: QuestionModuleImportDraft["questions"][number],
+  ) {
     onDraftChange({
       ...draft,
-      cards: draft.cards.map((item, index) =>
-        index === selectedCard ? { ...item, ...update } : item,
+      questions: draft.questions.map((item, index) =>
+        index === selectedQuestion ? value : item,
       ),
+    });
+    onErrorClear();
+  }
+
+  function removeQuestion(index: number) {
+    const questions = draft.questions.filter(
+      (_, questionIndex) => questionIndex !== index,
+    );
+    onDraftChange({ ...draft, questions });
+    setSelectedQuestion((current) => {
+      if (!questions.length) return 0;
+      if (index < current) return current - 1;
+      if (index === current) return Math.min(current, questions.length - 1);
+      return current;
     });
     onErrorClear();
   }
@@ -1185,23 +1267,45 @@ function FlashcardImportPreview({
   return (
     <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-5 overflow-hidden lg:grid-cols-[minmax(20rem,0.85fr)_minmax(22rem,1.15fr)] lg:grid-rows-1">
       <section className="min-h-0 overflow-y-auto rounded-xl border bg-muted/10 p-4 sm:p-5">
-        <label className="block space-y-2 text-sm font-medium">
-          <span>Nazwa modułu</span>
-          <Input
-            value={draft.name}
-            maxLength={MODULE_NAME_MAX_LENGTH}
-            disabled={isImporting}
-            aria-invalid={!draft.name.trim()}
-            onChange={(event) => {
-              onDraftChange({ ...draft, name: event.target.value });
-              onErrorClear();
-            }}
-          />
-        </label>
+        {showModuleName && (
+          <label className="block space-y-2 text-sm font-medium">
+            <span>Nazwa modułu</span>
+            <Input
+              value={draft.name}
+              maxLength={MODULE_NAME_MAX_LENGTH}
+              disabled={isImporting}
+              aria-invalid={!draft.name.trim()}
+              onChange={(event) => {
+                onDraftChange({ ...draft, name: event.target.value });
+                onErrorClear();
+              }}
+            />
+          </label>
+        )}
 
-        <p className="mt-3 text-xs text-muted-foreground">
+        <p
+          className={cn(
+            "text-xs text-muted-foreground",
+            showModuleName && "mt-3",
+          )}
+        >
           Wykryto{" "}
-          {formatCount(draft.cards.length, "fiszkę", "fiszki", "fiszek")}.
+          {formatCount(draft.questions.length, "pozycję", "pozycje", "pozycji")}
+          :{" "}
+          {formatCount(
+            testCount,
+            "pytanie testowe",
+            "pytania testowe",
+            "pytań testowych",
+          )}{" "}
+          i{" "}
+          {formatCount(
+            draft.questions.length - testCount,
+            "fiszkę",
+            "fiszki",
+            "fiszek",
+          )}
+          .
         </p>
 
         {draft.warnings.length > 0 && (
@@ -1216,59 +1320,70 @@ function FlashcardImportPreview({
         )}
 
         <h3 className="mt-5 mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          Fiszki
+          Materiały
         </h3>
         <div className="space-y-1 rounded-lg border bg-background p-1.5">
-          {draft.cards.map((item, index) => (
-            <Button
+          {draft.questions.map((item, index) => (
+            <div
               key={index}
-              type="button"
-              variant={selectedCard === index ? "secondary" : "ghost"}
-              className="h-auto min-h-10 w-full justify-start px-3 py-2 text-left font-normal"
-              aria-pressed={selectedCard === index}
-              onClick={() => setSelectedCard(index)}
+              className={cn(
+                "flex items-center rounded-md",
+                selectedQuestion === index && "bg-secondary",
+              )}
             >
-              <span className="w-7 shrink-0 text-xs text-muted-foreground">
-                {index + 1}.
-              </span>
-              <span className="truncate">{item.front}</span>
-            </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-auto min-h-10 min-w-0 flex-1 justify-start px-3 py-2 text-left font-normal hover:bg-transparent"
+                aria-pressed={selectedQuestion === index}
+                onClick={() => setSelectedQuestion(index)}
+              >
+                <span className="w-7 shrink-0 text-xs text-muted-foreground">
+                  {index + 1}.
+                </span>
+                <span className="min-w-0 flex-1 truncate">{item.content}</span>
+                <span className="ml-2 shrink-0 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  {item.mode === "test" ? "Test" : "Fiszka"}
+                </span>
+              </Button>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                disabled={isImporting}
+                aria-label={`Usuń pozycję ${index + 1}`}
+                onClick={() => removeQuestion(index)}
+              >
+                <Trash2 />
+              </Button>
+            </div>
           ))}
+          {!draft.questions.length && (
+            <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+              Wszystkie proponowane materiały zostały usunięte.
+            </p>
+          )}
         </div>
       </section>
 
       <section className="min-h-0 overflow-y-auto rounded-xl border p-4 sm:p-5">
-        {card && (
+        {question ? (
           <>
-            <div className="flex items-center gap-2">
-              <ArrowLeftRight className="size-4 text-primary" />
-              <h3 className="font-semibold">Fiszka {selectedCard + 1}</h3>
-            </div>
-            <label className="mt-5 block space-y-2 text-sm font-medium">
-              <span>Termin</span>
-              <Textarea
-                className="min-h-28 resize-y"
-                value={card.front}
-                disabled={isImporting}
-                aria-invalid={!card.front.trim()}
-                onChange={(event) => updateCard({ front: event.target.value })}
-              />
-            </label>
-            <label className="mt-5 block space-y-2 text-sm font-medium">
-              <span>Definicja</span>
-              <Textarea
-                className="min-h-28 resize-y"
-                value={card.back}
-                disabled={isImporting}
-                aria-invalid={!card.back.trim()}
-                onChange={(event) => updateCard({ back: event.target.value })}
-              />
-            </label>
-            <p className="mt-4 text-xs text-muted-foreground">
-              Termin stanie się pytaniem, a definicja jedyną poprawną
-              odpowiedzią.
-            </p>
+            <h3 className="mb-5 font-semibold">
+              Pozycja {selectedQuestion + 1}
+            </h3>
+            <QuestionFormFields
+              key={selectedQuestion}
+              idPrefix={`import-${selectedQuestion}`}
+              value={question}
+              disabled={isImporting}
+              onChange={updateQuestion}
+            />
           </>
+        ) : (
+          <div className="flex min-h-64 items-center justify-center text-center text-sm text-muted-foreground">
+            Brak materiału do wyświetlenia.
+          </div>
         )}
       </section>
     </div>
@@ -1280,11 +1395,12 @@ function validateDraft(draft: ModuleImportDraft) {
   if (draft.name.trim().length > MODULE_NAME_MAX_LENGTH) {
     return `Nazwa modułu może mieć maksymalnie ${MODULE_NAME_MAX_LENGTH} znaków.`;
   }
-  if (draft.kind === "flashcards") {
-    if (!draft.cards.length)
-      return "Import musi zawierać co najmniej jedną fiszkę.";
-    if (draft.cards.some((card) => !card.front.trim() || !card.back.trim())) {
-      return "Każda fiszka musi mieć termin i definicję.";
+  if (draft.kind === "questions") {
+    if (!draft.questions.length)
+      return "Import musi zawierać co najmniej jedną fiszkę lub pytanie.";
+    const invalidQuestion = draft.questions.find(validateQuestionForm);
+    if (invalidQuestion) {
+      return validateQuestionForm(invalidQuestion);
     }
     return null;
   }

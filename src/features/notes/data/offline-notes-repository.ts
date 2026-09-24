@@ -130,6 +130,14 @@ export class OfflineNotesRepository implements NotesRepository {
     );
   }
 
+  async importDocx(
+    ...args: Parameters<NotesRepository["importDocx"]>
+  ): Promise<number> {
+    const imported = await this.online.importDocx(...args);
+    void this.offline.syncStored(this.moduleId).catch(() => undefined);
+    return imported;
+  }
+
   createChapterWithTopics(
     ...args: Parameters<NotesRepository["createChapterWithTopics"]>
   ) {

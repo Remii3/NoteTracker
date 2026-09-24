@@ -6,6 +6,7 @@ import type { TopicImagesService } from "../data/topic-images-service";
 import type { Chapter, LearningSummary, Topic } from "../types/model";
 import type { SortMode } from "../types/workspace-types";
 import type { ChapterWorkspace } from "./chapter-workspace";
+import type { ContentModuleImportDraft } from "@/features/modules/import/import-model";
 
 export type ModuleContextValue = {
   moduleId: string;
@@ -20,6 +21,7 @@ export type ModuleContextValue = {
   statisticsRepository?: StatisticsRepository;
   statisticsCacheScope?: string;
   loadChapterTopics: (chapterId: string) => Promise<Topic[] | null>;
+  importDocx: (draft: ContentModuleImportDraft) => Promise<number>;
   openChapter: (chapterId: string, topicId: string) => Promise<void>;
   openChapters: () => void;
   navigateHome: () => void;

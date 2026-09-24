@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/lib/supabase/database.types";
+import { clearMemoryCacheByPrefix } from "@/lib/memory-cache";
 import { throwIfPostgrestError } from "@/features/notes/data/supabase-error";
 import type { QuestionsRepository } from "./questions-repository";
 import type {
@@ -117,6 +118,25 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
     throwIfPostgrestError(error);
   }
 
+  async importQuestions(
+    draft: Parameters<QuestionsRepository["importQuestions"]>[0],
+  ) {
+    const { data, error } = await this.client.rpc(
+      "import_questions_into_module",
+      {
+        target_module_id: this.moduleId,
+        imported_questions: draft.questions.map((question) => ({
+          content: question.content,
+          explanation: question.explanation,
+          options: question.options,
+        })) as Json,
+      },
+    );
+    throwIfPostgrestError(error);
+    clearMemoryCacheByPrefix(`statistics:${this.userId}:`);
+    return data ?? 0;
+  }
+
   async createSession(
     input: Parameters<QuestionsRepository["createSession"]>[0],
   ) {
@@ -128,6 +148,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
       selected_topic_id: input.topicId ?? null,
       random_chapter_count: input.randomChapterCount,
       requested_question_count: input.questionCount,
+      hide_flashcard_options: input.hideFlashcardOptions,
     });
     throwIfPostgrestError(error);
     if (!data) throw new Error("Nie udało się utworzyć sesji.");

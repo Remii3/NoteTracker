@@ -1,10 +1,10 @@
 import { normalizeModuleName } from "../lib/module-validation";
 import {
   createUniqueImportTitle,
-  MAX_FLASHCARD_IMPORT_COUNT,
-  MAX_FLASHCARD_SIDE_LENGTH,
-  type FlashcardModuleImportDraft,
-  type ImportedFlashcardDraft,
+  MAX_QUESTION_FIELD_LENGTH,
+  MAX_QUESTION_IMPORT_COUNT,
+  type ImportedQuestionDraft,
+  type QuestionModuleImportDraft,
 } from "./import-model";
 
 export type QuizletTermSeparator = "auto" | "tab" | "comma" | "dash";
@@ -27,25 +27,28 @@ export function parseQuizletText(
   moduleName: string,
   existingModuleNames: string[],
   options: QuizletImportOptions = DEFAULT_OPTIONS,
-): FlashcardModuleImportDraft {
+): QuestionModuleImportDraft {
   const normalizedText = text.replace(/\r\n?/g, "\n").trim();
   if (!normalizedText)
     throw new Error("Wklej fiszki wyeksportowane z Quizleta.");
 
-  const rows = splitRows(normalizedText, options.rowSeparator).filter((row) =>
-    row.trim(),
+  const sourceRows = splitRows(normalizedText, options.rowSeparator).filter(
+    (row) => row.trim(),
   );
-  if (rows.length > MAX_FLASHCARD_IMPORT_COUNT) {
-    throw new Error(
-      `Jednorazowo możesz zaimportować maksymalnie ${MAX_FLASHCARD_IMPORT_COUNT} fiszek.`,
-    );
-  }
-
   const separator =
     options.termSeparator === "auto"
-      ? detectTermSeparator(rows)
+      ? detectTermSeparator(sourceRows)
       : options.termSeparator;
-  const cards: ImportedFlashcardDraft[] = [];
+  const rows =
+    options.rowSeparator === "newline" && separator === "tab"
+      ? joinMultilineTabRows(sourceRows)
+      : sourceRows;
+  if (rows.length > MAX_QUESTION_IMPORT_COUNT) {
+    throw new Error(
+      `Jednorazowo możesz zaimportować maksymalnie ${MAX_QUESTION_IMPORT_COUNT} fiszek.`,
+    );
+  }
+  const questions: ImportedQuestionDraft[] = [];
   let invalidRows = 0;
   let duplicateRows = 0;
   const seen = new Set<string>();
@@ -63,20 +66,25 @@ export function parseQuizletText(
       continue;
     }
     if (
-      front.length > MAX_FLASHCARD_SIDE_LENGTH ||
-      back.length > MAX_FLASHCARD_SIDE_LENGTH
+      front.length > MAX_QUESTION_FIELD_LENGTH ||
+      back.length > MAX_QUESTION_FIELD_LENGTH
     ) {
       throw new Error(
-        `Przód i tył fiszki mogą mieć maksymalnie ${MAX_FLASHCARD_SIDE_LENGTH} znaków.`,
+        `Przód i tył fiszki mogą mieć maksymalnie ${MAX_QUESTION_FIELD_LENGTH} znaków.`,
       );
     }
     const duplicateKey = `${front.toLocaleLowerCase("pl")}\u0000${back.toLocaleLowerCase("pl")}`;
     if (seen.has(duplicateKey)) duplicateRows += 1;
     seen.add(duplicateKey);
-    cards.push({ front, back });
+    questions.push({
+      mode: "flashcard",
+      content: front,
+      explanation: "",
+      options: [{ content: back, isCorrect: true }],
+    });
   }
 
-  if (!cards.length) {
+  if (!questions.length) {
     throw new Error(
       "Nie znaleziono poprawnych fiszek. Sprawdź wybrane separatory.",
     );
@@ -95,13 +103,13 @@ export function parseQuizletText(
   }
 
   return {
-    kind: "flashcards",
+    kind: "questions",
     source: "quizlet",
     name: createUniqueImportTitle(
       normalizeModuleName(moduleName),
       existingModuleNames,
     ),
-    cards,
+    questions,
     warnings,
   };
 }
@@ -115,6 +123,10 @@ function splitRows(text: string, separator: QuizletRowSeparator) {
 function detectTermSeparator(
   rows: string[],
 ): Exclude<QuizletTermSeparator, "auto"> {
+  // A tab is an unambiguous field boundary in Quizlet exports. Prefer it over
+  // commas that may naturally occur many times inside a multiline term.
+  if (rows.some((row) => splitQuoted(row, "\t").length >= 2)) return "tab";
+
   const candidates = ["tab", "comma", "dash"] as const;
   let best: (typeof candidates)[number] = "tab";
   let bestScore = -1;
@@ -129,6 +141,22 @@ function detectTermSeparator(
     }
   }
   return best;
+}
+
+function joinMultilineTabRows(rows: string[]) {
+  const joined: string[] = [];
+  let pending: string[] = [];
+
+  for (const row of rows) {
+    pending.push(row);
+    const candidate = pending.join("\n");
+    if (splitPair(candidate, "tab")) {
+      joined.push(candidate);
+      pending = [];
+    }
+  }
+  if (pending.length) joined.push(pending.join("\n"));
+  return joined;
 }
 
 function splitPair(

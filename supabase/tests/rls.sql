@@ -928,58 +928,161 @@ end;
 $$;
 do $$
 declare
- flashcard_module_id uuid;
+ question_module_id uuid;
 begin
- flashcard_module_id := public.import_flashcard_module(
-  'Quizlet import',
+ question_module_id := public.import_question_module(
+  'Anki import',
   5000,
-  '[{"front":"Mitochondrium","back":"Elektrownia komórki"},{"front":"Jądro","back":"Przechowuje DNA"}]'::jsonb
+  '[
+    {"content":"Mitochondrium","explanation":"","options":[{"content":"Elektrownia komórki","isCorrect":true}]},
+    {"content":"Stolica Polski?","explanation":"Warszawa jest stolicą od 1596 roku.","options":[{"content":"Kraków","isCorrect":false},{"content":"Warszawa","isCorrect":true},{"content":"Gdańsk","isCorrect":false}]}
+  ]'::jsonb
  );
  perform pg_temp.assert_true(
   (select user_id = '10000000-0000-4000-8000-000000000000'
-   from public.modules where id = flashcard_module_id),
-  'Flashcard import: creates an owned module'
+   from public.modules where id = question_module_id),
+  'Question import: creates an owned module'
  );
  perform pg_temp.assert_true(
   (select count(*) = 2 and bool_and(chapter_id is null and topic_id is null)
-   from public.questions where module_id = flashcard_module_id),
-  'Flashcard import: creates unassigned questions'
+   from public.questions where module_id = question_module_id),
+  'Question import: creates unassigned questions'
  );
  perform pg_temp.assert_true(
-  (select count(*) = 2 and bool_and(option_count = 1 and correct_count = 1)
+  (select count(*) = 2
+      and pg_catalog.min(option_count) = 1
+      and pg_catalog.max(option_count) = 3
+      and bool_and(correct_count = 1)
    from (
     select question.id,
       count(option.id) as option_count,
       count(option.id) filter (where option.is_correct) as correct_count
     from public.questions as question
     left join public.question_options as option on option.question_id = question.id
-    where question.module_id = flashcard_module_id
+    where question.module_id = question_module_id
     group by question.id
    ) as imported_questions),
-  'Flashcard import: creates one correct answer per card'
+  'Question import: creates mixed flashcards and test questions'
+ );
+ perform pg_temp.assert_true(
+  (select explanation = 'Warszawa jest stolicą od 1596 roku.'
+   from public.questions
+   where module_id = question_module_id and content = 'Stolica Polski?'),
+  'Question import: stores explanations'
  );
 
  begin
-  perform public.import_flashcard_module(
-   'Broken flashcards',
+  perform public.import_question_module(
+   'Broken questions',
    6000,
-   '[{"front":"Valid","back":"Answer"},{"front":"","back":"Missing front"}]'::jsonb
+   '[
+     {"content":"Valid","explanation":"","options":[{"content":"Answer","isCorrect":true}]},
+     {"content":"Invalid","explanation":"","options":[{"content":"A","isCorrect":true},{"content":"A","isCorrect":false}]}
+   ]'::jsonb
   );
-  raise exception 'Invalid flashcard import was accepted';
+  raise exception 'Invalid question import was accepted';
  exception when raise_exception then
-  if SQLERRM = 'Invalid flashcard import was accepted' then raise; end if;
+  if SQLERRM = 'Invalid question import was accepted' then raise; end if;
  end;
  perform pg_temp.assert_true(
-  not exists (select 1 from public.modules where name = 'Broken flashcards'),
-  'Flashcard import: invalid nested data rolls back the whole module'
+  not exists (select 1 from public.modules where name = 'Broken questions'),
+  'Question import: invalid nested data rolls back the whole module'
  );
 end;
 $$;
-do $$ declare test_question_id uuid; test_session_id uuid; test_trash_id uuid; begin
+do $$
+declare
+ imported_chapter_id uuid;
+ rejected boolean := false;
+begin
+ perform pg_temp.assert_true(
+  public.import_docx_into_module(
+   '10000001-0000-4000-8000-000000000000',
+   '[{
+     "title":"Existing import chapter",
+     "slug":"chapter",
+     "topics":[{
+       "title":"Imported topic",
+       "slug":"topic",
+       "content":{"type":"doc","content":[{"type":"paragraph"}]}
+     }]
+   }]'::jsonb
+  ) = 1,
+  'Existing DOCX import: reports the number of appended chapters'
+ );
+ select id into imported_chapter_id
+ from public.chapters
+ where module_id = '10000001-0000-4000-8000-000000000000'
+   and title = 'Existing import chapter';
+ perform pg_temp.assert_true(
+  (select slug = 'chapter-2' and position > 1000
+   from public.chapters where id = imported_chapter_id)
+  and (select count(*) = 1 from public.topics
+       where chapter_id = imported_chapter_id and title = 'Imported topic'),
+  'Existing DOCX import: appends an owned chapter, resolves its slug and stores topics'
+ );
+
+ perform pg_temp.assert_true(
+  public.import_questions_into_module(
+   '10000001-0000-4000-8000-000000000000',
+   '[{
+     "content":"Imported into existing module",
+     "explanation":"Explanation",
+     "options":[
+       {"content":"Correct","isCorrect":true},
+       {"content":"Wrong","isCorrect":false}
+     ]
+   }]'::jsonb
+  ) = 1,
+  'Existing question import: reports the number of appended questions'
+ );
+ perform pg_temp.assert_true(
+  (select count(*) = 1
+   from public.questions as question
+   join public.question_options as option on option.question_id = question.id
+   where question.module_id = '10000001-0000-4000-8000-000000000000'
+     and question.content = 'Imported into existing module'
+     and option.is_correct),
+  'Existing question import: stores questions and their correct options'
+ );
+
+ begin
+  perform public.import_questions_into_module(
+   '20000001-0000-4000-8000-000000000000',
+   '[{"content":"Forbidden","options":[{"content":"Answer","isCorrect":true}]}]'::jsonb
+  );
+ exception when raise_exception then
+  rejected := true;
+ end;
+ perform pg_temp.assert_true(
+  rejected,
+  'Existing import RPCs cannot append to another user module'
+ );
+
+ delete from public.questions where content = 'Imported into existing module';
+ delete from public.chapters where id = imported_chapter_id;
+end;
+$$;
+do $$ declare test_question_id uuid; test_session_id uuid; flashcard_session_id uuid; test_trash_id uuid; begin
  test_question_id := public.save_question('10000001-0000-4000-8000-000000000000',null,'New question','',null,null,
   '[{"content":"Yes","isCorrect":true},{"content":"No","isCorrect":false}]'::jsonb);
  test_session_id := public.create_study_session('10000001-0000-4000-8000-000000000000','test','all',null,null,3,20);
  perform pg_temp.assert_true((select count(*) > 0 from public.study_session_items where study_session_items.session_id = test_session_id), 'Session has items');
+ flashcard_session_id := public.create_study_session(
+  '10000001-0000-4000-8000-000000000000',
+  'flashcards',
+  'all',
+  null,
+  null,
+  3,
+  20,
+  true
+ );
+ perform pg_temp.assert_true(
+  (select configuration->>'hideFlashcardOptions' = 'true'
+   from public.study_sessions where id = flashcard_session_id),
+  'Flashcard session persists hidden answer variants'
+ );
  test_trash_id := public.move_to_trash('question',test_question_id);
  perform pg_temp.assert_true(not exists(select 1 from public.questions where id = test_question_id), 'Trashed question hidden');
  perform public.restore_trash_item(test_trash_id);

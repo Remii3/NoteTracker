@@ -11,12 +11,20 @@ describe("parseQuizletText", () => {
     );
 
     expect(result).toMatchObject({
-      kind: "flashcards",
+      kind: "questions",
       source: "quizlet",
       name: "Biologia",
-      cards: [
-        { front: "Mitochondrium", back: "Elektrownia komórki" },
-        { front: "Jądro", back: "Przechowuje DNA" },
+      questions: [
+        {
+          mode: "flashcard",
+          content: "Mitochondrium",
+          options: [{ content: "Elektrownia komórki", isCorrect: true }],
+        },
+        {
+          mode: "flashcard",
+          content: "Jądro",
+          options: [{ content: "Przechowuje DNA", isCorrect: true }],
+        },
       ],
     });
   });
@@ -30,9 +38,19 @@ describe("parseQuizletText", () => {
     );
 
     expect(result.name).toBe("Zestaw (2)");
-    expect(result.cards).toEqual([
-      { front: "Definicja", back: "A, B" },
-      { front: "Druga, definicja", back: "C" },
+    expect(result.questions).toEqual([
+      {
+        mode: "flashcard",
+        content: "Definicja",
+        explanation: "",
+        options: [{ content: "A, B", isCorrect: true }],
+      },
+      {
+        mode: "flashcard",
+        content: "Druga, definicja",
+        explanation: "",
+        options: [{ content: "C", isCorrect: true }],
+      },
     ]);
   });
 
@@ -44,10 +62,54 @@ describe("parseQuizletText", () => {
       { termSeparator: "dash", rowSeparator: "newline", swapSides: false },
     );
 
-    expect(result.cards).toHaveLength(2);
+    expect(result.questions).toHaveLength(2);
     expect(result.warnings).toEqual([
       "Pominięto 1 niepełny wiersz.",
       "Wykryto 1 powtórzoną fiszkę; zostaną zaimportowane.",
+    ]);
+  });
+
+  it("keeps multiline questions together when the answer is separated by a tab", () => {
+    const result = parseQuizletText(
+      [
+        "Zgodnie z KPC, jeżeli powód dochodzi kilku roszczeń, obliczając wartość:",
+        "a) nie zlicza się ich wartości,",
+        "b) przyjmuje się najwyższą wartość,",
+        "c) zlicza się ich wartość.\tC. zlicza się ich wartość",
+        "Zgodnie z KPC, o wartości przedmiotu zastawu rozstrzyga:",
+        "a) wartość wierzytelności,",
+        "b) wartość przedmiotu zastawu,",
+        "c) różnica wartości.\tB. wartość przedmiotu zastawu",
+      ].join("\n"),
+      "KPC",
+      [],
+    );
+
+    expect(result.questions).toEqual([
+      {
+        mode: "flashcard",
+        content: [
+          "Zgodnie z KPC, jeżeli powód dochodzi kilku roszczeń, obliczając wartość:",
+          "a) nie zlicza się ich wartości,",
+          "b) przyjmuje się najwyższą wartość,",
+          "c) zlicza się ich wartość.",
+        ].join("\n"),
+        explanation: "",
+        options: [{ content: "C. zlicza się ich wartość", isCorrect: true }],
+      },
+      {
+        mode: "flashcard",
+        content: [
+          "Zgodnie z KPC, o wartości przedmiotu zastawu rozstrzyga:",
+          "a) wartość wierzytelności,",
+          "b) wartość przedmiotu zastawu,",
+          "c) różnica wartości.",
+        ].join("\n"),
+        explanation: "",
+        options: [
+          { content: "B. wartość przedmiotu zastawu", isCorrect: true },
+        ],
+      },
     ]);
   });
 

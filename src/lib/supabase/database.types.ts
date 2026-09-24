@@ -648,13 +648,27 @@ export type Database = {
         };
         Returns: string;
       };
-      import_flashcard_module: {
+      import_question_module: {
         Args: {
-          imported_cards: Json;
+          imported_questions: Json;
           target_name: string;
           target_position: number;
         };
         Returns: string;
+      };
+      import_docx_into_module: {
+        Args: {
+          target_module_id: string;
+          imported_chapters: Json;
+        };
+        Returns: number;
+      };
+      import_questions_into_module: {
+        Args: {
+          target_module_id: string;
+          imported_questions: Json;
+        };
+        Returns: number;
       };
       get_module_summaries: {
         Args: {
@@ -852,6 +866,7 @@ export type Database = {
           selected_topic_id?: string | null;
           random_chapter_count?: number;
           requested_question_count?: number | null;
+          hide_flashcard_options?: boolean;
         };
         Returns: string;
       };

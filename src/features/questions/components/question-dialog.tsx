@@ -16,14 +16,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Trash2 } from "lucide-react";
-import type { Question, QuestionOption } from "../model/types";
+import type { Question } from "../model/types";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { QuestionsRepository } from "../data/questions-repository";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
+import { QuestionFormFields } from "./question-form-fields";
+import {
+  createQuestionFormValue,
+  normalizeQuestionForm,
+  validateQuestionForm,
+} from "../model/question-form";
 
 type Props = {
   question?: Question | null;
@@ -51,8 +55,9 @@ export function QuestionDialog({
   onClose,
   onSaved,
 }: Props) {
-  const [content, setContent] = useState(question?.content ?? "");
-  const [explanation, setExplanation] = useState(question?.explanation ?? "");
+  const [form, setForm] = useState(() =>
+    createQuestionFormValue(question ?? undefined),
+  );
   const [chapterId, setChapterId] = useState(
     question?.chapterId ?? initialChapterId ?? "",
   );
@@ -64,9 +69,6 @@ export function QuestionDialog({
   );
   const [topicsLoading, setTopicsLoading] = useState(Boolean(chapterId));
   const [topicsError, setTopicsError] = useState(false);
-  const [options, setOptions] = useState<QuestionOption[]>(
-    question?.options ?? [{ content: "", isCorrect: true }],
-  );
   const [saving, setSaving] = useState(false);
   const chapterOptions: SelectOption[] = chapters.map((chapter) => ({
     value: chapter.id,
@@ -109,29 +111,7 @@ export function QuestionDialog({
       cancelled = true;
     };
   }, [chapterId, loadTopics]);
-  const normalized = options.map((option) => option.content.trim());
-  const valid = Boolean(
-    content.trim() &&
-    normalized.every(Boolean) &&
-    new Set(normalized.map((item) => item.toLocaleLowerCase("pl"))).size ===
-      options.length &&
-    options.filter((option) => option.isCorrect).length === 1,
-  );
-
-  function updateOption(index: number, update: Partial<QuestionOption>) {
-    setOptions((items) =>
-      items.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, ...update } : item,
-      ),
-    );
-  }
-  function removeOption(index: number) {
-    setOptions((items) => {
-      const next = items.filter((_, itemIndex) => itemIndex !== index);
-      if (next.length === 1) next[0] = { ...next[0], isCorrect: true };
-      return next;
-    });
-  }
+  const validationError = validateQuestionForm(form);
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -141,81 +121,11 @@ export function QuestionDialog({
             {question ? "Edytuj pytanie" : "Dodaj pytanie"}
           </DialogTitle>
           <DialogDescription>
-            Jedna odpowiedź wystarcza do fiszek. Co najmniej dwie pozwalają użyć
-            pytania w teście.
+            Dodaj odpowiedzi i wskaż prawidłową. Dwie lub więcej odpowiedzi
+            udostępnią materiał również w testach.
           </DialogDescription>
         </DialogHeader>
-        <label className="space-y-2">
-          <span className="font-medium">Pytanie</span>
-          <Textarea
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-          />
-        </label>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="font-medium">Odpowiedzi</span>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                setOptions((items) => [
-                  ...items,
-                  { content: "", isCorrect: false },
-                ])
-              }
-            >
-              <Plus /> Dodaj odpowiedź
-            </Button>
-          </div>
-          {options.map((option, index) => (
-            <div key={index} className="flex items-start gap-2">
-              <input
-                className="mt-3"
-                type="radio"
-                name="correct"
-                checked={option.isCorrect}
-                aria-label={`Odpowiedź ${index + 1} jest poprawna`}
-                onChange={() =>
-                  setOptions((items) =>
-                    items.map((item, itemIndex) => ({
-                      ...item,
-                      isCorrect: itemIndex === index,
-                    })),
-                  )
-                }
-              />
-              <Textarea
-                aria-label={`Odpowiedź ${index + 1}`}
-                value={option.content}
-                onChange={(event) =>
-                  updateOption(index, { content: event.target.value })
-                }
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                disabled={options.length === 1}
-                aria-label={`Usuń odpowiedź ${index + 1}`}
-                onClick={() => removeOption(index)}
-              >
-                <Trash2 />
-              </Button>
-            </div>
-          ))}
-        </div>
-        <label className="space-y-2">
-          <span className="font-medium">
-            Wyjaśnienie{" "}
-            <span className="text-muted-foreground">(opcjonalne)</span>
-          </span>
-          <Textarea
-            value={explanation}
-            onChange={(event) => setExplanation(event.target.value)}
-          />
-        </label>
+        <QuestionFormFields value={form} onChange={setForm} disabled={saving} />
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <span className="font-medium">Rozdział</span>
@@ -309,17 +219,18 @@ export function QuestionDialog({
             Anuluj
           </Button>
           <Button
-            disabled={!valid || saving}
+            disabled={Boolean(validationError) || saving}
             onClick={() => {
+              const normalized = normalizeQuestionForm(form);
               setSaving(true);
               void repository
                 .save({
                   id: question?.id,
                   chapterId: chapterId || null,
                   topicId: topicId || null,
-                  content: content.trim(),
-                  explanation: explanation.trim() || null,
-                  options,
+                  content: normalized.content,
+                  explanation: normalized.explanation || null,
+                  options: normalized.options,
                 })
                 .then(() => {
                   onSaved();

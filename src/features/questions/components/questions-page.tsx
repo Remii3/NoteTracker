@@ -2,6 +2,7 @@ import {
   BookOpenCheck,
   History,
   Layers3,
+  FileUp,
   Pencil,
   Plus,
   Search,
@@ -34,6 +35,7 @@ import { QuestionDialog } from "./question-dialog";
 import type { QuestionsRepository } from "../data/questions-repository";
 import { toast } from "@/components/ui/toast";
 import { AppHeaderActions } from "@/layout/app-header-actions";
+import { ModuleImportDialog } from "@/features/modules/import/module-import-dialog";
 
 const PAGE_SIZE = 20;
 type FilterOption = { value: string; label: string };
@@ -67,6 +69,7 @@ export function QuestionsPage({
   const filterTopicsRequest = useRef(0);
   const [editing, setEditing] = useState<Question | null | undefined>();
   const [studyMode, setStudyMode] = useState<StudyMode | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [availability, setAvailability] = useState<{
     flashcardsCount: number;
     testQuestionsCount: number;
@@ -135,6 +138,15 @@ export function QuestionsPage({
   return (
     <>
       <AppHeaderActions>
+        <Button
+          size="sm"
+          variant="outline"
+          aria-label="Importuj pytania"
+          onClick={() => setImportOpen(true)}
+        >
+          <FileUp />
+          <span className="hidden sm:inline">Importuj</span>
+        </Button>
         <Button
           size="sm"
           variant="outline"
@@ -417,6 +429,29 @@ export function QuestionsPage({
               onOpenSession={onOpenSession}
             />
           )}
+          {importOpen && (
+            <ModuleImportDialog
+              existingModuleNames={[]}
+              allowedSources={["quizlet", "anki"]}
+              destination="current-module"
+              targetModuleName={moduleName ?? "Bieżący moduł"}
+              onClose={() => setImportOpen(false)}
+              onImport={async (draft) => {
+                if (draft.kind !== "questions") {
+                  throw new Error(
+                    "Ten widok obsługuje wyłącznie pytania i fiszki.",
+                  );
+                }
+                const imported = await repository.importQuestions(draft);
+                setImportOpen(false);
+                toast.add({
+                  data: { type: "success" },
+                  description: `Zaimportowano pozycje: ${imported}.`,
+                });
+                await load();
+              }}
+            />
+          )}
         </div>
       </main>
     </>
@@ -443,6 +478,7 @@ function StudySetup({
   const [topicId, setTopicId] = useState("");
   const [topics, setTopics] = useState<Topic[]>([]);
   const [count, setCount] = useState("20");
+  const [hideFlashcardOptions, setHideFlashcardOptions] = useState(false);
   const [creating, setCreating] = useState(false);
   const [scopeAvailability, setScopeAvailability] = useState<{
     flashcardsCount: number;
@@ -551,6 +587,32 @@ function StudySetup({
             <option value="all">Wszystkie</option>
           </select>
         </label>
+        {mode === "flashcards" && (
+          <div className="flex items-center justify-between gap-4 rounded-xl border p-4">
+            <div>
+              <p className="font-medium">Ukryj odpowiedzi</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Warianty A, B, C, D nie będą widoczne przed odwróceniem fiszki.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-label="Ukryj odpowiedzi"
+              aria-checked={hideFlashcardOptions}
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${
+                hideFlashcardOptions ? "bg-primary" : "bg-input"
+              }`}
+              onClick={() => setHideFlashcardOptions((current) => !current)}
+            >
+              <span
+                className={`absolute top-0.5 size-5 rounded-full bg-background shadow-sm transition-transform ${
+                  hideFlashcardOptions ? "translate-x-5" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
+        )}
         {scopeAvailability && (
           <p className="text-sm text-muted-foreground">
             Dostępnych pytań: {availableCount ?? 0}.
@@ -578,6 +640,8 @@ function StudySetup({
                   topicId: topicId || undefined,
                   randomChapterCount: 3,
                   questionCount: count === "all" ? null : Number(count),
+                  hideFlashcardOptions:
+                    mode === "flashcards" && hideFlashcardOptions,
                 })
                 .then((id) => onOpenSession(mode, id))
                 .catch((error: unknown) => {

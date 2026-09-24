@@ -80,6 +80,8 @@ function LoadedStudySession({
     typeof initialSession.configuration.timeLimitMinutes === "number"
       ? initialSession.configuration.timeLimitMinutes
       : undefined;
+  const hideFlashcardOptions =
+    initialSession.configuration.hideFlashcardOptions === true;
   const effectiveTimeLimit = timeLimitMinutes ?? configuredTimeLimit;
   const initialDeadline = effectiveTimeLimit
     ? new Date(initialSession.startedAt).getTime() + effectiveTimeLimit * 60_000
@@ -276,6 +278,10 @@ function LoadedStudySession({
     );
   const item = session.items[index];
   const correct = item.options.find((option) => option.isCorrect)!;
+  const showFlashcardOptions =
+    session.mode === "flashcards" &&
+    !hideFlashcardOptions &&
+    item.options.length >= 2;
   async function choose(optionId: string) {
     if (revealed || saving) return;
     const isCorrect = correct.id === optionId;
@@ -389,21 +395,48 @@ function LoadedStudySession({
                 );
               })}
             </div>
-          ) : revealed ? (
-            <div className="mt-10 border-t pt-8">
-              <p className="text-sm text-muted-foreground">
-                Poprawna odpowiedź
-              </p>
-              <p className="mt-2 text-lg">{correct.content}</p>
-            </div>
           ) : (
-            <Button
-              className="mt-10"
-              variant="outline"
-              onClick={() => setRevealed(true)}
-            >
-              <Eye /> Pokaż odpowiedź
-            </Button>
+            <>
+              {showFlashcardOptions && (
+                <ol className="mt-8 space-y-2 text-left">
+                  {item.options.map((option, optionIndex) => (
+                    <li
+                      key={option.id}
+                      className={`rounded-xl border p-4 ${
+                        revealed && option.isCorrect
+                          ? "border-primary bg-primary/10 font-medium text-primary"
+                          : ""
+                      }`}
+                    >
+                      {String.fromCharCode(65 + optionIndex)}. {option.content}
+                      {revealed && option.isCorrect ? " ✓" : ""}
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {revealed ? (
+                showFlashcardOptions ? (
+                  <p className="mt-5 text-sm text-muted-foreground">
+                    Prawidłowa odpowiedź została oznaczona powyżej.
+                  </p>
+                ) : (
+                  <div className="mt-10 border-t pt-8">
+                    <p className="text-sm text-muted-foreground">
+                      Poprawna odpowiedź
+                    </p>
+                    <p className="mt-2 text-lg">{correct.content}</p>
+                  </div>
+                )
+              ) : (
+                <Button
+                  className="mt-10"
+                  variant="outline"
+                  onClick={() => setRevealed(true)}
+                >
+                  <Eye /> Pokaż prawidłową odpowiedź
+                </Button>
+              )}
+            </>
           )}
           {revealed && item.explanation && (
             <div className="mt-6 rounded-xl bg-muted p-4 text-left">

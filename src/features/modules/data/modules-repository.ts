@@ -1,6 +1,6 @@
 import type {
   ContentModuleImportDraft,
-  FlashcardModuleImportDraft,
+  QuestionModuleImportDraft,
 } from "../import/import-model";
 import type { NoteContent } from "@/features/notes/types/model";
 
@@ -54,8 +54,8 @@ export interface ModulesRepository {
     draft: ContentModuleImportDraft,
     position: number,
   ): Promise<Module>;
-  importFlashcards(
-    draft: FlashcardModuleImportDraft,
+  importQuestions(
+    draft: QuestionModuleImportDraft,
     position: number,
   ): Promise<Module>;
   rename(id: string, name: string): Promise<void>;

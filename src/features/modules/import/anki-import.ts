@@ -1,10 +1,10 @@
 import { normalizeModuleName } from "../lib/module-validation";
 import {
   createUniqueImportTitle,
-  MAX_FLASHCARD_IMPORT_COUNT,
-  MAX_FLASHCARD_SIDE_LENGTH,
-  type FlashcardModuleImportDraft,
-  type ImportedFlashcardDraft,
+  MAX_QUESTION_FIELD_LENGTH,
+  MAX_QUESTION_IMPORT_COUNT,
+  type ImportedQuestionDraft,
+  type QuestionModuleImportDraft,
 } from "./import-model";
 
 export const MAX_ANKI_TEXT_FILE_SIZE = 5 * 1024 * 1024;
@@ -29,7 +29,7 @@ type ParsedHeaders = {
 export async function parseAnkiFile(
   file: File,
   existingModuleNames: string[],
-): Promise<FlashcardModuleImportDraft> {
+): Promise<QuestionModuleImportDraft> {
   const extension = file.name.split(".").pop()?.toLocaleLowerCase("pl");
   if (extension === "apkg") {
     if (file.size > MAX_ANKI_PACKAGE_FILE_SIZE) {
@@ -56,7 +56,7 @@ export async function parseAnkiPackage(
   packageBytes: Uint8Array,
   fileName: string,
   existingModuleNames: string[],
-): Promise<FlashcardModuleImportDraft> {
+): Promise<QuestionModuleImportDraft> {
   const { unzipSync } = await import("fflate");
   let oversizedCollection = false;
   let archive: Record<string, Uint8Array>;
@@ -106,14 +106,14 @@ export async function parseAnkiPackage(
   let noteFields: string[][];
   try {
     const result = database.exec(
-      `select flds from notes order by id limit ${MAX_FLASHCARD_IMPORT_COUNT + 1}`,
+      `select flds from notes order by id limit ${MAX_QUESTION_IMPORT_COUNT + 1}`,
     )[0];
     if (!result) {
       throw new Error("Paczka Anki nie zawiera żadnych notatek.");
     }
-    if (result.values.length > MAX_FLASHCARD_IMPORT_COUNT) {
+    if (result.values.length > MAX_QUESTION_IMPORT_COUNT) {
       throw new Error(
-        `Jednorazowo możesz zaimportować maksymalnie ${MAX_FLASHCARD_IMPORT_COUNT} notatek Anki.`,
+        `Jednorazowo możesz zaimportować maksymalnie ${MAX_QUESTION_IMPORT_COUNT} notatek Anki.`,
       );
     }
     noteFields = result.values.map(([fields]) =>
@@ -139,7 +139,7 @@ export function parseAnkiText(
   text: string,
   fileName: string,
   existingModuleNames: string[],
-): FlashcardModuleImportDraft {
+): QuestionModuleImportDraft {
   const normalizedText = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
   if (!normalizedText.trim()) throw new Error("Plik Anki jest pusty.");
 
@@ -149,13 +149,13 @@ export function parseAnkiText(
     row.some((field) => field.trim()),
   );
 
-  if (rows.length > MAX_FLASHCARD_IMPORT_COUNT) {
+  if (rows.length > MAX_QUESTION_IMPORT_COUNT) {
     throw new Error(
-      `Jednorazowo możesz zaimportować maksymalnie ${MAX_FLASHCARD_IMPORT_COUNT} fiszek.`,
+      `Jednorazowo możesz zaimportować maksymalnie ${MAX_QUESTION_IMPORT_COUNT} pozycji.`,
     );
   }
 
-  const cards: ImportedFlashcardDraft[] = [];
+  const questions: ImportedQuestionDraft[] = [];
   const seen = new Set<string>();
   let invalidRows = 0;
   let duplicateRows = 0;
@@ -184,21 +184,24 @@ export function parseAnkiText(
       continue;
     }
     if (
-      front.length > MAX_FLASHCARD_SIDE_LENGTH ||
-      back.length > MAX_FLASHCARD_SIDE_LENGTH
+      front.length > MAX_QUESTION_FIELD_LENGTH ||
+      back.length > MAX_QUESTION_FIELD_LENGTH
     ) {
       throw new Error(
-        `Przód i tył fiszki mogą mieć maksymalnie ${MAX_FLASHCARD_SIDE_LENGTH} znaków.`,
+        `Treść pytania i odpowiedzi mogą mieć maksymalnie ${MAX_QUESTION_FIELD_LENGTH} znaków.`,
       );
     }
 
-    const duplicateKey = `${front.toLocaleLowerCase("pl")}\u0000${back.toLocaleLowerCase("pl")}`;
+    const question = parseAnkiQuestion(front, back);
+    const duplicateKey = `${question.content.toLocaleLowerCase("pl")}\u0000${question.options
+      .map((option) => option.content.toLocaleLowerCase("pl"))
+      .join("\u0001")}`;
     if (seen.has(duplicateKey)) duplicateRows += 1;
     seen.add(duplicateKey);
-    cards.push({ front, back });
+    questions.push(question);
   }
 
-  if (!cards.length) {
+  if (!questions.length) {
     throw new Error(
       "Nie znaleziono fiszek z dwoma polami. Wyeksportuj z Anki notatki jako zwykły tekst.",
     );
@@ -229,13 +232,13 @@ export function parseAnkiText(
 
   const baseName = fileName.replace(/\.(?:txt|csv)$/i, "") || "Import z Anki";
   return {
-    kind: "flashcards",
+    kind: "questions",
     source: "anki",
     name: createUniqueImportTitle(
       normalizeModuleName(baseName),
       existingModuleNames,
     ),
-    cards,
+    questions,
     warnings,
   };
 }
@@ -244,8 +247,8 @@ function createPackageDraft(
   noteFields: string[][],
   fileName: string,
   existingModuleNames: string[],
-): FlashcardModuleImportDraft {
-  const cards: ImportedFlashcardDraft[] = [];
+): QuestionModuleImportDraft {
+  const questions: ImportedQuestionDraft[] = [];
   const seen = new Set<string>();
   let invalidNotes = 0;
   let duplicateCards = 0;
@@ -260,37 +263,42 @@ function createPackageDraft(
     removedMedia ||= /\[sound:[^\]]+\]|<img\b/i.test(raw);
     if (fields.length > 2) ignoredFields = true;
 
-    const noteCards = createCardsFromFields(fields);
-    if (!noteCards.length) {
+    const noteQuestions = createQuestionsFromFields(fields);
+    if (!noteQuestions.length) {
       invalidNotes += 1;
       continue;
     }
-    if (noteCards.length > 1 || findClozeNumbers(fields[0] ?? "").length) {
-      clozeCards += noteCards.length;
+    if (noteQuestions.length > 1 || findClozeNumbers(fields[0] ?? "").length) {
+      clozeCards += noteQuestions.length;
     }
 
-    for (const card of noteCards) {
+    for (const question of noteQuestions) {
+      const optionContents = question.options.map((option) => option.content);
       if (
-        card.front.length > MAX_FLASHCARD_SIDE_LENGTH ||
-        card.back.length > MAX_FLASHCARD_SIDE_LENGTH
+        question.content.length > MAX_QUESTION_FIELD_LENGTH ||
+        optionContents.some(
+          (option) => option.length > MAX_QUESTION_FIELD_LENGTH,
+        )
       ) {
         throw new Error(
-          `Przód i tył fiszki mogą mieć maksymalnie ${MAX_FLASHCARD_SIDE_LENGTH} znaków.`,
+          `Treść pytania i odpowiedzi mogą mieć maksymalnie ${MAX_QUESTION_FIELD_LENGTH} znaków.`,
         );
       }
-      const duplicateKey = `${card.front.toLocaleLowerCase("pl")}\u0000${card.back.toLocaleLowerCase("pl")}`;
+      const duplicateKey = `${question.content.toLocaleLowerCase("pl")}\u0000${optionContents
+        .map((option) => option.toLocaleLowerCase("pl"))
+        .join("\u0001")}`;
       if (seen.has(duplicateKey)) duplicateCards += 1;
       seen.add(duplicateKey);
-      cards.push(card);
-      if (cards.length > MAX_FLASHCARD_IMPORT_COUNT) {
+      questions.push(question);
+      if (questions.length > MAX_QUESTION_IMPORT_COUNT) {
         throw new Error(
-          `Jednorazowo możesz zaimportować maksymalnie ${MAX_FLASHCARD_IMPORT_COUNT} fiszek.`,
+          `Jednorazowo możesz zaimportować maksymalnie ${MAX_QUESTION_IMPORT_COUNT} pozycji.`,
         );
       }
     }
   }
 
-  if (!cards.length) {
+  if (!questions.length) {
     throw new Error("Paczka Anki nie zawiera notatek z treścią do importu.");
   }
 
@@ -324,18 +332,18 @@ function createPackageDraft(
 
   const baseName = fileName.replace(/\.apkg$/i, "") || "Import z Anki";
   return {
-    kind: "flashcards",
+    kind: "questions",
     source: "anki",
     name: createUniqueImportTitle(
       normalizeModuleName(baseName),
       existingModuleNames,
     ),
-    cards,
+    questions,
     warnings,
   };
 }
 
-function createCardsFromFields(fields: string[]) {
+function createQuestionsFromFields(fields: string[]) {
   const firstField = fields[0] ?? "";
   const secondField = fields[1] ?? "";
   const clozeNumbers = findClozeNumbers(firstField);
@@ -345,15 +353,164 @@ function createCardsFromFields(fields: string[]) {
     const back = [answer, extra].filter(Boolean).join("\n\n");
     return clozeNumbers
       .map((number) => ({
-        front: cleanAnkiField(renderCloze(firstField, number), true),
-        back,
+        mode: "flashcard" as const,
+        content: cleanAnkiField(renderCloze(firstField, number), true),
+        explanation: "",
+        options: [{ content: back, isCorrect: true }],
       }))
-      .filter((card) => card.front && card.back);
+      .filter((question) => question.content && question.options[0].content);
   }
 
   const front = cleanAnkiField(firstField, true);
   const back = cleanAnkiField(secondField, true);
-  return front && back ? [{ front, back }] : [];
+  return front && back ? [parseAnkiQuestion(front, back)] : [];
+}
+
+function parseAnkiQuestion(front: string, back: string): ImportedQuestionDraft {
+  const answerMatch =
+    /(?:^|\n)\s*(?:(?:prawidłowa|poprawna)\s+odpowiedź|odpowiedź|correct\s+answer)\s*:\s*([A-Za-z]|\d+)[.)]?(?=\s|$)/i.exec(
+      back,
+    );
+
+  if (answerMatch) {
+    const correctLabel = answerMatch[1].toLocaleLowerCase("pl");
+    const parsedFront =
+      parseLineSeparatedOptions(front, correctLabel) ??
+      parseInlineOptions(front, correctLabel);
+
+    if (parsedFront) {
+      const answerStart = answerMatch.index;
+      const explanation = [
+        back.slice(0, answerStart),
+        back.slice(answerStart + answerMatch[0].length),
+      ]
+        .filter((part) => part.trim())
+        .join("\n")
+        .trim();
+      return {
+        mode: "test",
+        content: parsedFront.content,
+        explanation,
+        options: parsedFront.options,
+      };
+    }
+  }
+
+  return {
+    mode: "flashcard",
+    content: front,
+    explanation: "",
+    options: [{ content: back, isCorrect: true }],
+  };
+}
+
+type ParsedAnkiOption = {
+  label: string;
+  content: string;
+};
+
+function createParsedTestQuestion(
+  content: string,
+  options: ParsedAnkiOption[],
+  correctLabel: string,
+) {
+  const labels = options.map((option) => option.label);
+  if (
+    !content.trim() ||
+    options.length < 2 ||
+    new Set(labels).size !== labels.length ||
+    !labels.includes(correctLabel) ||
+    options.some((option) => !option.content.trim())
+  ) {
+    return null;
+  }
+
+  return {
+    content: content.trim(),
+    options: options.map((option) => ({
+      content: option.content.trim(),
+      isCorrect: option.label === correctLabel,
+    })),
+  };
+}
+
+function parseLineSeparatedOptions(front: string, correctLabel: string) {
+  const lines = front.split("\n");
+  const markers = lines.flatMap((line, index) => {
+    const match = /^\s*([A-Za-z]|\d+)[.)]\s*(.*)$/.exec(line);
+    return match
+      ? [
+          {
+            index,
+            label: match[1].toLocaleLowerCase("pl"),
+            content: match[2],
+          },
+        ]
+      : [];
+  });
+  if (markers.length < 2) return null;
+
+  const options = markers.map((marker, markerIndex) => {
+    const nextIndex = markers[markerIndex + 1]?.index ?? lines.length;
+    return {
+      label: marker.label,
+      content: [marker.content, ...lines.slice(marker.index + 1, nextIndex)]
+        .join("\n")
+        .trim(),
+    };
+  });
+  return createParsedTestQuestion(
+    lines.slice(0, markers[0].index).join("\n"),
+    options,
+    correctLabel,
+  );
+}
+
+function parseInlineOptions(front: string, correctLabel: string) {
+  const answerUsesNumber = /^\d+$/.test(correctLabel);
+  const markerPattern = /(?:^|\s)([A-Za-z]|\d+)([.)])\s*/g;
+  const markers = [...front.matchAll(markerPattern)]
+    .map((match) => {
+      const label = match[1].toLocaleLowerCase("pl");
+      const markerText = match[0];
+      const labelOffset = markerText.lastIndexOf(match[1]);
+      return {
+        label,
+        delimiter: match[2],
+        index: (match.index ?? 0) + labelOffset,
+        contentIndex: (match.index ?? 0) + markerText.length,
+      };
+    })
+    .filter((marker) => /^\d+$/.test(marker.label) === answerUsesNumber);
+
+  // Do not mix `a)` list markers with abbreviations such as `2020 r.`.
+  // Parentheses are less ambiguous, so try that convention first.
+  for (const delimiter of [")", "."] as const) {
+    const matchingMarkers = markers.filter(
+      (marker) => marker.delimiter === delimiter,
+    );
+    for (let start = 0; start <= matchingMarkers.length - 2; start += 1) {
+      const candidates = matchingMarkers.slice(start);
+      const questionContent = front.slice(0, candidates[0].index).trim();
+      if (!questionContent) continue;
+      const options = candidates.map((marker, markerIndex) => ({
+        label: marker.label,
+        content: front
+          .slice(
+            marker.contentIndex,
+            candidates[markerIndex + 1]?.index ?? front.length,
+          )
+          .trim(),
+      }));
+      const parsed = createParsedTestQuestion(
+        questionContent,
+        options,
+        correctLabel,
+      );
+      if (parsed) return parsed;
+    }
+  }
+  return null;
 }
 
 function findClozeNumbers(value: string) {

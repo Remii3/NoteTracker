@@ -109,7 +109,7 @@ it("updates pinning only for a module owned by the current user", async () => {
   expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ is_pinned: true });
 });
 
-it("imports flashcards through the atomic database function", async () => {
+it("imports mixed questions through the atomic database function", async () => {
   const fetch = vi
     .fn()
     .mockResolvedValueOnce(
@@ -134,23 +134,42 @@ it("imports flashcards through the atomic database function", async () => {
   );
   const repository = new SupabaseModulesRepository(client, "user");
 
-  const imported = await repository.importFlashcards(
+  const imported = await repository.importQuestions(
     {
-      kind: "flashcards",
-      source: "quizlet",
+      kind: "questions",
+      source: "anki",
       name: "Biologia",
       warnings: [],
-      cards: [{ front: "Mitochondrium", back: "Elektrownia komórki" }],
+      questions: [
+        {
+          mode: "test",
+          content: "Gdzie powstaje ATP?",
+          explanation: "Oddychanie komórkowe.",
+          options: [
+            { content: "Mitochondrium", isCorrect: true },
+            { content: "Jądro", isCorrect: false },
+          ],
+        },
+      ],
     },
     2000,
   );
 
   expect(imported.id).toBe("imported-module");
   const rpcUrl = new URL(fetch.mock.calls[0][0]);
-  expect(rpcUrl.pathname).toContain("/rpc/import_flashcard_module");
+  expect(rpcUrl.pathname).toContain("/rpc/import_question_module");
   expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
     target_name: "Biologia",
     target_position: 2000,
-    imported_cards: [{ front: "Mitochondrium", back: "Elektrownia komórki" }],
+    imported_questions: [
+      {
+        content: "Gdzie powstaje ATP?",
+        explanation: "Oddychanie komórkowe.",
+        options: [
+          { content: "Mitochondrium", isCorrect: true },
+          { content: "Jądro", isCorrect: false },
+        ],
+      },
+    ],
   });
 });

@@ -288,7 +288,7 @@ export function ModulePicker({
     const imported =
       draft.kind === "content"
         ? await repository.importDocx(draft, position)
-        : await repository.importFlashcards(draft, position);
+        : await repository.importQuestions(draft, position);
     updateModules((current) => [...current, imported]);
     if (!query && cacheKey)
       writeMemoryCache(cacheKey, [...pinnedModules, ...modules, imported]);

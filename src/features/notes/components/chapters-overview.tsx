@@ -3,6 +3,7 @@ import {
   ArrowRight,
   ArrowUpDown,
   CheckCircle2,
+  FileUp,
   Search,
 } from "lucide-react";
 import type { Chapter, LearningSummary } from "../types/model";
@@ -47,6 +48,7 @@ type Props = {
   moduleName?: string;
   summary?: LearningSummary | null;
   onOpenChapter: (chapterId: string, topicId: string) => void;
+  onImport: () => void;
 };
 
 export function ChaptersOverview({
@@ -54,6 +56,7 @@ export function ChaptersOverview({
   moduleName,
   summary,
   onOpenChapter,
+  onImport,
 }: Props) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -122,6 +125,16 @@ export function ChaptersOverview({
   return (
     <>
       <AppHeaderActions>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          aria-label="Importuj dokument Word"
+          onClick={onImport}
+        >
+          <FileUp />
+          <span className="hidden sm:inline">Importuj</span>
+        </Button>
         {searchInput("hidden w-56 sm:block lg:w-72")}
         <Popover>
           <PopoverTrigger

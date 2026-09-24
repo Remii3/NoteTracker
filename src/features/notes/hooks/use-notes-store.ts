@@ -26,6 +26,7 @@ import type {
 } from "../types/model";
 import type { ManagedItem } from "../types/workspace-types";
 import { readMemoryCache, writeMemoryCache } from "@/lib/memory-cache";
+import type { ContentModuleImportDraft } from "@/features/modules/import/import-model";
 
 type Options = {
   repository?: NotesRepository;
@@ -579,6 +580,25 @@ export function useNotesStore({
       ),
     [repository, runOptimistic],
   );
+  const importDocx = useCallback(
+    async (draft: ContentModuleImportDraft) => {
+      setError(null);
+      setPendingOperations((count) => count + 1);
+      try {
+        const imported = await repository.importDocx(draft);
+        await refreshSummaries();
+        return imported;
+      } catch (caughtError) {
+        setError(
+          getErrorMessage(caughtError, "Nie udało się zaimportować dokumentu."),
+        );
+        throw caughtError;
+      } finally {
+        setPendingOperations((count) => Math.max(0, count - 1));
+      }
+    },
+    [refreshSummaries, repository],
+  );
 
   return {
     addChapterWithTopics,
@@ -592,6 +612,7 @@ export function useNotesStore({
     contentErrors,
     isSearching,
     isSaving: pendingOperations > 0,
+    importDocx,
     load,
     loadChapterTopics,
     loadTopicNavigation,

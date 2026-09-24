@@ -1,6 +1,11 @@
 import type { NoteContent } from "@/features/notes/types/model";
 import { normalizeTitle } from "@/features/notes/lib/title-utils";
 import { normalizeModuleName } from "../lib/module-validation";
+import {
+  normalizeQuestionForm,
+  type QuestionFormValue,
+} from "@/features/questions/model/question-form";
+import { createUniqueSlug } from "@/features/notes/lib/slug-utils";
 
 export type ModuleImportSource = "docx" | "quizlet" | "anki";
 
@@ -26,22 +31,47 @@ export type ContentModuleImportDraft = ModuleImportDraftBase & {
   chapters: ImportedChapterDraft[];
 };
 
-export type ImportedFlashcardDraft = {
-  front: string;
-  back: string;
-};
+export type ImportedQuestionDraft = QuestionFormValue;
 
-export type FlashcardModuleImportDraft = ModuleImportDraftBase & {
-  kind: "flashcards";
+export type QuestionModuleImportDraft = ModuleImportDraftBase & {
+  kind: "questions";
   source: "quizlet" | "anki";
-  cards: ImportedFlashcardDraft[];
+  questions: ImportedQuestionDraft[];
 };
 
 export type ModuleImportDraft =
-  ContentModuleImportDraft | FlashcardModuleImportDraft;
+  ContentModuleImportDraft | QuestionModuleImportDraft;
 
-export const MAX_FLASHCARD_IMPORT_COUNT = 2_000;
-export const MAX_FLASHCARD_SIDE_LENGTH = 10_000;
+export const MAX_QUESTION_IMPORT_COUNT = 2_000;
+export const MAX_QUESTION_FIELD_LENGTH = 10_000;
+
+export function createContentImportPayload(draft: ContentModuleImportDraft) {
+  const chapterSlugs = new Set<string>();
+  return draft.chapters.map((chapter, chapterIndex) => {
+    const chapterSlug = createUniqueSlug(
+      chapter.title,
+      chapterSlugs,
+      "rozdzial",
+    );
+    chapterSlugs.add(chapterSlug);
+    const topicSlugs = new Set<string>();
+    return {
+      title: chapter.title,
+      slug: chapterSlug,
+      position: (chapterIndex + 1) * 1000,
+      topics: chapter.topics.map((topic, topicIndex) => {
+        const slug = createUniqueSlug(topic.title, topicSlugs, "temat");
+        topicSlugs.add(slug);
+        return {
+          title: topic.title,
+          slug,
+          position: (topicIndex + 1) * 1000,
+          content: topic.content,
+        };
+      }),
+    };
+  });
+}
 
 export function normalizeContentImportDraft(
   draft: ContentModuleImportDraft,
@@ -67,16 +97,13 @@ export function normalizeContentImportDraft(
   };
 }
 
-export function normalizeFlashcardImportDraft(
-  draft: FlashcardModuleImportDraft,
-): FlashcardModuleImportDraft {
+export function normalizeQuestionImportDraft(
+  draft: QuestionModuleImportDraft,
+): QuestionModuleImportDraft {
   return {
     ...draft,
     name: normalizeModuleName(draft.name),
-    cards: draft.cards.map((card) => ({
-      front: card.front.trim(),
-      back: card.back.trim(),
-    })),
+    questions: draft.questions.map(normalizeQuestionForm),
   };
 }
 

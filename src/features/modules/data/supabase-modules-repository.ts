@@ -10,9 +10,9 @@ import type {
 import { clearMemoryCacheByPrefix } from "@/lib/memory-cache";
 import type {
   ContentModuleImportDraft,
-  FlashcardModuleImportDraft,
+  QuestionModuleImportDraft,
 } from "../import/import-model";
-import { createUniqueSlug } from "@/features/notes/lib/slug-utils";
+import { createContentImportPayload } from "../import/import-model";
 import { toModuleNameSearchPattern } from "../lib/module-search";
 
 export class SupabaseModulesRepository implements ModulesRepository {
@@ -179,35 +179,10 @@ export class SupabaseModulesRepository implements ModulesRepository {
   }
 
   async importDocx(draft: ContentModuleImportDraft, position: number) {
-    const chapterSlugs = new Set<string>();
-    const chapters = draft.chapters.map((chapter, chapterIndex) => {
-      const chapterSlug = createUniqueSlug(
-        chapter.title,
-        chapterSlugs,
-        "rozdzial",
-      );
-      chapterSlugs.add(chapterSlug);
-      const topicSlugs = new Set<string>();
-      return {
-        title: chapter.title,
-        slug: chapterSlug,
-        position: (chapterIndex + 1) * 1000,
-        topics: chapter.topics.map((topic, topicIndex) => {
-          const slug = createUniqueSlug(topic.title, topicSlugs, "temat");
-          topicSlugs.add(slug);
-          return {
-            title: topic.title,
-            slug,
-            position: (topicIndex + 1) * 1000,
-            content: topic.content,
-          };
-        }),
-      };
-    });
     const { data, error } = await this.client.rpc("import_docx_module", {
       target_name: draft.name,
       target_position: position,
-      imported_chapters: chapters as unknown as Json,
+      imported_chapters: createContentImportPayload(draft) as unknown as Json,
     });
     throwIfPostgrestError(error);
     if (!data) throw new Error("Nie udało się zaimportować modułu.");
@@ -218,14 +193,18 @@ export class SupabaseModulesRepository implements ModulesRepository {
     return imported;
   }
 
-  async importFlashcards(draft: FlashcardModuleImportDraft, position: number) {
-    const { data, error } = await this.client.rpc("import_flashcard_module", {
+  async importQuestions(draft: QuestionModuleImportDraft, position: number) {
+    const { data, error } = await this.client.rpc("import_question_module", {
       target_name: draft.name,
       target_position: position,
-      imported_cards: draft.cards as unknown as Json,
+      imported_questions: draft.questions.map((question) => ({
+        content: question.content,
+        explanation: question.explanation,
+        options: question.options,
+      })) as unknown as Json,
     });
     throwIfPostgrestError(error);
-    if (!data) throw new Error("Nie udało się zaimportować fiszek.");
+    if (!data) throw new Error("Nie udało się zaimportować pytań.");
     this.clearStatisticsCache();
     const imported = await this.get(data);
     if (!imported)

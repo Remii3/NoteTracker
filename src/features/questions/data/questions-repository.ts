@@ -7,6 +7,7 @@ import type {
   StudySession,
   StudySessionSummary,
 } from "../model/types";
+import type { QuestionModuleImportDraft } from "@/features/modules/import/import-model";
 
 export interface QuestionsRepository {
   getAvailability(filters?: {
@@ -33,6 +34,7 @@ export interface QuestionsRepository {
     options: QuestionOption[];
   }): Promise<string>;
   remove(id: string): Promise<void>;
+  importQuestions(draft: QuestionModuleImportDraft): Promise<number>;
   createSession(input: {
     mode: StudyMode;
     scope: StudyScope;
@@ -40,6 +42,7 @@ export interface QuestionsRepository {
     topicId?: string;
     randomChapterCount: number;
     questionCount: number | null;
+    hideFlashcardOptions: boolean;
   }): Promise<string>;
   listSessions(options?: {
     offset?: number;

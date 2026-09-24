@@ -20,12 +20,20 @@ describe("parseAnkiText", () => {
     );
 
     expect(result).toMatchObject({
-      kind: "flashcards",
+      kind: "questions",
       source: "anki",
       name: "Biologia (2)",
-      cards: [
-        { front: "Mitochondrium", back: "Elektrownia komórki" },
-        { front: "Jądro", back: "Przechowuje DNA" },
+      questions: [
+        {
+          mode: "flashcard",
+          content: "Mitochondrium",
+          options: [{ content: "Elektrownia komórki", isCorrect: true }],
+        },
+        {
+          mode: "flashcard",
+          content: "Jądro",
+          options: [{ content: "Przechowuje DNA", isCorrect: true }],
+        },
       ],
     });
   });
@@ -42,7 +50,11 @@ describe("parseAnkiText", () => {
       [],
     );
 
-    expect(result.cards).toEqual([{ front: "ATP", back: "Nośnik\nenergii" }]);
+    expect(result.questions[0]).toMatchObject({
+      mode: "flashcard",
+      content: "ATP",
+      options: [{ content: "Nośnik\nenergii", isCorrect: true }],
+    });
     expect(result.warnings).toContain(
       "Formatowanie HTML zostało zamienione na zwykły tekst.",
     );
@@ -55,13 +67,131 @@ describe("parseAnkiText", () => {
       [],
     );
 
-    expect(result.cards[0]).toEqual({
-      front: "Pytanie",
-      back: "Odpowiedź\nw dwóch liniach",
+    expect(result.questions[0]).toEqual({
+      mode: "flashcard",
+      content: "Pytanie",
+      explanation: "",
+      options: [{ content: "Odpowiedź\nw dwóch liniach", isCorrect: true }],
     });
     expect(result.warnings).toContain(
       "Notatki mają więcej niż dwa pola; zaimportowano pierwsze dwa pola każdej notatki.",
     );
+  });
+
+  it("recognizes test questions with arbitrary letter labels on separate lines", () => {
+    const result = parseAnkiText(
+      '"Kodeks postępowania administracyjnego normuje postępowanie:\nd) spory o właściwość\nf) skargi do sądu\na) podatki"\t"Prawidłowa odpowiedź: A\n\nPodstawa prawna:\nArt. 1 pkt 3 KPA"',
+      "Prawo.txt",
+      [],
+    );
+
+    expect(result.questions[0]).toEqual({
+      mode: "test",
+      content: "Kodeks postępowania administracyjnego normuje postępowanie:",
+      explanation: "Podstawa prawna:\nArt. 1 pkt 3 KPA",
+      options: [
+        { content: "spory o właściwość", isCorrect: false },
+        { content: "skargi do sądu", isCorrect: false },
+        { content: "podatki", isCorrect: true },
+      ],
+    });
+  });
+
+  it("recognizes numeric answer labels and keeps option continuation lines", () => {
+    const result = parseAnkiText(
+      '"Wybierz odpowiedź:\n1. Pierwsza linia\nciąg dalszy\n3) Trzecia\n2. Druga"\t"Odpowiedź: 3"',
+      "Test.txt",
+      [],
+    );
+
+    expect(result.questions[0]).toMatchObject({
+      mode: "test",
+      options: [
+        { content: "Pierwsza linia\nciąg dalszy", isCorrect: false },
+        { content: "Trzecia", isCorrect: true },
+        { content: "Druga", isCorrect: false },
+      ],
+    });
+  });
+
+  it("recognizes options collapsed by Anki into one paragraph", () => {
+    const result = parseAnkiText(
+      '"2. Na korektę deklaracji dokonaną przez organ podatkowy podatnik może wnieść: a) skargę do organu, który dokonał korekty, b) sprzeciw do organu, który dokonał korekty, c) zażalenie do organu wyższego stopnia."\t"Prawidłowa odpowiedź: B Podstawa prawna: Art. 274 § 3 Ordynacji podatkowej"',
+      "Prawo.txt",
+      [],
+    );
+
+    expect(result.questions[0]).toEqual({
+      mode: "test",
+      content:
+        "2. Na korektę deklaracji dokonaną przez organ podatkowy podatnik może wnieść:",
+      explanation: "Podstawa prawna: Art. 274 § 3 Ordynacji podatkowej",
+      options: [
+        {
+          content: "skargę do organu, który dokonał korekty,",
+          isCorrect: false,
+        },
+        {
+          content: "sprzeciw do organu, który dokonał korekty,",
+          isCorrect: true,
+        },
+        {
+          content: "zażalenie do organu wyższego stopnia.",
+          isCorrect: false,
+        },
+      ],
+    });
+  });
+
+  it("does not confuse legal year abbreviations with lettered options", () => {
+    const result = parseAnkiText(
+      '"77. Datą wszczęcia postępowania podatkowego jest: a) na żądanie strony jest dzień wystawienia dowodu otrzymania, o którym mowa w art. 41 ustawy z dnia 18 listopada 2020 r. o doręczeniach elektronicznych, b) na żądanie strony jest dzień wystawienia dowodu nadania przez operatora pocztowego, c) na żądanie osoby niebędącą stroną jest dzień wystawienia dowodu otrzymania, o którym mowa w art. 41 ustawy z dnia 18 listopada 2020 r. o doręczeniach elektronicznych."\t"Prawidłowa odpowiedź: A\n\nPodstawa prawna:\nArt. 165 § 3b Ordynacji podatkowej"',
+      "Prawo.txt",
+      [],
+    );
+
+    expect(result.questions[0]).toMatchObject({
+      mode: "test",
+      content: "77. Datą wszczęcia postępowania podatkowego jest:",
+      explanation: "Podstawa prawna:\nArt. 165 § 3b Ordynacji podatkowej",
+      options: [
+        { isCorrect: true },
+        { isCorrect: false },
+        { isCorrect: false },
+      ],
+    });
+    expect(result.questions[0].options[0].content).toContain("2020 r.");
+    expect(result.questions[0].options[2].content).toContain("2020 r.");
+  });
+
+  it("does not treat a leading question number as a numeric answer", () => {
+    const result = parseAnkiText(
+      '"12. Wybierz odpowiedź: 1) Pierwsza 3) Trzecia 2) Druga"\t"Odpowiedź: 3 Uzasadnienie"',
+      "Test.txt",
+      [],
+    );
+
+    expect(result.questions[0]).toMatchObject({
+      mode: "test",
+      content: "12. Wybierz odpowiedź:",
+      explanation: "Uzasadnienie",
+      options: [
+        { content: "Pierwsza", isCorrect: false },
+        { content: "Trzecia", isCorrect: true },
+        { content: "Druga", isCorrect: false },
+      ],
+    });
+  });
+
+  it("keeps ambiguous multiple-correct cards as flashcards", () => {
+    const front = "Wybierz:\na) Pierwsza\nb) Druga\nc) Trzecia";
+    const back = "Prawidłowa odpowiedź: A, C";
+    const result = parseAnkiText(`"${front}"\t"${back}"`, "Test.txt", []);
+
+    expect(result.questions[0]).toMatchObject({
+      mode: "flashcard",
+      options: [{ content: back, isCorrect: true }],
+    });
   });
 
   it("rejects exports without two populated fields", () => {
@@ -83,18 +213,34 @@ describe("parseAnkiText", () => {
       );
 
       expect(result).toMatchObject({
-        kind: "flashcards",
+        kind: "questions",
         source: "anki",
         name: "Anatomia (2)",
-        cards: [
-          { front: "Pytanie", back: "Odpowiedź" },
+        questions: [
           {
-            front: "Tkanka […] i nerwowa",
-            back: "Tkanka mięśniowa i nerwowa\n\nDodatkowa informacja",
+            mode: "flashcard",
+            content: "Pytanie",
+            options: [{ content: "Odpowiedź", isCorrect: true }],
           },
           {
-            front: "Tkanka mięśniowa i [rodzaj tkanki]",
-            back: "Tkanka mięśniowa i nerwowa\n\nDodatkowa informacja",
+            mode: "flashcard",
+            content: "Tkanka […] i nerwowa",
+            options: [
+              {
+                content: "Tkanka mięśniowa i nerwowa\n\nDodatkowa informacja",
+                isCorrect: true,
+              },
+            ],
+          },
+          {
+            mode: "flashcard",
+            content: "Tkanka mięśniowa i [rodzaj tkanki]",
+            options: [
+              {
+                content: "Tkanka mięśniowa i nerwowa\n\nDodatkowa informacja",
+                isCorrect: true,
+              },
+            ],
           },
         ],
       });

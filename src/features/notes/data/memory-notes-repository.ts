@@ -14,6 +14,8 @@ import type {
 } from "../types/model";
 import { createTopicNavigation } from "../lib/topic-navigation";
 import type { OfflineModuleChanges } from "../offline/offline-types";
+import type { ContentModuleImportDraft } from "@/features/modules/import/import-model";
+import { createUniqueSlug } from "../lib/slug-utils";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -94,6 +96,52 @@ class MemoryNotesRepository implements NotesRepository {
       totalChapters: this.chapters.length,
       totalTopics: summary.totalTopics,
     };
+  }
+
+  async importDocx(draft: ContentModuleImportDraft) {
+    const usedChapterSlugs = new Set(
+      this.chapters.map((chapter) => chapter.slug),
+    );
+    let chapterPosition = Math.max(
+      0,
+      ...this.chapters.map((chapter) => chapter.position),
+    );
+    for (const importedChapter of draft.chapters) {
+      chapterPosition += 1000;
+      const chapterSlug = createUniqueSlug(
+        importedChapter.title,
+        usedChapterSlugs,
+        "rozdzial",
+      );
+      usedChapterSlugs.add(chapterSlug);
+      const usedTopicSlugs = new Set<string>();
+      const topics = importedChapter.topics.map((topic, index) => {
+        const slug = createUniqueSlug(topic.title, usedTopicSlugs, "temat");
+        usedTopicSlugs.add(slug);
+        return {
+          id: crypto.randomUUID(),
+          slug,
+          title: topic.title,
+          content: clone(topic.content),
+          contentLoaded: true,
+          completed: false,
+          position: (index + 1) * 1000,
+        };
+      });
+      this.chapters.push({
+        id: crypto.randomUUID(),
+        slug: chapterSlug,
+        title: importedChapter.title,
+        position: chapterPosition,
+        topics,
+        topicsStatus: "loaded",
+        topicsCount: topics.length,
+        completedTopicsCount: 0,
+        firstIncompleteTopicId: topics[0]?.id ?? null,
+        firstIncompleteTopicSlug: topics[0]?.slug ?? null,
+      });
+    }
+    return draft.chapters.length;
   }
 
   async createChapterWithTopics(chapter: ChapterSummary, topics: Topic[]) {

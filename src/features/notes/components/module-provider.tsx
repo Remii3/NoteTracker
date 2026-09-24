@@ -111,6 +111,7 @@ export function ModuleProvider({
   ]);
   const {
     loadChapterTopics,
+    importDocx,
     loadTopicContent,
     loadTopicNavigation,
     searchChapters,
@@ -402,6 +403,7 @@ export function ModuleProvider({
     statisticsRepository,
     statisticsCacheScope,
     loadChapterTopics,
+    importDocx,
     openChapter,
     openChapters,
     navigateHome,

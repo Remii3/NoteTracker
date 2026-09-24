@@ -18,6 +18,8 @@ import { EMPTY_RICH_TEXT } from "../model/rich-text-content";
 import { throwIfPostgrestError } from "./supabase-error";
 import { clearMemoryCacheByPrefix } from "@/lib/memory-cache";
 import type { OfflineModuleChanges } from "../offline/offline-types";
+import type { ContentModuleImportDraft } from "@/features/modules/import/import-model";
+import { createContentImportPayload } from "@/features/modules/import/import-model";
 
 export class SupabaseNotesRepository implements NotesRepository {
   private readonly client: SupabaseClient<Database>;
@@ -191,6 +193,16 @@ export class SupabaseNotesRepository implements NotesRepository {
     throwIfPostgrestError(error);
     if (!data) throw new Error("Nie udało się pobrać podsumowania nauki.");
     return data as unknown as LearningSummary;
+  }
+
+  async importDocx(draft: ContentModuleImportDraft) {
+    const { data, error } = await this.client.rpc("import_docx_into_module", {
+      target_module_id: this.moduleId,
+      imported_chapters: createContentImportPayload(draft) as unknown as Json,
+    });
+    throwIfPostgrestError(error);
+    this.clearStatisticsCache();
+    return data ?? 0;
   }
 
   async createChapterWithTopics(chapter: ChapterSummary, topics: Topic[]) {
