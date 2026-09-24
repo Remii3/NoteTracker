@@ -60,6 +60,32 @@ describe("parseAnkiText", () => {
     );
   });
 
+  it("maps a deck column to chapters and nested decks to topics", () => {
+    const result = parseAnkiText(
+      [
+        "#separator:Tab",
+        "#deck column:3",
+        "Komórka\tPodstawowa jednostka życia\tBiologia",
+        "Mitochondrium\tElektrownia komórki\tBiologia::Komórka::Organella",
+      ].join("\n"),
+      "Biologia.txt",
+      [],
+    );
+
+    expect(result.questions).toEqual([
+      expect.objectContaining({
+        content: "Komórka",
+        chapterTitle: "Biologia",
+        topicTitle: undefined,
+      }),
+      expect.objectContaining({
+        content: "Mitochondrium",
+        chapterTitle: "Biologia",
+        topicTitle: "Komórka / Organella",
+      }),
+    ]);
+  });
+
   it("supports quoted multiline fields and warns about extra fields", () => {
     const result = parseAnkiText(
       'Pytanie,"Odpowiedź\nw dwóch liniach",dodatkowe',
@@ -248,9 +274,76 @@ describe("parseAnkiText", () => {
     },
   );
 
+  it.each(["legacy", "modern"] as const)(
+    "reads deck hierarchy from a %s APKG collection",
+    async (schema) => {
+      const result = await parseAnkiPackage(
+        await createDeckPackage(schema),
+        "Biologia.apkg",
+        [],
+      );
+
+      expect(result.questions).toEqual([
+        expect.objectContaining({
+          content: "Komórka",
+          chapterTitle: "Biologia",
+          topicTitle: undefined,
+        }),
+        expect.objectContaining({
+          content: "Mitochondrium",
+          chapterTitle: "Biologia",
+          topicTitle: "Komórka / Organella",
+        }),
+      ]);
+    },
+  );
+
   it("rejects malformed APKG archives", async () => {
     await expect(
       parseAnkiPackage(new Uint8Array([1, 2, 3]), "Błędny.apkg", []),
     ).rejects.toThrow("Nie udało się otworzyć paczki Anki");
   });
 });
+
+async function createDeckPackage(schema: "legacy" | "modern") {
+  const [{ default: initSqlJs }, { default: wasmUrl }, { readFile }] =
+    await Promise.all([
+      import("sql.js"),
+      import("sql.js/dist/sql-wasm.wasm?url"),
+      import("node:fs/promises"),
+    ]);
+  const file = await readFile(`${process.cwd()}${wasmUrl}`);
+  const wasmBinary = file.buffer.slice(
+    file.byteOffset,
+    file.byteOffset + file.byteLength,
+  ) as ArrayBuffer;
+  const SQL = await initSqlJs({ wasmBinary });
+  const database = new SQL.Database();
+  database.run(`
+    create table notes (id integer primary key, flds text not null);
+    create table cards (id integer primary key, nid integer not null, did integer not null);
+    insert into notes values
+      (1, 'Komórka\u001fPodstawowa jednostka życia'),
+      (2, 'Mitochondrium\u001fElektrownia komórki');
+    insert into cards values (1, 1, 10), (2, 2, 20);
+  `);
+  if (schema === "modern") {
+    database.run(`
+      create table decks (id integer primary key, name text not null);
+      insert into decks values
+        (10, 'Biologia'),
+        (20, 'Biologia::Komórka::Organella');
+    `);
+  } else {
+    database.run("create table col (decks text not null)");
+    database.run("insert into col values (?)", [
+      JSON.stringify({
+        10: { name: "Biologia" },
+        20: { name: "Biologia::Komórka::Organella" },
+      }),
+    ]);
+  }
+  const bytes = database.export();
+  database.close();
+  return zipSync({ "collection.anki2": bytes });
+}

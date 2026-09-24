@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { clearMemoryCacheByPrefix } from "@/lib/memory-cache";
 import { throwIfPostgrestError } from "@/features/notes/data/supabase-error";
+import { createQuestionImportPayload } from "@/features/modules/import/import-model";
 import type { QuestionsRepository } from "./questions-repository";
 import type {
   FsrsCardState,
@@ -125,11 +126,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
       "import_questions_into_module",
       {
         target_module_id: this.moduleId,
-        imported_questions: draft.questions.map((question) => ({
-          content: question.content,
-          explanation: question.explanation,
-          options: question.options,
-        })) as Json,
+        imported_questions: createQuestionImportPayload(draft) as Json,
       },
     );
     throwIfPostgrestError(error);

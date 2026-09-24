@@ -145,6 +145,8 @@ it("imports mixed questions through the atomic database function", async () => {
           mode: "test",
           content: "Gdzie powstaje ATP?",
           explanation: "Oddychanie komórkowe.",
+          chapterTitle: "Biologia",
+          topicTitle: "Komórka",
           options: [
             { content: "Mitochondrium", isCorrect: true },
             { content: "Jądro", isCorrect: false },
@@ -165,6 +167,10 @@ it("imports mixed questions through the atomic database function", async () => {
       {
         content: "Gdzie powstaje ATP?",
         explanation: "Oddychanie komórkowe.",
+        chapterTitle: "Biologia",
+        chapterSlug: "biologia",
+        topicTitle: "Komórka",
+        topicSlug: "komorka",
         options: [
           { content: "Mitochondrium", isCorrect: true },
           { content: "Jądro", isCorrect: false },

@@ -40,6 +40,7 @@ import { parseDocxFile } from "./docx-import";
 import {
   normalizeContentImportDraft,
   normalizeQuestionImportDraft,
+  MAX_QUESTION_FIELD_LENGTH,
   type ContentModuleImportDraft,
   type QuestionModuleImportDraft,
   type ModuleImportDraft,
@@ -1237,6 +1238,14 @@ function QuestionImportPreview({
   const testCount = draft.questions.filter(
     (item) => item.mode === "test",
   ).length;
+  const chapterCount = new Set(
+    draft.questions.map((item) => item.chapterTitle).filter(Boolean),
+  ).size;
+  const topicCount = new Set(
+    draft.questions
+      .filter((item) => item.chapterTitle && item.topicTitle)
+      .map((item) => `${item.chapterTitle}\u0000${item.topicTitle}`),
+  ).size;
 
   function updateQuestion(
     value: QuestionModuleImportDraft["questions"][number],
@@ -1305,6 +1314,24 @@ function QuestionImportPreview({
             "fiszki",
             "fiszek",
           )}
+          {chapterCount > 0 && (
+            <>
+              {" "}
+              w{" "}
+              {formatCount(
+                chapterCount,
+                "rozdziale",
+                "rozdziałach",
+                "rozdziałach",
+              )}
+              {topicCount > 0 && (
+                <>
+                  {" "}
+                  i {formatCount(topicCount, "temacie", "tematach", "tematach")}
+                </>
+              )}
+            </>
+          )}
           .
         </p>
 
@@ -1341,7 +1368,15 @@ function QuestionImportPreview({
                 <span className="w-7 shrink-0 text-xs text-muted-foreground">
                   {index + 1}.
                 </span>
-                <span className="min-w-0 flex-1 truncate">{item.content}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{item.content}</span>
+                  {item.chapterTitle && (
+                    <span className="block truncate text-[11px] text-muted-foreground">
+                      {item.chapterTitle}
+                      {item.topicTitle ? ` / ${item.topicTitle}` : ""}
+                    </span>
+                  )}
+                </span>
                 <span className="ml-2 shrink-0 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
                   {item.mode === "test" ? "Test" : "Fiszka"}
                 </span>
@@ -1372,6 +1407,41 @@ function QuestionImportPreview({
             <h3 className="mb-5 font-semibold">
               Pozycja {selectedQuestion + 1}
             </h3>
+            {draft.source === "anki" && (
+              <div className="mb-5 grid gap-4 border-b pb-5 sm:grid-cols-2">
+                <label className="block space-y-2 text-sm font-medium">
+                  <span>Rozdział z talii Anki</span>
+                  <Input
+                    value={question.chapterTitle ?? ""}
+                    disabled={isImporting}
+                    maxLength={MAX_QUESTION_FIELD_LENGTH}
+                    onChange={(event) =>
+                      updateQuestion({
+                        ...question,
+                        chapterTitle: event.target.value || undefined,
+                        topicTitle: event.target.value.trim()
+                          ? question.topicTitle
+                          : undefined,
+                      })
+                    }
+                  />
+                </label>
+                <label className="block space-y-2 text-sm font-medium">
+                  <span>Temat z podtalii</span>
+                  <Input
+                    value={question.topicTitle ?? ""}
+                    disabled={isImporting || !question.chapterTitle?.trim()}
+                    maxLength={MAX_QUESTION_FIELD_LENGTH}
+                    onChange={(event) =>
+                      updateQuestion({
+                        ...question,
+                        topicTitle: event.target.value || undefined,
+                      })
+                    }
+                  />
+                </label>
+              </div>
+            )}
             <QuestionFormFields
               key={selectedQuestion}
               idPrefix={`import-${selectedQuestion}`}
@@ -1398,6 +1468,24 @@ function validateDraft(draft: ModuleImportDraft) {
   if (draft.kind === "questions") {
     if (!draft.questions.length)
       return "Import musi zawierać co najmniej jedną fiszkę lub pytanie.";
+    if (
+      draft.questions.some(
+        (question) =>
+          (question.chapterTitle?.trim().length ?? 0) >
+            MAX_QUESTION_FIELD_LENGTH ||
+          (question.topicTitle?.trim().length ?? 0) > MAX_QUESTION_FIELD_LENGTH,
+      )
+    ) {
+      return `Nazwa rozdziału i tematu może mieć maksymalnie ${MAX_QUESTION_FIELD_LENGTH} znaków.`;
+    }
+    if (
+      draft.questions.some(
+        (question) =>
+          question.topicTitle?.trim() && !question.chapterTitle?.trim(),
+      )
+    ) {
+      return "Temat z Anki wymaga przypisanego rozdziału.";
+    }
     const invalidQuestion = draft.questions.find(validateQuestionForm);
     if (invalidQuestion) {
       return validateQuestionForm(invalidQuestion);

@@ -5,7 +5,7 @@ import {
   normalizeQuestionForm,
   type QuestionFormValue,
 } from "@/features/questions/model/question-form";
-import { createUniqueSlug } from "@/features/notes/lib/slug-utils";
+import { createSlug, createUniqueSlug } from "@/features/notes/lib/slug-utils";
 
 export type ModuleImportSource = "docx" | "quizlet" | "anki";
 
@@ -31,7 +31,10 @@ export type ContentModuleImportDraft = ModuleImportDraftBase & {
   chapters: ImportedChapterDraft[];
 };
 
-export type ImportedQuestionDraft = QuestionFormValue;
+export type ImportedQuestionDraft = QuestionFormValue & {
+  chapterTitle?: string;
+  topicTitle?: string;
+};
 
 export type QuestionModuleImportDraft = ModuleImportDraftBase & {
   kind: "questions";
@@ -103,8 +106,36 @@ export function normalizeQuestionImportDraft(
   return {
     ...draft,
     name: normalizeModuleName(draft.name),
-    questions: draft.questions.map(normalizeQuestionForm),
+    questions: draft.questions.map((question) => ({
+      ...normalizeQuestionForm(question),
+      chapterTitle: question.chapterTitle?.trim() || undefined,
+      topicTitle: question.topicTitle?.trim() || undefined,
+    })),
   };
+}
+
+export function createQuestionImportPayload(draft: QuestionModuleImportDraft) {
+  return draft.questions.map((question) => {
+    const chapterTitle = question.chapterTitle?.trim();
+    const topicTitle = question.topicTitle?.trim();
+    return {
+      content: question.content,
+      explanation: question.explanation,
+      options: question.options,
+      ...(chapterTitle
+        ? {
+            chapterTitle,
+            chapterSlug: createSlug(chapterTitle) || "rozdzial",
+            ...(topicTitle
+              ? {
+                  topicTitle,
+                  topicSlug: createSlug(topicTitle) || "temat",
+                }
+              : {}),
+          }
+        : {}),
+    };
+  });
 }
 
 export function createUniqueImportTitle(value: string, usedNames: string[]) {

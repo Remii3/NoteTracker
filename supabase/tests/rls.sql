@@ -934,7 +934,7 @@ begin
   'Anki import',
   5000,
   '[
-    {"content":"Mitochondrium","explanation":"","options":[{"content":"Elektrownia komórki","isCorrect":true}]},
+    {"content":"Mitochondrium","explanation":"","chapterTitle":"Biologia","chapterSlug":"biologia","topicTitle":"Komórka","topicSlug":"komorka","options":[{"content":"Elektrownia komórki","isCorrect":true}]},
     {"content":"Stolica Polski?","explanation":"Warszawa jest stolicą od 1596 roku.","options":[{"content":"Kraków","isCorrect":false},{"content":"Warszawa","isCorrect":true},{"content":"Gdańsk","isCorrect":false}]}
   ]'::jsonb
  );
@@ -944,9 +944,18 @@ begin
   'Question import: creates an owned module'
  );
  perform pg_temp.assert_true(
-  (select count(*) = 2 and bool_and(chapter_id is null and topic_id is null)
+  (select count(*) = 2
+      and count(*) filter (where chapter_id is not null and topic_id is not null) = 1
+      and count(*) filter (where chapter_id is null and topic_id is null) = 1
    from public.questions where module_id = question_module_id),
-  'Question import: creates unassigned questions'
+  'Question import: assigns Anki deck hierarchy and keeps other questions unassigned'
+ );
+ perform pg_temp.assert_true(
+  (select count(*) = 1 and bool_and(chapter.title = 'Biologia' and topic.title = 'Komórka')
+   from public.chapters as chapter
+   join public.topics as topic on topic.chapter_id = chapter.id
+   where chapter.module_id = question_module_id),
+  'Question import: creates chapters and topics from Anki decks'
  );
  perform pg_temp.assert_true(
   (select count(*) = 2
@@ -1026,14 +1035,18 @@ begin
   public.import_questions_into_module(
    '10000001-0000-4000-8000-000000000000',
    '[{
-     "content":"Imported into existing module",
-     "explanation":"Explanation",
+   "content":"Imported into existing module",
+   "explanation":"Explanation",
+   "chapterTitle":"Chapter",
+   "chapterSlug":"chapter",
+   "topicTitle":"Topic updated offline",
+   "topicSlug":"topic",
      "options":[
        {"content":"Correct","isCorrect":true},
        {"content":"Wrong","isCorrect":false}
      ]
    }]'::jsonb
-  ) = 1,
+ ) = 1,
   'Existing question import: reports the number of appended questions'
  );
  perform pg_temp.assert_true(
@@ -1042,8 +1055,10 @@ begin
    join public.question_options as option on option.question_id = question.id
    where question.module_id = '10000001-0000-4000-8000-000000000000'
      and question.content = 'Imported into existing module'
+     and question.chapter_id = '10000002-0000-4000-8000-000000000000'
+     and question.topic_id = '10000003-0000-4000-8000-000000000000'
      and option.is_correct),
-  'Existing question import: stores questions and their correct options'
+  'Existing question import: reuses hierarchy and stores correct options'
  );
 
  begin

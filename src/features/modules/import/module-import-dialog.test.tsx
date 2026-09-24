@@ -228,6 +228,8 @@ it("previews and submits an Anki text export", async () => {
         content: "Kość udowa",
         explanation: "",
         options: [{ content: "Najdłuższa kość człowieka", isCorrect: true }],
+        chapterTitle: "Anatomia",
+        topicTitle: "Kości",
       },
       {
         mode: "flashcard",
@@ -255,6 +257,13 @@ it("previews and submits an Anki text export", async () => {
   });
 
   expect(await screen.findByText(/Wykryto 2 pozycje/)).toBeTruthy();
+  expect(screen.getByLabelText("Rozdział z talii Anki")).toHaveProperty(
+    "value",
+    "Anatomia",
+  );
+  fireEvent.change(screen.getByLabelText("Temat z podtalii"), {
+    target: { value: "Układ kostny" },
+  });
   expect(parseAnkiFile).toHaveBeenCalledWith(file, []);
   fireEvent.click(screen.getByRole("button", { name: "Usuń pozycję 2" }));
   expect(screen.getByText(/Wykryto 1 pozycję/)).toBeTruthy();
@@ -276,6 +285,8 @@ it("previews and submits an Anki text export", async () => {
           content: "Kość udowa",
           explanation: "",
           options: [{ content: "Najdłuższa kość człowieka", isCorrect: true }],
+          chapterTitle: "Anatomia",
+          topicTitle: "Układ kostny",
         },
       ],
     }),

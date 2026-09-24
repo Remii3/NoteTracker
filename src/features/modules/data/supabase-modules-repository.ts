@@ -12,7 +12,10 @@ import type {
   ContentModuleImportDraft,
   QuestionModuleImportDraft,
 } from "../import/import-model";
-import { createContentImportPayload } from "../import/import-model";
+import {
+  createContentImportPayload,
+  createQuestionImportPayload,
+} from "../import/import-model";
 import { toModuleNameSearchPattern } from "../lib/module-search";
 
 export class SupabaseModulesRepository implements ModulesRepository {
@@ -197,11 +200,7 @@ export class SupabaseModulesRepository implements ModulesRepository {
     const { data, error } = await this.client.rpc("import_question_module", {
       target_name: draft.name,
       target_position: position,
-      imported_questions: draft.questions.map((question) => ({
-        content: question.content,
-        explanation: question.explanation,
-        options: question.options,
-      })) as unknown as Json,
+      imported_questions: createQuestionImportPayload(draft) as unknown as Json,
     });
     throwIfPostgrestError(error);
     if (!data) throw new Error("Nie udało się zaimportować pytań.");

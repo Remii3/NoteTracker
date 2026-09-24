@@ -24,6 +24,12 @@ type ParsedHeaders = {
   separator?: string;
   html: boolean;
   specialColumns: Set<number>;
+  deckColumn?: number;
+};
+
+type PackageNote = {
+  fields: string[];
+  deckName?: string;
 };
 
 export async function parseAnkiFile(
@@ -103,10 +109,24 @@ export async function parseAnkiPackage(
 
   const SQL = await loadSqlJs();
   const database = new SQL.Database(collectionBytes);
-  let noteFields: string[][];
+  let notes: PackageNote[];
   try {
+    const hasCards = Boolean(
+      database.exec(
+        "select 1 from sqlite_master where type = 'table' and name = 'cards' limit 1",
+      )[0]?.values.length,
+    );
     const result = database.exec(
-      `select flds from notes order by id limit ${MAX_QUESTION_IMPORT_COUNT + 1}`,
+      hasCards
+        ? `select notes.flds,
+            (select cards.did from cards where cards.nid = notes.id order by cards.id limit 1)
+           from notes
+           order by notes.id
+           limit ${MAX_QUESTION_IMPORT_COUNT + 1}`
+        : `select notes.flds, null
+           from notes
+           order by notes.id
+           limit ${MAX_QUESTION_IMPORT_COUNT + 1}`,
     )[0];
     if (!result) {
       throw new Error("Paczka Anki nie zawiera żadnych notatek.");
@@ -116,9 +136,14 @@ export async function parseAnkiPackage(
         `Jednorazowo możesz zaimportować maksymalnie ${MAX_QUESTION_IMPORT_COUNT} notatek Anki.`,
       );
     }
-    noteFields = result.values.map(([fields]) =>
-      String(fields ?? "").split("\u001f"),
-    );
+    const deckNames = readDeckNames(database);
+    notes = result.values.map(([fields, deckId]) => ({
+      fields: String(fields ?? "").split("\u001f"),
+      deckName:
+        deckId === null || deckId === undefined
+          ? undefined
+          : deckNames.get(String(deckId)),
+    }));
   } catch (error) {
     if (error instanceof Error && error.message.startsWith("Jednorazowo")) {
       throw error;
@@ -132,7 +157,7 @@ export async function parseAnkiPackage(
   } finally {
     database.close();
   }
-  return createPackageDraft(noteFields, fileName, existingModuleNames);
+  return createPackageDraft(notes, fileName, existingModuleNames);
 }
 
 export function parseAnkiText(
@@ -164,6 +189,9 @@ export function parseAnkiText(
   let removedMedia = false;
 
   for (const row of rows) {
+    const location = parseDeckLocation(
+      headers.deckColumn === undefined ? undefined : row[headers.deckColumn],
+    );
     const fields = row.filter((_, index) => !headers.specialColumns.has(index));
     if (fields.length > 2) ignoredFields = true;
     if (fields.length < 2) {
@@ -192,8 +220,8 @@ export function parseAnkiText(
       );
     }
 
-    const question = parseAnkiQuestion(front, back);
-    const duplicateKey = `${question.content.toLocaleLowerCase("pl")}\u0000${question.options
+    const question = { ...parseAnkiQuestion(front, back), ...location };
+    const duplicateKey = `${location.chapterTitle ?? ""}\u0000${location.topicTitle ?? ""}\u0000${question.content.toLocaleLowerCase("pl")}\u0000${question.options
       .map((option) => option.content.toLocaleLowerCase("pl"))
       .join("\u0001")}`;
     if (seen.has(duplicateKey)) duplicateRows += 1;
@@ -244,7 +272,7 @@ export function parseAnkiText(
 }
 
 function createPackageDraft(
-  noteFields: string[][],
+  notes: PackageNote[],
   fileName: string,
   existingModuleNames: string[],
 ): QuestionModuleImportDraft {
@@ -257,7 +285,9 @@ function createPackageDraft(
   let removedMedia = false;
   let clozeCards = 0;
 
-  for (const fields of noteFields) {
+  for (const note of notes) {
+    const { fields } = note;
+    const location = parseDeckLocation(note.deckName);
     const raw = fields.join("");
     removedFormatting ||= /<[^>]+>|&(?:#\d+|#x[\da-f]+|\w+);/i.test(raw);
     removedMedia ||= /\[sound:[^\]]+\]|<img\b/i.test(raw);
@@ -272,7 +302,8 @@ function createPackageDraft(
       clozeCards += noteQuestions.length;
     }
 
-    for (const question of noteQuestions) {
+    for (const parsedQuestion of noteQuestions) {
+      const question = { ...parsedQuestion, ...location };
       const optionContents = question.options.map((option) => option.content);
       if (
         question.content.length > MAX_QUESTION_FIELD_LENGTH ||
@@ -284,7 +315,7 @@ function createPackageDraft(
           `Treść pytania i odpowiedzi mogą mieć maksymalnie ${MAX_QUESTION_FIELD_LENGTH} znaków.`,
         );
       }
-      const duplicateKey = `${question.content.toLocaleLowerCase("pl")}\u0000${optionContents
+      const duplicateKey = `${location.chapterTitle ?? ""}\u0000${location.topicTitle ?? ""}\u0000${question.content.toLocaleLowerCase("pl")}\u0000${optionContents
         .map((option) => option.toLocaleLowerCase("pl"))
         .join("\u0001")}`;
       if (seen.has(duplicateKey)) duplicateCards += 1;
@@ -619,6 +650,12 @@ function extractHeaders(text: string) {
     const value = line.slice(separatorIndex + 1).trim();
     if (key === "separator") headers.separator = parseSeparatorHeader(value);
     if (key === "html") headers.html = value.toLocaleLowerCase("en") === "true";
+    if (key === "deck column") {
+      const column = Number.parseInt(value, 10);
+      if (Number.isInteger(column) && column > 0) {
+        headers.deckColumn = column - 1;
+      }
+    }
     if (
       ["tags column", "guid column", "deck column", "notetype column"].includes(
         key,
@@ -632,6 +669,46 @@ function extractHeaders(text: string) {
   }
 
   return { content: lines.slice(firstContentLine).join("\n"), headers };
+}
+
+function parseDeckLocation(deckName?: string) {
+  const parts = (deckName ?? "")
+    .split("::")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (!parts.length) return {};
+  return {
+    chapterTitle: parts[0],
+    topicTitle: parts.length > 1 ? parts.slice(1).join(" / ") : undefined,
+  };
+}
+
+function readDeckNames(database: import("sql.js").Database) {
+  const names = new Map<string, string>();
+  try {
+    const result = database.exec("select id, name from decks")[0];
+    for (const [id, name] of result?.values ?? []) {
+      if (name) names.set(String(id), String(name));
+    }
+  } catch {
+    // Older Anki collections keep deck definitions in the col.decks JSON.
+  }
+  if (names.size) return names;
+
+  try {
+    const result = database.exec("select decks from col limit 1")[0];
+    const raw = result?.values[0]?.[0];
+    if (!raw) return names;
+    const decks = JSON.parse(String(raw)) as Record<string, { name?: unknown }>;
+    for (const [id, deck] of Object.entries(decks)) {
+      if (typeof deck.name === "string" && deck.name.trim()) {
+        names.set(id, deck.name);
+      }
+    }
+  } catch {
+    // A missing or malformed deck registry leaves the notes unassigned.
+  }
+  return names;
 }
 
 function parseSeparatorHeader(value: string) {
