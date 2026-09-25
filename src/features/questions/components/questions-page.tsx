@@ -6,6 +6,7 @@ import {
   Pencil,
   Plus,
   Search,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import type { Chapter, Topic } from "@/features/notes/types/model";
@@ -36,26 +37,32 @@ import type { QuestionsRepository } from "../data/questions-repository";
 import { toast } from "@/components/ui/toast";
 import { AppHeaderActions } from "@/layout/app-header-actions";
 import { ModuleImportDialog } from "@/features/modules/import/module-import-dialog";
+import type { QuestionGenerationService } from "../data/question-generation-service";
+import { AiQuestionGenerationDialog } from "./ai-question-generation-dialog";
 
 const PAGE_SIZE = 20;
 type FilterOption = { value: string; label: string };
 
 type Props = {
+  moduleId?: string;
   chapters: Chapter[];
   moduleName?: string;
   repository: QuestionsRepository;
   loadTopics: (chapterId: string) => Promise<Topic[] | null>;
   onOpenSession: (mode: StudyMode, id: string) => void;
   onOpenHistory: () => void;
+  generationService?: QuestionGenerationService;
 };
 
 export function QuestionsPage({
+  moduleId,
   moduleName,
   chapters,
   repository,
   loadTopics,
   onOpenSession,
   onOpenHistory,
+  generationService,
 }: Props) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [total, setTotal] = useState(0);
@@ -70,6 +77,7 @@ export function QuestionsPage({
   const [editing, setEditing] = useState<Question | null | undefined>();
   const [studyMode, setStudyMode] = useState<StudyMode | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [generationOpen, setGenerationOpen] = useState(false);
   const [availability, setAvailability] = useState<{
     flashcardsCount: number;
     testQuestionsCount: number;
@@ -138,6 +146,17 @@ export function QuestionsPage({
   return (
     <>
       <AppHeaderActions>
+        {generationService && moduleId && (
+          <Button
+            size="sm"
+            variant="outline"
+            aria-label="Generuj pytania z AI"
+            onClick={() => setGenerationOpen(true)}
+          >
+            <Sparkles />
+            <span className="hidden sm:inline">Generuj z AI</span>
+          </Button>
+        )}
         <Button
           size="sm"
           variant="outline"
@@ -450,6 +469,17 @@ export function QuestionsPage({
                 });
                 await load();
               }}
+            />
+          )}
+          {generationOpen && generationService && moduleId && (
+            <AiQuestionGenerationDialog
+              moduleId={moduleId}
+              chapters={chapters}
+              service={generationService}
+              repository={repository}
+              loadTopics={loadTopics}
+              onClose={() => setGenerationOpen(false)}
+              onApproved={load}
             />
           )}
         </div>

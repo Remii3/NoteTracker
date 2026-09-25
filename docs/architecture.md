@@ -7,11 +7,16 @@ flowchart LR
   Browser[React SPA w przeglądarce]
   Supabase[Supabase Auth + Postgres + REST]
   Worker[Cloudflare Worker]
+  AiWorker[Cloudflare AI Worker]
+  OpenAI[OpenAI Responses API]
   R2[Prywatny bucket R2]
   Sentry[Sentry]
 
   Browser -->|sesja, notatki, pytania| Supabase
   Browser -->|Bearer JWT, zdjęcia| Worker
+  Browser -->|Bearer JWT, zakres tematów| AiWorker
+  AiWorker -->|odczyt i cache z RLS| Supabase
+  AiWorker -->|tekst notatki, Structured Outputs| OpenAI
   Worker -->|weryfikacja JWT i metadane z RLS| Supabase
   Worker -->|obiekty WebP| R2
   Browser -.->|błędy frontendu| Sentry
@@ -22,6 +27,11 @@ za logowanie i dane relacyjne. Zdjęcia nie przechodzą przez Vercel: frontend
 wysyła je do Workera, który weryfikuje token Supabase i zapisuje plik w
 prywatnym R2.
 
+Osobny Worker generatora pytań uwierzytelnia ten sam token Supabase. Pobiera
+wyłącznie wskazane tematy dostępne przez RLS, wysyła do OpenAI tylko ich tekst
+i zapisuje propozycje w cache zależnym od hasha treści. Klucz OpenAI pozostaje
+sekretem Workera i nigdy nie trafia do aplikacji Vite.
+
 Frontend jest instalowalną aplikacją PWA. Service worker przechowuje statyczny
 shell aplikacji: HTML, wersjonowane skrypty, style, fonty i ikony. Wybrane przez
 użytkownika moduły są przechowywane osobno w IndexedDB. Synchronizacja używa
@@ -29,7 +39,7 @@ kursora czasu serwera i pobiera pełną treść tylko dla nowych lub zmienionych
 tematów; lekka lista aktywnych identyfikatorów usuwa nieaktualne rekordy.
 Zdjęcia są pobierane wyłącznie po włączeniu osobnej opcji.
 
-Żądania Supabase, Auth, Workera zdjęć, Turnstile oraz Sentry pozostają
+Żądania Supabase, Auth, obu Workerów, Turnstile oraz Sentry pozostają
 network-only na poziomie service workera. Podczas braku internetu repozytoria
 notatek korzystają z jawnie pobranej kopii lokalnej. Edycje są zachowywane jako
 szkice wraz z bazową wersją treści i automatycznie wysyłane po odzyskaniu sieci.

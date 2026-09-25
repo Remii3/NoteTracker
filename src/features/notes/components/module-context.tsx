@@ -7,6 +7,7 @@ import type { Chapter, LearningSummary, Topic } from "../types/model";
 import type { SortMode } from "../types/workspace-types";
 import type { ChapterWorkspace } from "./chapter-workspace";
 import type { ContentModuleImportDraft } from "@/features/modules/import/import-model";
+import type { QuestionGenerationService } from "@/features/questions/data/question-generation-service";
 
 export type ModuleContextValue = {
   moduleId: string;
@@ -18,6 +19,7 @@ export type ModuleContextValue = {
   sortMode: SortMode;
   imagesService?: TopicImagesService;
   questionsRepository?: QuestionsRepository;
+  questionGenerationService?: QuestionGenerationService;
   statisticsRepository?: StatisticsRepository;
   statisticsCacheScope?: string;
   loadChapterTopics: (chapterId: string) => Promise<Topic[] | null>;

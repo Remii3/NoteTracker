@@ -1,0 +1,35 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "notetracker-question-generator",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-25",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.05,
+    },
+  },
+  "vars": {
+    "OPENAI_MODEL": "gpt-4o-mini",
+    "MAX_TOPICS_PER_GENERATION": "5",
+    "ALLOWED_ORIGINS": "http://localhost:5173",
+  },
+  "ratelimits": [
+    {
+      "name": "GENERATION_RATE_LIMITER",
+      "namespace_id": "1938472603",
+      "simple": {
+        "limit": 30,
+        "period": 60,
+      },
+    },
+  ],
+}

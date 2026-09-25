@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 import { R2TopicImagesService } from "../data/r2-topic-images-service";
 import { SupabaseNotesRepository } from "../data/supabase-notes-repository";
 import { SupabaseQuestionsRepository } from "@/features/questions/data/supabase-questions-repository";
+import { OpenAiQuestionGenerationService } from "@/features/questions/data/openai-question-generation-service";
 import { useLocation, useNavigate, useParams } from "react-router";
 import type { Module } from "@/features/modules/data/modules-repository";
 import { useAsyncResource } from "@/hooks/use-async-resource";
@@ -198,6 +199,18 @@ export function ModulePage() {
       new SupabaseQuestionsRepository(supabase, userId ?? "", moduleId ?? ""),
     [moduleId, userId],
   );
+  const questionGeneratorApiUrl = import.meta.env
+    .VITE_QUESTION_GENERATOR_API_URL as string | undefined;
+  const questionGenerationService = useMemo(
+    () =>
+      questionGeneratorApiUrl
+        ? new OpenAiQuestionGenerationService(
+            supabase,
+            questionGeneratorApiUrl.replace(/\/$/, ""),
+          )
+        : undefined,
+    [questionGeneratorApiUrl],
+  );
 
   useEffect(() => {
     if (!moduleId || !navigator.onLine) return;
@@ -231,6 +244,7 @@ export function ModulePage() {
       repository={repository}
       imagesService={imagesService}
       questionsRepository={questionsRepository}
+      questionGenerationService={questionGenerationService}
       modulesRepository={modulesRepository}
       statisticsRepository={statisticsRepository}
       statisticsCacheScope={user.id}

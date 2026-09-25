@@ -157,6 +157,29 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
     return data ?? 0;
   }
 
+  async approveGeneratedQuestions(
+    questions: Parameters<QuestionsRepository["approveGeneratedQuestions"]>[0],
+  ) {
+    const { data, error } = await this.client.rpc(
+      "approve_ai_generated_questions",
+      {
+        target_module_id: this.moduleId,
+        generated_questions: questions.map((question) => ({
+          topicId: question.topicId,
+          content: question.content,
+          explanation: question.explanation ?? "",
+          options: question.options.map((option) => ({
+            content: option.content,
+            isCorrect: option.isCorrect,
+          })),
+        })) as Json,
+      },
+    );
+    throwIfPostgrestError(error);
+    clearMemoryCacheByPrefix(`statistics:${this.userId}:`);
+    return data as unknown as { created: number; duplicatesSkipped: number };
+  }
+
   async createSession(
     input: Parameters<QuestionsRepository["createSession"]>[0],
   ) {

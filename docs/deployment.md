@@ -13,6 +13,7 @@ W ustawieniach środowiska dodaj:
 VITE_SUPABASE_URL
 VITE_SUPABASE_PUBLISHABLE_KEY
 VITE_R2_IMAGES_API_URL
+VITE_QUESTION_GENERATOR_API_URL
 VITE_TURNSTILE_SITE_KEY
 VITE_SENTRY_DSN                 # opcjonalne
 VITE_SENTRY_RELEASE             # opcjonalne
@@ -52,6 +53,20 @@ Nie uruchamiaj `wrangler types` w tym projekcie. Typy środowiska są utrzymywan
 bez generowanego pliku przez `@cloudflare/workers-types` oraz interfejs `Env`
 w kodzie Workera.
 
+## Pytania AI — Cloudflare Worker
+
+Pierwsze wdrożenie wykonaj według
+[`workers/question-generator/README.md`](../workers/question-generator/README.md).
+Klucz `OPENAI_API_KEY` musi być sekretem Cloudflare, a model i limit tematów
+są zwykłymi zmiennymi w `wrangler.jsonc`. Następnie ustaw publiczny adres
+Workera w `VITE_QUESTION_GENERATOR_API_URL` i przebuduj frontend.
+
+```bash
+pnpm --filter notetracker-question-generator-worker typecheck
+pnpm --filter notetracker-question-generator-worker exec wrangler deploy --dry-run
+pnpm --filter notetracker-question-generator-worker deploy
+```
+
 ## Checklista przed wdrożeniem
 
 - working tree zawiera wyłącznie zamierzone zmiany;
@@ -59,6 +74,7 @@ w kodzie Workera.
   się powodzeniem;
 - Worker przechodzi `pnpm --filter notetracker-topic-images-worker typecheck`
   i dry run;
+- Worker generatora pytań przechodzi typecheck i dry run;
 - wymagane skrypty SQL zostały sprawdzone na projekcie testowym;
 - wykonano backup przed zmianą schematu;
 - `Authentication > URL Configuration` w Supabase zawiera produkcyjny origin
@@ -69,7 +85,8 @@ w kodzie Workera.
 - `VITE_TURNSTILE_SITE_KEY` zawiera publiczny site key tego samego widgetu;
 - `ALLOWED_ORIGINS` zawiera dokładny produkcyjny origin Vercel;
 - bucket `notetracker-images` nie ma publicznego dostępu;
-- sekrety nie znajdują się w repozytorium ani zmiennych `VITE_*`.
+- sekrety nie znajdują się w repozytorium ani zmiennych `VITE_*`;
+- `MAX_TOPICS_PER_GENERATION` ma oczekiwaną wartość dla aktualnego pakietu;
 
 ## Smoke test po wdrożeniu
 
@@ -79,17 +96,19 @@ w kodzie Workera.
    dane.
 3. Dodaj, otwórz, przestaw i usuń zdjęcie.
 4. Dodaj pytanie i ukończ krótką sesję nauki.
-5. Sprawdź konsolę przeglądarki, Sentry oraz błędy Workera w Cloudflare.
-6. Potwierdź, że niezalogowane żądanie do Workera zwraca `401`, a origin spoza
+5. Wygeneruj pytania dla tematu, wykonaj reroll, usuń odpowiedź, zatwierdź
+   partię i sprawdź podsumowanie pominiętych duplikatów.
+6. Sprawdź konsolę przeglądarki, Sentry oraz błędy Workerów w Cloudflare.
+7. Potwierdź, że niezalogowane żądanie do Workera zwraca `401`, a origin spoza
    allowlisty nie otrzymuje nagłówka CORS.
-7. Zainstaluj PWA, uruchom je w osobnym oknie i sprawdź ikonę oraz ekran
+8. Zainstaluj PWA, uruchom je w osobnym oknie i sprawdź ikonę oraz ekran
    startowy.
-8. Oznacz moduł jako dostępny offline, odłącz sieć i sprawdź nawigację oraz
+9. Oznacz moduł jako dostępny offline, odłącz sieć i sprawdź nawigację oraz
    odczyt jego tematów. Powtórz próbę z opcją zdjęć wyłączoną i włączoną.
-9. Zmień notatkę offline, przywróć sieć i sprawdź automatyczny zapis oraz
-   zachowanie szkicu w przypadku konfliktu z wersją serwerową. Wywołaj konflikt
-   zmianą tej samej notatki w drugiej karcie i sprawdź obie decyzje w dialogu.
-10. Wdróż kolejną wersję i sprawdź, że aplikacja proponuje aktualizację zamiast
+10. Zmień notatkę offline, przywróć sieć i sprawdź automatyczny zapis oraz
+    zachowanie szkicu w przypadku konfliktu z wersją serwerową. Wywołaj konflikt
+    zmianą tej samej notatki w drugiej karcie i sprawdź obie decyzje w dialogu.
+11. Wdróż kolejną wersję i sprawdź, że aplikacja proponuje aktualizację zamiast
     przeładować się automatycznie.
 
 ## Rollback

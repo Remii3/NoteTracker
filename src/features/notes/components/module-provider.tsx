@@ -17,6 +17,7 @@ import type { Chapter } from "../types/model";
 import type { NotesRepository } from "../data/notes-repository";
 import type { TopicImagesService } from "../data/topic-images-service";
 import type { QuestionsRepository } from "@/features/questions/data/questions-repository";
+import type { QuestionGenerationService } from "@/features/questions/data/question-generation-service";
 import type { ModulesRepository } from "@/features/modules/data/modules-repository";
 import type { StatisticsRepository } from "@/features/statistics/data/statistics-repository";
 import { ModuleContext, type ModuleContextValue } from "./module-context";
@@ -34,6 +35,7 @@ type Props = {
   repository?: NotesRepository;
   imagesService?: TopicImagesService;
   questionsRepository?: QuestionsRepository;
+  questionGenerationService?: QuestionGenerationService;
   modulesRepository?: ModulesRepository;
   statisticsRepository?: StatisticsRepository;
   statisticsCacheScope?: string;
@@ -56,6 +58,7 @@ export function ModuleProvider({
   repository,
   imagesService,
   questionsRepository,
+  questionGenerationService,
   modulesRepository,
   statisticsRepository,
   statisticsCacheScope,
@@ -400,6 +403,7 @@ export function ModuleProvider({
     sortMode,
     imagesService,
     questionsRepository,
+    questionGenerationService,
     statisticsRepository,
     statisticsCacheScope,
     loadChapterTopics,

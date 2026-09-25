@@ -1,5 +1,6 @@
 packages:
   - workers/topic-images
+  - workers/question-generator
 
 allowBuilds:
   "@sentry/cli": true

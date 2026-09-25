@@ -17,7 +17,7 @@ liczbę oczekujących zmian, ostatnią synchronizację i konflikty wymagające d
 
 - React 19, TypeScript, Vite i Tailwind CSS;
 - Supabase Auth, Postgres, REST API i RLS;
-- Cloudflare Worker oraz prywatny bucket R2 dla zdjęć;
+- Cloudflare Workers dla prywatnych zdjęć R2 i generowania pytań przez OpenAI;
 - Vercel dla frontendu;
 - Sentry i Cloudflare Observability dla monitoringu.
 
@@ -37,14 +37,15 @@ pnpm dev
 
 Uzupełnij w `.env.local`:
 
-| Zmienna                         | Wymagana      | Znaczenie                               |
-| ------------------------------- | ------------- | --------------------------------------- |
-| `VITE_SUPABASE_URL`             | tak           | URL projektu Supabase                   |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | tak           | publiczny klucz klienta Supabase        |
-| `VITE_R2_IMAGES_API_URL`        | tak dla zdjęć | URL Workera Cloudflare                  |
-| `VITE_TURNSTILE_SITE_KEY`       | tak           | publiczny site key Cloudflare Turnstile |
-| `VITE_SENTRY_DSN`               | nie           | publiczny identyfikator projektu Sentry |
-| `VITE_SENTRY_RELEASE`           | nie           | identyfikator wydania widoczny w Sentry |
+| Zmienna                           | Wymagana      | Znaczenie                               |
+| --------------------------------- | ------------- | --------------------------------------- |
+| `VITE_SUPABASE_URL`               | tak           | URL projektu Supabase                   |
+| `VITE_SUPABASE_PUBLISHABLE_KEY`   | tak           | publiczny klucz klienta Supabase        |
+| `VITE_R2_IMAGES_API_URL`          | tak dla zdjęć | URL Workera Cloudflare                  |
+| `VITE_QUESTION_GENERATOR_API_URL` | tak dla AI    | URL Workera generatora pytań            |
+| `VITE_TURNSTILE_SITE_KEY`         | tak           | publiczny site key Cloudflare Turnstile |
+| `VITE_SENTRY_DSN`                 | nie           | publiczny identyfikator projektu Sentry |
+| `VITE_SENTRY_RELEASE`             | nie           | identyfikator wydania widoczny w Sentry |
 
 Zmienne z prefiksem `VITE_` trafiają do kodu przeglądarki. Site key Turnstile
 jest publiczny, ale jego secret należy skonfigurować wyłącznie w ustawieniach
@@ -53,7 +54,9 @@ kluczy ani tokenów administracyjnych.
 
 Konfiguracja bazy jest opisana w
 [`docs/database-setup.md`](docs/database-setup.md), a lokalne uruchomienie
-Workera w [`workers/topic-images/README.md`](workers/topic-images/README.md).
+Workerów w [`workers/topic-images/README.md`](workers/topic-images/README.md)
+oraz
+[`workers/question-generator/README.md`](workers/question-generator/README.md).
 
 ## Komendy
 
@@ -82,6 +85,8 @@ Po zmianie Workera dodatkowo uruchom:
 ```bash
 pnpm --filter notetracker-topic-images-worker typecheck
 pnpm --filter notetracker-topic-images-worker exec wrangler deploy --dry-run
+pnpm --filter notetracker-question-generator-worker typecheck
+pnpm --filter notetracker-question-generator-worker exec wrangler deploy --dry-run
 ```
 
 Projekt używa `@cloudflare/workers-types`; nie generujemy i nie commitujemy
@@ -106,6 +111,7 @@ supabase/migrations/       pełny, wersjonowany schemat bazy
 supabase/tests/            testy odtwarzania i izolacji danych
 supabase/manual/           archiwalne skrypty SQL
 workers/topic-images/      Worker obsługujący prywatne zdjęcia R2
+workers/question-generator/ Worker generujący propozycje pytań przez OpenAI
 docs/                      dokumentacja operacyjna
 ```
 

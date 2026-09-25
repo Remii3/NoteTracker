@@ -59,6 +59,129 @@ set local request.jwt.claim.role = 'authenticated';
 
 set local request.jwt.claim.sub = '10000000-0000-4000-8000-000000000000';
 select pg_temp.assert_true(
+  jsonb_array_length(public.get_ai_question_generation_topics(
+    '10000001-0000-4000-8000-000000000000',
+    array['10000003-0000-4000-8000-000000000000']::uuid[]
+  )) = 1,
+  'AI generation scope: returns an owned topic'
+);
+do $$ declare rejected boolean := false; begin
+  begin
+    perform public.get_ai_question_generation_topics(
+      '10000001-0000-4000-8000-000000000000',
+      array['20000003-0000-4000-8000-000000000000']::uuid[]
+    );
+  exception when others then rejected := true;
+  end;
+  perform pg_temp.assert_true(rejected,
+    'AI generation scope: rejects another user topic');
+end; $$;
+do $$ declare rejected boolean := false; begin
+  begin
+    perform public.get_ai_question_generation_topics(
+      '10000001-0000-4000-8000-000000000000',
+      array[
+        '10000003-0000-4000-8000-000000000000',
+        '10000003-0000-4000-8000-000000000000'
+      ]::uuid[]
+    );
+  exception when others then rejected := true;
+  end;
+  perform pg_temp.assert_true(rejected,
+    'AI generation scope: rejects duplicate topic ids');
+end; $$;
+insert into public.ai_question_generation_cache (
+  user_id, module_id, topic_id, source_hash,
+  question_count, model, prompt_version, proposals
+) values (
+  '10000000-0000-4000-8000-000000000000',
+  '10000001-0000-4000-8000-000000000000',
+  '10000003-0000-4000-8000-000000000000',
+  repeat('a', 64), 3, 'test-model', 1, '[]'::jsonb
+);
+select pg_temp.assert_true(
+  (select count(*) from public.ai_question_generation_cache) = 1,
+  'AI generation cache: user reads own cache only'
+);
+do $$ declare rejected boolean := false; begin
+  begin
+    insert into public.ai_question_generation_cache (
+      user_id, module_id, topic_id, source_hash,
+      question_count, model, prompt_version, proposals
+    ) values (
+      '20000000-0000-4000-8000-000000000000',
+      '20000001-0000-4000-8000-000000000000',
+      '20000003-0000-4000-8000-000000000000',
+      repeat('b', 64), 3, 'test-model', 1, '[]'::jsonb
+    );
+  exception when others then rejected := true;
+  end;
+  perform pg_temp.assert_true(rejected,
+    'AI generation cache: rejects writes for another user');
+end; $$;
+do $$
+declare
+  first_result jsonb;
+  duplicate_result jsonb;
+  rejected boolean := false;
+begin
+  first_result := public.approve_ai_generated_questions(
+    '10000001-0000-4000-8000-000000000000',
+    jsonb_build_array(jsonb_build_object(
+      'topicId', '10000003-0000-4000-8000-000000000000',
+      'content', 'Generated question',
+      'explanation', 'Generated explanation',
+      'options', jsonb_build_array(
+        jsonb_build_object('content', 'Correct', 'isCorrect', true),
+        jsonb_build_object('content', 'Incorrect', 'isCorrect', false)
+      )
+    ))
+  );
+  perform pg_temp.assert_true(
+    (first_result ->> 'created')::integer = 1
+      and (first_result ->> 'duplicatesSkipped')::integer = 0,
+    'AI approval: creates a valid question'
+  );
+
+  duplicate_result := public.approve_ai_generated_questions(
+    '10000001-0000-4000-8000-000000000000',
+    jsonb_build_array(jsonb_build_object(
+      'topicId', '10000003-0000-4000-8000-000000000000',
+      'content', 'Generated question',
+      'explanation', 'Generated explanation',
+      'options', jsonb_build_array(
+        jsonb_build_object('content', 'Correct', 'isCorrect', true),
+        jsonb_build_object('content', 'Incorrect', 'isCorrect', false)
+      )
+    ))
+  );
+  perform pg_temp.assert_true(
+    (duplicate_result ->> 'created')::integer = 0
+      and (duplicate_result ->> 'duplicatesSkipped')::integer = 1,
+    'AI approval: skips an exact duplicate'
+  );
+
+  begin
+    perform public.approve_ai_generated_questions(
+      '10000001-0000-4000-8000-000000000000',
+      jsonb_build_array(jsonb_build_object(
+        'topicId', '20000003-0000-4000-8000-000000000000',
+        'content', 'Foreign question',
+        'explanation', '',
+        'options', jsonb_build_array(
+          jsonb_build_object('content', 'Answer', 'isCorrect', true)
+        )
+      ))
+    );
+  exception when others then rejected := true;
+  end;
+  perform pg_temp.assert_true(rejected,
+    'AI approval: rejects another user topic');
+end; $$;
+delete from public.questions where content = 'Generated question';
+delete from public.ai_question_generation_cache
+where topic_id = '10000003-0000-4000-8000-000000000000';
+select pg_temp.assert_true(
   (
     public.get_exam_planning_scope(
       '10000001-0000-4000-8000-000000000000', 'UTC'

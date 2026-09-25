@@ -568,6 +568,20 @@ export type Database = {
     };
     Views: Record<never, never>;
     Functions: {
+      approve_ai_generated_questions: {
+        Args: {
+          target_module_id: string;
+          generated_questions: Json;
+        };
+        Returns: Json;
+      };
+      get_ai_question_generation_topics: {
+        Args: {
+          target_module_id: string;
+          selected_topic_ids: string[];
+        };
+        Returns: Json;
+      };
       get_exam_planning_chapters: {
         Args: {
           target_module_id: string;

@@ -40,6 +40,14 @@ export interface QuestionsRepository {
   }): Promise<{ kind: "exact" | "same_content"; questionId: string } | null>;
   remove(id: string): Promise<void>;
   importQuestions(draft: QuestionModuleImportDraft): Promise<number>;
+  approveGeneratedQuestions(
+    questions: Array<{
+      topicId: string;
+      content: string;
+      explanation: string | null;
+      options: QuestionOption[];
+    }>,
+  ): Promise<{ created: number; duplicatesSkipped: number }>;
   createSession(input: {
     mode: StudyMode;
     scope: StudyScope;

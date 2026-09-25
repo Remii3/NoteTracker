@@ -13,6 +13,24 @@ export type Question = {
   explanation: string | null;
   options: QuestionOption[];
 };
+export type GeneratedQuestionProposal = {
+  id: string;
+  topicId: string;
+  chapterId: string;
+  chapterTitle: string;
+  topicTitle: string;
+  content: string;
+  explanation: string;
+  options: QuestionOption[];
+};
+export type GeneratedTopicQuestions = {
+  topicId: string;
+  topicTitle: string;
+  chapterId: string;
+  chapterTitle: string;
+  cached: boolean;
+  questions: GeneratedQuestionProposal[];
+};
 export type StudyMode = "flashcards" | "test";
 export type StudyScope =
   "chapter" | "topic" | "all" | "random_chapters" | "unassigned";
