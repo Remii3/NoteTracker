@@ -22,6 +22,10 @@ beforeEach(() => {
     configurable: true,
     value: true,
   });
+  Object.defineProperty(window.performance, "getEntriesByType", {
+    configurable: true,
+    value: vi.fn().mockReturnValue([{ type: "navigate" }]),
+  });
 });
 
 afterEach(() => {
@@ -44,15 +48,16 @@ it("shows the offline state and clears it when connectivity returns", () => {
   expect(screen.queryByText(/Brak połączenia/)).toBeNull();
 });
 
-it("offers an explicit update instead of reloading automatically", async () => {
+it("prompts before activating an update during normal use", async () => {
   const postMessage = vi.fn();
   const worker = Object.assign(new EventTarget(), {
     postMessage,
-    state: "installing",
+    state: "installed",
   }) as unknown as ServiceWorker;
   const registration = Object.assign(new EventTarget(), {
-    installing: worker,
-    waiting: null as ServiceWorker | null,
+    installing: null as ServiceWorker | null,
+    waiting: worker,
+    update: vi.fn().mockResolvedValue(undefined),
   }) as unknown as ServiceWorkerRegistration;
   const serviceWorker = Object.assign(new EventTarget(), {
     controller: {} as ServiceWorker,
@@ -69,14 +74,44 @@ it("offers an explicit update instead of reloading automatically", async () => {
   );
 
   await waitFor(() => expect(serviceWorker.register).toHaveBeenCalled());
-  Object.assign(registration, { waiting: worker });
-  Object.assign(worker, { state: "installed" });
-  act(() => worker.dispatchEvent(new Event("statechange")));
-
   expect(await screen.findByText("Dostępna jest nowa wersja")).toBeTruthy();
   expect(postMessage).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Odśwież" }));
   expect(postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
+  expect(registration.update).toHaveBeenCalledOnce();
+});
+
+it("activates an available update after a manual page reload", async () => {
+  vi.mocked(performance.getEntriesByType).mockReturnValue([
+    { type: "reload" } as PerformanceNavigationTiming,
+  ]);
+  const postMessage = vi.fn();
+  const worker = Object.assign(new EventTarget(), {
+    postMessage,
+    state: "installed",
+  }) as unknown as ServiceWorker;
+  const registration = Object.assign(new EventTarget(), {
+    installing: null as ServiceWorker | null,
+    waiting: worker,
+    update: vi.fn().mockResolvedValue(undefined),
+  }) as unknown as ServiceWorkerRegistration;
+  const serviceWorker = Object.assign(new EventTarget(), {
+    controller: {} as ServiceWorker,
+    register: vi.fn().mockResolvedValue(registration),
+  }) as unknown as ServiceWorkerContainer;
+  Object.defineProperty(window.navigator, "serviceWorker", {
+    configurable: true,
+    value: serviceWorker,
+  });
+  render(
+    <PwaProvider>
+      <div>aplikacja</div>
+    </PwaProvider>,
+  );
+
+  await waitFor(() => expect(serviceWorker.register).toHaveBeenCalled());
+  expect(postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
+  expect(screen.queryByText("Dostępna jest nowa wersja")).toBeNull();
 });
 
 it("uses the browser install prompt from account settings", async () => {

@@ -31,32 +31,46 @@ function useServiceWorker() {
       return;
 
     let active = true;
+    const navigation = performance.getEntriesByType("navigation")[0] as
+      PerformanceNavigationTiming | undefined;
+    const activateUpdateOnInstall = navigation?.type === "reload";
     const handleControllerChange = () => {
       if (reloadAfterActivation.current) window.location.reload();
+    };
+    const activateWorker = (worker: ServiceWorker) => {
+      reloadAfterActivation.current = true;
+      worker.postMessage({ type: "SKIP_WAITING" });
     };
     const watchInstallingWorker = (worker: ServiceWorker) => {
       worker.addEventListener("statechange", () => {
         if (!active || worker.state !== "installed") return;
-        if (navigator.serviceWorker.controller) setNeedRefresh(true);
-        else setOfflineReady(true);
+        if (!navigator.serviceWorker.controller) {
+          setOfflineReady(true);
+          return;
+        }
+        if (activateUpdateOnInstall) activateWorker(worker);
+        else setNeedRefresh(true);
       });
     };
     const register = async () => {
       try {
         const nextRegistration = await navigator.serviceWorker.register(
           "/sw.js",
-          { scope: "/" },
+          { scope: "/", updateViaCache: "none" },
         );
         if (!active) return;
         registration.current = nextRegistration;
-        if (nextRegistration.waiting && navigator.serviceWorker.controller)
-          setNeedRefresh(true);
+        if (nextRegistration.waiting && navigator.serviceWorker.controller) {
+          if (activateUpdateOnInstall) activateWorker(nextRegistration.waiting);
+          else setNeedRefresh(true);
+        }
         if (nextRegistration.installing)
           watchInstallingWorker(nextRegistration.installing);
         nextRegistration.addEventListener("updatefound", () => {
           if (nextRegistration.installing)
             watchInstallingWorker(nextRegistration.installing);
         });
+        await nextRegistration.update();
       } catch (error) {
         console.error("Nie udało się uruchomić trybu PWA.", error);
       }

@@ -61,7 +61,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           cleanupOutdatedCaches: true,
-          clientsClaim: false,
+          clientsClaim: true,
           skipWaiting: false,
           navigateFallback: "/index.html",
           globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2,wasm}"],
