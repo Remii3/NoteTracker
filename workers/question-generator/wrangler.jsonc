@@ -20,7 +20,7 @@
   "vars": {
     "OPENAI_MODEL": "gpt-4o-mini",
     "MAX_TOPICS_PER_GENERATION": "5",
-    "ALLOWED_ORIGINS": "http://localhost:5173",
+    "ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,https://note-tracker-orcin.vercel.app",
   },
   "ratelimits": [
     {

@@ -60,7 +60,7 @@ export function AiQuestionGenerationDialog({
   const [selectedTopicIds, setSelectedTopicIds] = useState<Set<string>>(
     new Set(),
   );
-  const [questionCount, setQuestionCount] = useState(3);
+  const [questionCount, setQuestionCount] = useState(1);
   const [maxTopics, setMaxTopics] = useState(5);
   const [generatedTopics, setGeneratedTopics] = useState<
     GeneratedTopicQuestions[]
