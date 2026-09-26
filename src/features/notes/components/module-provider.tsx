@@ -18,6 +18,7 @@ import type { NotesRepository } from "../data/notes-repository";
 import type { TopicImagesService } from "../data/topic-images-service";
 import type { QuestionsRepository } from "@/features/questions/data/questions-repository";
 import type { QuestionGenerationService } from "@/features/questions/data/question-generation-service";
+import type { SummaryGenerationService } from "@/features/summaries/data/summary-generation-service";
 import type { ModulesRepository } from "@/features/modules/data/modules-repository";
 import type { StatisticsRepository } from "@/features/statistics/data/statistics-repository";
 import { ModuleContext, type ModuleContextValue } from "./module-context";
@@ -36,6 +37,7 @@ type Props = {
   imagesService?: TopicImagesService;
   questionsRepository?: QuestionsRepository;
   questionGenerationService?: QuestionGenerationService;
+  summaryGenerationService?: SummaryGenerationService;
   modulesRepository?: ModulesRepository;
   statisticsRepository?: StatisticsRepository;
   statisticsCacheScope?: string;
@@ -59,6 +61,7 @@ export function ModuleProvider({
   imagesService,
   questionsRepository,
   questionGenerationService,
+  summaryGenerationService,
   modulesRepository,
   statisticsRepository,
   statisticsCacheScope,
@@ -404,9 +407,13 @@ export function ModuleProvider({
     imagesService,
     questionsRepository,
     questionGenerationService,
+    summaryGenerationService,
     statisticsRepository,
     statisticsCacheScope,
     loadChapterTopics,
+    refreshNotes: async () => {
+      await notesStore.load();
+    },
     importDocx,
     openChapter,
     openChapters,

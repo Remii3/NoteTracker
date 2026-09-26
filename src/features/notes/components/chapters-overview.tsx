@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   FileUp,
   Search,
+  Sparkles,
 } from "lucide-react";
 import type { Chapter, LearningSummary } from "../types/model";
 import {
@@ -49,6 +50,7 @@ type Props = {
   summary?: LearningSummary | null;
   onOpenChapter: (chapterId: string, topicId: string) => void;
   onImport: () => void;
+  onSummarize?: () => void;
 };
 
 export function ChaptersOverview({
@@ -57,6 +59,7 @@ export function ChaptersOverview({
   summary,
   onOpenChapter,
   onImport,
+  onSummarize,
 }: Props) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -125,6 +128,18 @@ export function ChaptersOverview({
   return (
     <>
       <AppHeaderActions>
+        {onSummarize && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            aria-label="Streszcz zakres z AI"
+            onClick={onSummarize}
+          >
+            <Sparkles />
+            <span className="hidden sm:inline">Streszcz z AI</span>
+          </Button>
+        )}
         <Button
           type="button"
           size="sm"

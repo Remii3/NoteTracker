@@ -6,6 +6,7 @@ import { R2TopicImagesService } from "../data/r2-topic-images-service";
 import { SupabaseNotesRepository } from "../data/supabase-notes-repository";
 import { SupabaseQuestionsRepository } from "@/features/questions/data/supabase-questions-repository";
 import { OpenAiQuestionGenerationService } from "@/features/questions/data/openai-question-generation-service";
+import { OpenAiSummaryGenerationService } from "@/features/summaries/data/openai-summary-generation-service";
 import { useLocation, useNavigate, useParams } from "react-router";
 import type { Module } from "@/features/modules/data/modules-repository";
 import { useAsyncResource } from "@/hooks/use-async-resource";
@@ -211,6 +212,16 @@ export function ModulePage() {
         : undefined,
     [questionGeneratorApiUrl],
   );
+  const summaryGenerationService = useMemo(
+    () =>
+      questionGeneratorApiUrl
+        ? new OpenAiSummaryGenerationService(
+            supabase,
+            questionGeneratorApiUrl.replace(/\/$/, ""),
+          )
+        : undefined,
+    [questionGeneratorApiUrl],
+  );
 
   useEffect(() => {
     if (!moduleId || !navigator.onLine) return;
@@ -245,6 +256,7 @@ export function ModulePage() {
       imagesService={imagesService}
       questionsRepository={questionsRepository}
       questionGenerationService={questionGenerationService}
+      summaryGenerationService={summaryGenerationService}
       modulesRepository={modulesRepository}
       statisticsRepository={statisticsRepository}
       statisticsCacheScope={user.id}

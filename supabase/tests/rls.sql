@@ -119,6 +119,73 @@ do $$ declare rejected boolean := false; begin
   perform pg_temp.assert_true(rejected,
     'AI generation cache: rejects writes for another user');
 end; $$;
+insert into public.ai_summary_generation_cache (
+  user_id, module_id, scope_hash, source_hash,
+  summary_length, model, prompt_version, summary
+) values (
+  '10000000-0000-4000-8000-000000000000',
+  '10000001-0000-4000-8000-000000000000',
+  repeat('c', 64), repeat('d', 64), 'standard', 'test-model', 1,
+  '{"suggestedTitle":"Summary"}'::jsonb
+);
+select pg_temp.assert_true(
+  (select count(*) from public.ai_summary_generation_cache) = 1,
+  'AI summary cache: user reads own cache only'
+);
+do $$ declare rejected boolean := false; begin
+  begin
+    insert into public.ai_summary_generation_cache (
+      user_id, module_id, scope_hash, source_hash,
+      summary_length, model, prompt_version, summary
+    ) values (
+      '20000000-0000-4000-8000-000000000000',
+      '20000001-0000-4000-8000-000000000000',
+      repeat('e', 64), repeat('f', 64), 'short', 'test-model', 1,
+      '{"suggestedTitle":"Foreign summary"}'::jsonb
+    );
+  exception when others then rejected := true;
+  end;
+  perform pg_temp.assert_true(rejected,
+    'AI summary cache: rejects writes for another user');
+end; $$;
+do $$
+declare
+  saved jsonb;
+  rejected boolean := false;
+begin
+  saved := public.save_ai_summary_note(
+    '10000001-0000-4000-8000-000000000000',
+    'Generated summary',
+    '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Summary"}]}]}'::jsonb
+  );
+  perform pg_temp.assert_true(
+    exists (
+      select 1
+      from public.topics as topic
+      join public.chapters as chapter on chapter.id = topic.chapter_id
+      where topic.id = (saved ->> 'topicId')::uuid
+        and topic.user_id = '10000000-0000-4000-8000-000000000000'
+        and topic.title = 'Generated summary'
+        and chapter.module_id = '10000001-0000-4000-8000-000000000000'
+        and chapter.slug = 'streszczenia-ai'
+    ),
+    'AI summary save: creates an owned topic in the summaries chapter'
+  );
+  delete from public.topics
+  where id = (saved ->> 'topicId')::uuid;
+  delete from public.chapters
+  where id = (saved ->> 'chapterId')::uuid;
+  begin
+    perform public.save_ai_summary_note(
+      '20000001-0000-4000-8000-000000000000',
+      'Foreign summary',
+      '{"type":"doc"}'::jsonb
+    );
+  exception when others then rejected := true;
+  end;
+  perform pg_temp.assert_true(rejected,
+    'AI summary save: rejects another user module');
+end; $$;
 do $$
 declare
   first_result jsonb;

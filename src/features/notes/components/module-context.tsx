@@ -8,6 +8,7 @@ import type { SortMode } from "../types/workspace-types";
 import type { ChapterWorkspace } from "./chapter-workspace";
 import type { ContentModuleImportDraft } from "@/features/modules/import/import-model";
 import type { QuestionGenerationService } from "@/features/questions/data/question-generation-service";
+import type { SummaryGenerationService } from "@/features/summaries/data/summary-generation-service";
 
 export type ModuleContextValue = {
   moduleId: string;
@@ -20,9 +21,11 @@ export type ModuleContextValue = {
   imagesService?: TopicImagesService;
   questionsRepository?: QuestionsRepository;
   questionGenerationService?: QuestionGenerationService;
+  summaryGenerationService?: SummaryGenerationService;
   statisticsRepository?: StatisticsRepository;
   statisticsCacheScope?: string;
   loadChapterTopics: (chapterId: string) => Promise<Topic[] | null>;
+  refreshNotes: () => Promise<void>;
   importDocx: (draft: ContentModuleImportDraft) => Promise<number>;
   openChapter: (chapterId: string, topicId: string) => Promise<void>;
   openChapters: () => void;

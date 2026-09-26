@@ -53,13 +53,14 @@ Nie uruchamiaj `wrangler types` w tym projekcie. Typy środowiska są utrzymywan
 bez generowanego pliku przez `@cloudflare/workers-types` oraz interfejs `Env`
 w kodzie Workera.
 
-## Pytania AI — Cloudflare Worker
+## Pytania i streszczenia AI — Cloudflare Worker
 
 Pierwsze wdrożenie wykonaj według
 [`workers/question-generator/README.md`](../workers/question-generator/README.md).
 Klucz `OPENAI_API_KEY` musi być sekretem Cloudflare, a model i limit tematów
 są zwykłymi zmiennymi w `wrangler.jsonc`. Następnie ustaw publiczny adres
-Workera w `VITE_QUESTION_GENERATOR_API_URL` i przebuduj frontend.
+Workera w `VITE_QUESTION_GENERATOR_API_URL` i przebuduj frontend. Ten sam
+Worker i sekret `OPENAI_API_KEY` obsługują generowanie pytań oraz streszczeń.
 
 ```bash
 pnpm --filter notetracker-question-generator-worker typecheck
@@ -98,17 +99,19 @@ pnpm --filter notetracker-question-generator-worker deploy
 4. Dodaj pytanie i ukończ krótką sesję nauki.
 5. Wygeneruj pytania dla tematu, wykonaj reroll, usuń odpowiedź, zatwierdź
    partię i sprawdź podsumowanie pominiętych duplikatów.
-6. Sprawdź konsolę przeglądarki, Sentry oraz błędy Workerów w Cloudflare.
-7. Potwierdź, że niezalogowane żądanie do Workera zwraca `401`, a origin spoza
+6. Wygeneruj streszczenie kilku tematów, skopiuj je, wykonaj reroll i zapisz
+   jako notatkę w rozdziale `Streszczenia AI`.
+7. Sprawdź konsolę przeglądarki, Sentry oraz błędy Workerów w Cloudflare.
+8. Potwierdź, że niezalogowane żądanie do Workera zwraca `401`, a origin spoza
    allowlisty nie otrzymuje nagłówka CORS.
-8. Zainstaluj PWA, uruchom je w osobnym oknie i sprawdź ikonę oraz ekran
+9. Zainstaluj PWA, uruchom je w osobnym oknie i sprawdź ikonę oraz ekran
    startowy.
-9. Oznacz moduł jako dostępny offline, odłącz sieć i sprawdź nawigację oraz
-   odczyt jego tematów. Powtórz próbę z opcją zdjęć wyłączoną i włączoną.
-10. Zmień notatkę offline, przywróć sieć i sprawdź automatyczny zapis oraz
+10. Oznacz moduł jako dostępny offline, odłącz sieć i sprawdź nawigację oraz
+    odczyt jego tematów. Powtórz próbę z opcją zdjęć wyłączoną i włączoną.
+11. Zmień notatkę offline, przywróć sieć i sprawdź automatyczny zapis oraz
     zachowanie szkicu w przypadku konfliktu z wersją serwerową. Wywołaj konflikt
     zmianą tej samej notatki w drugiej karcie i sprawdź obie decyzje w dialogu.
-11. Wdróż kolejną wersję i sprawdź, że aplikacja proponuje aktualizację zamiast
+12. Wdróż kolejną wersję i sprawdź, że aplikacja proponuje aktualizację zamiast
     przeładować się automatycznie.
 
 ## Rollback

@@ -42,7 +42,7 @@ Uzupełnij w `.env.local`:
 | `VITE_SUPABASE_URL`               | tak           | URL projektu Supabase                   |
 | `VITE_SUPABASE_PUBLISHABLE_KEY`   | tak           | publiczny klucz klienta Supabase        |
 | `VITE_R2_IMAGES_API_URL`          | tak dla zdjęć | URL Workera Cloudflare                  |
-| `VITE_QUESTION_GENERATOR_API_URL` | tak dla AI    | URL Workera generatora pytań            |
+| `VITE_QUESTION_GENERATOR_API_URL` | tak dla AI    | URL Workera pytań i streszczeń          |
 | `VITE_TURNSTILE_SITE_KEY`         | tak           | publiczny site key Cloudflare Turnstile |
 | `VITE_SENTRY_DSN`                 | nie           | publiczny identyfikator projektu Sentry |
 | `VITE_SENTRY_RELEASE`             | nie           | identyfikator wydania widoczny w Sentry |

@@ -3,11 +3,22 @@ import { useModuleContext } from "../components/module-context";
 import { useState } from "react";
 import { ModuleImportDialog } from "@/features/modules/import/module-import-dialog";
 import { toast } from "@/components/ui/toast";
+import { AiSummaryDialog } from "@/features/summaries/components/ai-summary-dialog";
 
 export function ChaptersPage() {
   const [importOpen, setImportOpen] = useState(false);
-  const { chapters, learningSummary, moduleName, openChapter, importDocx } =
-    useModuleContext();
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const {
+    chapters,
+    learningSummary,
+    loadChapterTopics,
+    moduleId,
+    moduleName,
+    openChapter,
+    importDocx,
+    refreshNotes,
+    summaryGenerationService,
+  } = useModuleContext();
 
   return (
     <>
@@ -17,7 +28,23 @@ export function ChaptersPage() {
         summary={learningSummary}
         onOpenChapter={openChapter}
         onImport={() => setImportOpen(true)}
+        onSummarize={
+          summaryGenerationService ? () => setSummaryOpen(true) : undefined
+        }
       />
+      {summaryOpen && summaryGenerationService && (
+        <AiSummaryDialog
+          moduleId={moduleId}
+          chapters={chapters}
+          service={summaryGenerationService}
+          loadTopics={loadChapterTopics}
+          onClose={() => setSummaryOpen(false)}
+          onSaved={async (note) => {
+            await refreshNotes();
+            await openChapter(note.chapterId, note.topicId);
+          }}
+        />
+      )}
       {importOpen && (
         <ModuleImportDialog
           existingModuleNames={[]}

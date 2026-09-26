@@ -1,8 +1,9 @@
-# Generator pytań AI
+# Generator pytań i streszczeń AI
 
 Worker uwierzytelnia użytkownika tokenem Supabase, pobiera wyłącznie jego
-wybrane tematy przez RLS, generuje propozycje w OpenAI i zapisuje cache zależny
-od treści notatki.
+wybrane tematy przez RLS, generuje propozycje pytań lub wspólne streszczenie
+w OpenAI i zapisuje cache zależny od treści notatki. Streszczenie można zapisać
+jako nowy temat w rozdziale `Streszczenia AI`.
 
 Wymagane sekrety:
 
