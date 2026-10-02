@@ -66,6 +66,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
   async list(filters: Parameters<QuestionsRepository["list"]>[0] = {}) {
     const offset = filters.offset ?? 0;
     const limit = filters.limit ?? 20;
+    const sort = filters.sort ?? "newest";
     let query = this.client
       .from("questions")
       .select(
@@ -74,9 +75,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
       )
       .eq("user_id", this.userId)
       .eq("module_id", this.moduleId)
-      .is("trash_id", null)
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+      .is("trash_id", null);
     if (filters.topicId) query = query.eq("topic_id", filters.topicId);
     else if (filters.chapterId)
       query = query.eq("chapter_id", filters.chapterId);
@@ -85,6 +84,19 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
         "content",
         `%${filters.query.trim().replaceAll("%", "\\%").replaceAll("_", "\\_")}%`,
       );
+    if (sort === "oldest") {
+      query = query
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true });
+    } else if (sort === "content_asc" || sort === "content_desc") {
+      const ascending = sort === "content_asc";
+      query = query.order("content", { ascending }).order("id", { ascending });
+    } else {
+      query = query
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false });
+    }
+    query = query.range(offset, offset + limit - 1);
     const { data, error, count } = await query;
     throwIfPostgrestError(error);
     return {

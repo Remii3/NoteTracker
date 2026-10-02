@@ -1,5 +1,6 @@
 import {
   BookOpenCheck,
+  ArrowUpDown,
   FolderInput,
   History,
   Layers3,
@@ -34,8 +35,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { QuestionDialog } from "./question-dialog";
-import type { QuestionsRepository } from "../data/questions-repository";
+import type {
+  QuestionSort,
+  QuestionsRepository,
+} from "../data/questions-repository";
 import { toast } from "@/components/ui/toast";
 import { AppHeaderActions } from "@/layout/app-header-actions";
 import { ModuleImportDialog } from "@/features/modules/import/module-import-dialog";
@@ -45,6 +56,12 @@ import { BulkAssignQuestionsDialog } from "./bulk-assign-questions-dialog";
 
 const PAGE_SIZE = 20;
 type FilterOption = { value: string; label: string };
+const SORT_LABELS: Record<QuestionSort, string> = {
+  newest: "Najnowsze",
+  oldest: "Najstarsze",
+  content_asc: "Pytanie A–Z",
+  content_desc: "Pytanie Z–A",
+};
 
 type Props = {
   moduleId?: string;
@@ -71,6 +88,7 @@ export function QuestionsPage({
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<QuestionSort>("newest");
   const [chapterFilter, setChapterFilter] = useState("");
   const [topicFilter, setTopicFilter] = useState("");
   const [filterTopics, setFilterTopics] = useState<Topic[]>([]);
@@ -92,6 +110,7 @@ export function QuestionsPage({
       const [result, nextAvailability] = await Promise.all([
         repository.list({
           query,
+          sort,
           chapterId: topicFilter ? undefined : chapterFilter || undefined,
           topicId: topicFilter || undefined,
           offset: (page - 1) * PAGE_SIZE,
@@ -108,7 +127,7 @@ export function QuestionsPage({
         description: "Nie udało się pobrać bazy pytań.",
       });
     }
-  }, [chapterFilter, page, query, repository, topicFilter]);
+  }, [chapterFilter, page, query, repository, sort, topicFilter]);
   useEffect(() => {
     const timeout = window.setTimeout(() => void load(), 200);
     return () => window.clearTimeout(timeout);
@@ -247,7 +266,7 @@ export function QuestionsPage({
                 odpowiedź.
               </p>
             )}
-          <div className="mt-8 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,16rem)_minmax(0,16rem)]">
+          <div className="mt-8 grid gap-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_minmax(0,14rem)_minmax(0,12rem)]">
             <div className="relative">
               <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -336,6 +355,26 @@ export function QuestionsPage({
                 </ComboboxList>
               </ComboboxContent>
             </Combobox>
+            <Select
+              value={sort}
+              onValueChange={(value) => {
+                if (!value) return;
+                setSort(value as QuestionSort);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="w-full" aria-label="Sortowanie pytań">
+                <ArrowUpDown />
+                <SelectValue>{SORT_LABELS[sort]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent align="end">
+                {Object.entries(SORT_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="mt-6 flex min-h-9 flex-wrap items-center justify-between gap-3">
             <label className="flex cursor-pointer items-center gap-2 text-sm">

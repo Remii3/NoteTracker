@@ -19,6 +19,36 @@ vi.mock("@/layout/app-header-actions", () => ({
 
 afterEach(cleanup);
 
+it("requests the default sort order and exposes the sorting control", async () => {
+  const list = vi.fn().mockResolvedValue({ questions: [], total: 0 });
+  const repository = {
+    list,
+    getAvailability: vi.fn().mockResolvedValue({
+      flashcardsCount: 0,
+      testQuestionsCount: 0,
+    }),
+  } as unknown as QuestionsRepository;
+
+  render(
+    <QuestionsPage
+      chapters={[]}
+      repository={repository}
+      loadTopics={vi.fn()}
+      onOpenSession={vi.fn()}
+      onOpenHistory={vi.fn()}
+    />,
+  );
+
+  await waitFor(() =>
+    expect(list).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: "newest", offset: 0 }),
+    ),
+  );
+  expect(
+    screen.getByRole("combobox", { name: "Sortowanie pytań" }).textContent,
+  ).toContain("Najnowsze");
+});
+
 it("lets the user select questions and open bulk assignment", async () => {
   const repository = {
     list: vi.fn().mockResolvedValue({

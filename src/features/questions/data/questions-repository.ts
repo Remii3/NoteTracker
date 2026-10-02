@@ -9,6 +9,8 @@ import type {
 } from "../model/types";
 import type { QuestionModuleImportDraft } from "@/features/modules/import/import-model";
 
+export type QuestionSort = "newest" | "oldest" | "content_asc" | "content_desc";
+
 export interface QuestionsRepository {
   getAvailability(filters?: {
     chapterId?: string;
@@ -22,6 +24,7 @@ export interface QuestionsRepository {
     topicId?: string;
     chapterId?: string;
     query?: string;
+    sort?: QuestionSort;
     offset?: number;
     limit?: number;
   }): Promise<{ questions: Question[]; total: number }>;

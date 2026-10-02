@@ -2,7 +2,48 @@ import { createClient } from "@supabase/supabase-js";
 import { expect, it, vi } from "vitest";
 
 import type { Database } from "@/lib/supabase/database.types";
+import type { QuestionSort } from "./questions-repository";
 import { SupabaseQuestionsRepository } from "./supabase-questions-repository";
+
+it.each([
+  ["newest", "created_at.desc,id.desc"],
+  ["oldest", "created_at.asc,id.asc"],
+  ["content_asc", "content.asc,id.asc"],
+  ["content_desc", "content.desc,id.desc"],
+] satisfies Array<[QuestionSort, string]>)(
+  "sorts the complete question query using %s",
+  async (sort, expectedOrder) => {
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Range": "*/0",
+        },
+      }),
+    );
+    const client = createClient<Database>(
+      "https://example.supabase.co",
+      "test-key",
+      {
+        global: { fetch },
+        auth: { persistSession: false, autoRefreshToken: false },
+      },
+    );
+    const repository = new SupabaseQuestionsRepository(
+      client,
+      "user",
+      "module",
+    );
+
+    await repository.list({ sort, offset: 20, limit: 20 });
+
+    const requestUrl = new URL(String(fetch.mock.calls[0][0]));
+    expect(requestUrl.searchParams.get("order")).toBe(expectedOrder);
+    expect(requestUrl.searchParams.get("offset")).toBe("20");
+    expect(requestUrl.searchParams.get("limit")).toBe("20");
+  },
+);
 
 it("imports questions into the current module in one RPC", async () => {
   const fetch = vi.fn().mockResolvedValue(
