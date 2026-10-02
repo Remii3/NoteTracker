@@ -568,6 +568,15 @@ export type Database = {
     };
     Views: Record<never, never>;
     Functions: {
+      bulk_assign_questions: {
+        Args: {
+          target_module_id: string;
+          question_ids: string[];
+          selected_chapter_id: string;
+          selected_topic_id?: string | null;
+        };
+        Returns: number;
+      };
       approve_ai_generated_questions: {
         Args: {
           target_module_id: string;

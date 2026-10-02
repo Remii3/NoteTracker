@@ -94,3 +94,38 @@ it("checks duplicate status in the current module", async () => {
     options: [{ content: "Answer", isCorrect: true }],
   });
 });
+
+it("assigns selected questions in one database operation", async () => {
+  const fetch = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify(2), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+  const client = createClient<Database>(
+    "https://example.supabase.co",
+    "test-key",
+    {
+      global: { fetch },
+      auth: { persistSession: false, autoRefreshToken: false },
+    },
+  );
+  const repository = new SupabaseQuestionsRepository(client, "user", "module");
+
+  await expect(
+    repository.bulkAssign({
+      questionIds: ["question-1", "question-2"],
+      chapterId: "chapter",
+      topicId: "topic",
+    }),
+  ).resolves.toBe(2);
+
+  const request = fetch.mock.calls[0];
+  expect(String(request[0])).toContain("/rpc/bulk_assign_questions");
+  expect(JSON.parse(request[1].body)).toEqual({
+    target_module_id: "module",
+    question_ids: ["question-1", "question-2"],
+    selected_chapter_id: "chapter",
+    selected_topic_id: "topic",
+  });
+});

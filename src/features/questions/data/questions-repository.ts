@@ -39,6 +39,11 @@ export interface QuestionsRepository {
     options: QuestionOption[];
   }): Promise<{ kind: "exact" | "same_content"; questionId: string } | null>;
   remove(id: string): Promise<void>;
+  bulkAssign(input: {
+    questionIds: string[];
+    chapterId: string;
+    topicId: string | null;
+  }): Promise<number>;
   importQuestions(draft: QuestionModuleImportDraft): Promise<number>;
   approveGeneratedQuestions(
     questions: Array<{

@@ -1,5 +1,6 @@
 import {
   BookOpenCheck,
+  FolderInput,
   History,
   Layers3,
   FileUp,
@@ -31,6 +32,7 @@ import type { Question, StudyMode, StudyScope } from "../model/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { QuestionDialog } from "./question-dialog";
 import type { QuestionsRepository } from "../data/questions-repository";
@@ -39,6 +41,7 @@ import { AppHeaderActions } from "@/layout/app-header-actions";
 import { ModuleImportDialog } from "@/features/modules/import/module-import-dialog";
 import type { QuestionGenerationService } from "../data/question-generation-service";
 import { AiQuestionGenerationDialog } from "./ai-question-generation-dialog";
+import { BulkAssignQuestionsDialog } from "./bulk-assign-questions-dialog";
 
 const PAGE_SIZE = 20;
 type FilterOption = { value: string; label: string };
@@ -78,6 +81,8 @@ export function QuestionsPage({
   const [studyMode, setStudyMode] = useState<StudyMode | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [generationOpen, setGenerationOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
   const [availability, setAvailability] = useState<{
     flashcardsCount: number;
     testQuestionsCount: number;
@@ -109,6 +114,10 @@ export function QuestionsPage({
     return () => window.clearTimeout(timeout);
   }, [load]);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageQuestionIds = questions.map((question) => question.id);
+  const allPageQuestionsSelected =
+    pageQuestionIds.length > 0 &&
+    pageQuestionIds.every((id) => selectedIds.has(id));
   const chapterOptions: FilterOption[] = chapters.map((chapter) => ({
     value: chapter.id,
     label: chapter.title,
@@ -328,14 +337,69 @@ export function QuestionsPage({
               </ComboboxContent>
             </Combobox>
           </div>
+          <div className="mt-6 flex min-h-9 flex-wrap items-center justify-between gap-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <Checkbox
+                checked={allPageQuestionsSelected}
+                disabled={!questions.length}
+                aria-label="Zaznacz wszystkie pytania na tej stronie"
+                onCheckedChange={(checked) =>
+                  setSelectedIds((current) => {
+                    const next = new Set(current);
+                    for (const id of pageQuestionIds) {
+                      if (checked) next.add(id);
+                      else next.delete(id);
+                    }
+                    return next;
+                  })
+                }
+              />
+              Zaznacz stronę
+            </label>
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">
+                  Zaznaczono: {selectedIds.size}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setBulkAssignOpen(true)}
+                >
+                  <FolderInput />
+                  Przypisz
+                </Button>
+              </div>
+            )}
+          </div>
           <div className="mt-6 space-y-3">
             {questions.map((question) => {
               const chapter = chapters.find(
                 (item) => item.id === question.chapterId,
               );
               return (
-                <article key={question.id} className="rounded-xl border p-5">
+                <article
+                  key={question.id}
+                  className={`rounded-xl border p-5 ${
+                    selectedIds.has(question.id)
+                      ? "border-primary/50 bg-primary/5"
+                      : ""
+                  }`}
+                >
                   <div className="flex gap-4">
+                    <Checkbox
+                      className="mt-1"
+                      checked={selectedIds.has(question.id)}
+                      aria-label={`Zaznacz pytanie: ${question.content}`}
+                      onCheckedChange={(checked) =>
+                        setSelectedIds((current) => {
+                          const next = new Set(current);
+                          if (checked) next.add(question.id);
+                          else next.delete(question.id);
+                          return next;
+                        })
+                      }
+                    />
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold">{question.content}</p>
                       <ol className="mt-3 space-y-1 text-sm">
@@ -385,7 +449,14 @@ export function QuestionsPage({
                         onClick={() =>
                           void repository
                             .remove(question.id)
-                            .then(load)
+                            .then(() => {
+                              setSelectedIds((current) => {
+                                const next = new Set(current);
+                                next.delete(question.id);
+                                return next;
+                              });
+                              return load();
+                            })
                             .catch(() =>
                               toast.add({
                                 data: { type: "error" },
@@ -436,6 +507,19 @@ export function QuestionsPage({
               loadTopics={loadTopics}
               onClose={() => setEditing(undefined)}
               onSaved={load}
+            />
+          )}
+          {bulkAssignOpen && (
+            <BulkAssignQuestionsDialog
+              questionIds={[...selectedIds]}
+              chapters={chapters}
+              repository={repository}
+              loadTopics={loadTopics}
+              onClose={() => setBulkAssignOpen(false)}
+              onAssigned={async () => {
+                setSelectedIds(new Set());
+                await load();
+              }}
             />
           )}
           {studyMode && (

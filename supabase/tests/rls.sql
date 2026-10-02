@@ -1482,6 +1482,61 @@ begin
  );
 end;
 $$;
+do $$
+declare
+ second_question_id uuid;
+ rejected boolean := false;
+begin
+ second_question_id := public.save_question(
+  '10000001-0000-4000-8000-000000000000', null,
+  'Bulk assignment question', '', null, null,
+  '[{"content":"Answer","isCorrect":true}]'::jsonb
+ );
+ perform pg_temp.assert_true(
+  public.bulk_assign_questions(
+   '10000001-0000-4000-8000-000000000000',
+   array['10000004-0000-4000-8000-000000000000', second_question_id],
+   '10000002-0000-4000-8000-000000000000', null
+  ) = 2,
+  'Question bulk assignment: assigns multiple questions to a chapter'
+ );
+ perform pg_temp.assert_true(
+  (select count(*) = 2 from public.questions
+   where id = any(array['10000004-0000-4000-8000-000000000000', second_question_id])
+    and chapter_id = '10000002-0000-4000-8000-000000000000'
+    and topic_id is null),
+  'Question bulk assignment: chapter assignment clears the topic'
+ );
+ perform public.bulk_assign_questions(
+  '10000001-0000-4000-8000-000000000000',
+  array['10000004-0000-4000-8000-000000000000', second_question_id],
+  '10000002-0000-4000-8000-000000000000',
+  '10000003-0000-4000-8000-000000000000'
+ );
+ perform pg_temp.assert_true(
+  (select count(*) = 2 from public.questions
+   where id = any(array['10000004-0000-4000-8000-000000000000', second_question_id])
+    and chapter_id = '10000002-0000-4000-8000-000000000000'
+    and topic_id = '10000003-0000-4000-8000-000000000000'),
+  'Question bulk assignment: topic assignment derives the correct chapter'
+ );
+ begin
+  perform public.bulk_assign_questions(
+   '10000001-0000-4000-8000-000000000000',
+   array[second_question_id, '20000004-0000-4000-8000-000000000000'],
+   '10000002-0000-4000-8000-000000000000', null
+  );
+ exception when others then rejected := true;
+ end;
+ perform pg_temp.assert_true(rejected,
+  'Question bulk assignment: rejects a list containing another user question');
+ perform pg_temp.assert_true(
+  (select topic_id = '10000003-0000-4000-8000-000000000000'
+   from public.questions where id = second_question_id),
+  'Question bulk assignment: rejected updates are atomic'
+ );
+end;
+$$;
 -- Ordering is atomic: an inaccessible id must leave all positions unchanged.
 set local request.jwt.claim.sub = '10000000-0000-4000-8000-000000000000';
 do $$ declare before_position integer; original jsonb; affected integer; begin

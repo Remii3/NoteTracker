@@ -142,6 +142,19 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
     throwIfPostgrestError(error);
   }
 
+  async bulkAssign(input: Parameters<QuestionsRepository["bulkAssign"]>[0]) {
+    const { data, error } = await this.client.rpc("bulk_assign_questions", {
+      target_module_id: this.moduleId,
+      question_ids: input.questionIds,
+      selected_chapter_id: input.chapterId,
+      selected_topic_id: input.topicId,
+    });
+    throwIfPostgrestError(error);
+    if (data === null) throw new Error("Nie udało się przypisać pytań.");
+    clearMemoryCacheByPrefix(`statistics:${this.userId}:`);
+    return data;
+  }
+
   async importQuestions(
     draft: Parameters<QuestionsRepository["importQuestions"]>[0],
   ) {
