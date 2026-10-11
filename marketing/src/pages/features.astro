@@ -1,0 +1,31 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { appLinks } from "../config";
+
+const groups = [
+  { number: "01", label: "Zbieraj", title: "Materiały mają swoje miejsce", text: "Buduj bazę wiedzy w czytelnej strukturze: moduły, rozdziały, tematy i notatki. Dzięki importowi nie musisz zaczynać od pustej kartki.", bullets: ["Edytor rozbudowanych notatek", "Import materiałów z DOCX, Anki i Quizlet", "Zdjęcia przypisane do tematów", "Dostęp do zapisanych treści offline"] },
+  { number: "02", label: "Planuj", title: "Od terminu do konkretnego dnia", text: "Plan egzaminu rozkłada materiał w czasie i pomaga reagować, kiedy rzeczywistość nie idzie zgodnie z założeniami.", bullets: ["Cele i daty egzaminów", "Dostępność w poszczególne dni", "Automatyczny podział obciążenia", "Informacja, czy utrzymujesz dobre tempo"] },
+  { number: "03", label: "Zapamiętuj", title: "Aktywna nauka zamiast czytania w kółko", text: "Twórz własne pytania albo generuj propozycje na podstawie notatek. Powtórki dopasowują się do Twojej pamięci.", bullets: ["Pytania i fiszki do tematów", "Generowanie pytań oraz podsumowań z AI", "Planowanie powtórek przez FSRS", "Historia sesji i ocena odpowiedzi"] },
+  { number: "04", label: "Obserwuj", title: "Postęp, który coś wyjaśnia", text: "Zamiast pustych liczb widzisz, co jest opanowane, gdzie rosną zaległości i jaki krok ma teraz największy sens.", bullets: ["Pulpit z planem na dziś", "Statystyki nauki i regularności", "Postęp według modułu i tematu", "Kosz z możliwością przywrócenia treści"] },
+];
+---
+
+<BaseLayout title="Możliwości" description="Poznaj Sylabio: notatki, planowanie egzaminów, pytania z AI, inteligentne powtórki i statystyki nauki w jednym miejscu.">
+  <section class="page-hero"><div class="shell"><p class="section-kicker">Możliwości Sylabio</p><h1 class="section-title">Cały proces nauki, połączony w jedną drogę.</h1><p class="section-lead">Od pierwszego materiału do ostatniej powtórki — bez przenoszenia wiedzy między kilkoma aplikacjami.</p></div></section>
+  <section class="feature-groups">
+    <div class="shell">
+      {groups.map((group, index) => (
+        <article class:list={["feature-row", { reverse: index % 2 === 1 }]}>
+          <div class="feature-copy"><span class="number">{group.number}</span><p class="label">{group.label}</p><h2>{group.title}</h2><p>{group.text}</p></div>
+          <div class="feature-panel"><ul>{group.bullets.map((bullet) => <li><span>✓</span>{bullet}</li>)}</ul></div>
+        </article>
+      ))}
+    </div>
+  </section>
+  <section class="mini-cta"><div class="shell"><div><p>Gotowy na spokojniejszy plan?</p><h2>Zacznij od jednego modułu.</h2></div><a class="button" href={appLinks.signUp}>Utwórz darmowe konto →</a></div></section>
+</BaseLayout>
+
+<style>
+  .page-hero { background: radial-gradient(circle at 50% 0, rgba(142,215,204,.25), transparent 55%); }.feature-groups { padding-bottom: 7rem; }.feature-row { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(3rem, 9vw, 8rem); align-items: center; padding: 5rem 0; border-top: 1px solid var(--line); }.feature-row.reverse .feature-copy { order: 2; }.feature-row.reverse .feature-panel { order: 1; }.number { color: #a8bfbb; font-family: var(--font-display); font-size: .8rem; font-weight: 800; }.label { margin: .35rem 0; color: var(--brand); font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }.feature-copy h2 { margin: .5rem 0 1rem; font-size: clamp(2rem, 4vw, 3.2rem); }.feature-copy > p:last-child { color: var(--ink-soft); }.feature-panel { position: relative; padding: 2.5rem; border: 1px solid var(--line); border-radius: 1.2rem; background: white; box-shadow: 0 18px 50px rgba(18,49,47,.08); }.feature-panel::after { position: absolute; inset: .7rem -.7rem -.7rem .7rem; z-index: -1; border: 1px solid #bfe0da; border-radius: inherit; content: ""; }.feature-panel ul { display: grid; gap: 1.25rem; margin: 0; padding: 0; list-style: none; }.feature-panel li { display: flex; align-items: center; gap: .8rem; color: #385854; font-weight: 600; }.feature-panel li span { display: grid; width: 1.8rem; height: 1.8rem; place-items: center; border-radius: 50%; color: var(--brand); background: var(--mint-soft); }.mini-cta { padding: 4.5rem 0; color: white; background: #123b38; }.mini-cta .shell { display: flex; align-items: center; justify-content: space-between; gap: 2rem; }.mini-cta p { margin: 0; color: #a9c8c4; }.mini-cta h2 { margin: .25rem 0 0; font-size: 2.2rem; }
+  @media (max-width: 720px) { .feature-row { grid-template-columns: 1fr; gap: 2rem; padding: 3.5rem 0; }.feature-row.reverse .feature-copy, .feature-row.reverse .feature-panel { order: initial; }.feature-panel { padding: 1.5rem; }.mini-cta .shell { align-items: stretch; flex-direction: column; }.mini-cta .button { width: 100%; } }
+</style>

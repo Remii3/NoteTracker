@@ -1,0 +1,46 @@
+---
+import Brand from "./Brand.astro";
+import { appLinks, siteConfig } from "../config";
+import { getMessages } from "../i18n/config";
+
+const t = getMessages();
+const year = new Date().getFullYear();
+---
+
+<footer class="footer">
+  <div class="shell footer-grid">
+    <div class="footer-brand">
+      <Brand inverted />
+      <p>{t.footer.tagline}</p>
+    </div>
+    <div>
+      <p class="footer-title">{t.footer.product}</p>
+      <a href="/features">{t.navigation.features}</a>
+      <a href="/pricing">{t.navigation.pricing}</a>
+      <a href={appLinks.signIn}>{t.navigation.signIn}</a>
+    </div>
+    <div>
+      <p class="footer-title">{t.footer.information}</p>
+      <a href="/contact">{t.navigation.contact}</a>
+      <a href="/privacy">{t.footer.privacy}</a>
+      <a href="/terms">{t.footer.terms}</a>
+    </div>
+  </div>
+  <div class="shell footer-bottom">
+    <p>© {year} {siteConfig.name}. {t.footer.rights}</p>
+    <p>Stworzone z myślą o spokojniejszej nauce.</p>
+  </div>
+</footer>
+
+<style>
+  .footer { padding: 4.5rem 0 1.5rem; color: #cce2df; background: #0e2928; }
+  .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 3rem; }
+  .footer-brand p { max-width: 24rem; margin: 1.2rem 0 0; color: #9fc0bc; }
+  .footer-grid > div:not(.footer-brand) { display: grid; align-content: start; gap: .75rem; }
+  .footer a { width: fit-content; color: #b9d0cd; text-decoration: none; }
+  .footer a:hover { color: white; }
+  .footer-title { margin: .35rem 0 .4rem; color: white; font-size: .82rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+  .footer-bottom { display: flex; justify-content: space-between; gap: 2rem; margin-top: 4rem; padding-top: 1.35rem; border-top: 1px solid #294643; color: #82a5a1; font-size: .8rem; }
+  .footer-bottom p { margin: 0; }
+  @media (max-width: 700px) { .footer-grid { grid-template-columns: 1fr 1fr; } .footer-brand { grid-column: 1 / -1; } .footer-bottom { align-items: flex-start; flex-direction: column; gap: .5rem; } }
+</style>

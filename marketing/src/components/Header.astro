@@ -1,0 +1,49 @@
+---
+import Brand from "./Brand.astro";
+import { appLinks } from "../config";
+import { getMessages } from "../i18n/config";
+
+const t = getMessages();
+---
+
+<header class="site-header">
+  <div class="shell header-inner">
+    <Brand />
+    <nav class="desktop-nav" aria-label="Główna nawigacja">
+      <a href="/features">{t.navigation.features}</a>
+      <a href="/pricing">{t.navigation.pricing}</a>
+      <a href="/contact">{t.navigation.contact}</a>
+    </nav>
+    <div class="desktop-actions">
+      <a class="text-link" href={appLinks.signIn}>{t.navigation.signIn}</a>
+      <a class="button button-small" href={appLinks.signUp}>{t.navigation.signUp}</a>
+    </div>
+    <details class="mobile-menu">
+      <summary aria-label={t.navigation.menu}>
+        <span></span><span></span><span></span>
+      </summary>
+      <nav aria-label="Nawigacja mobilna">
+        <a href="/features">{t.navigation.features}</a>
+        <a href="/pricing">{t.navigation.pricing}</a>
+        <a href="/contact">{t.navigation.contact}</a>
+        <a href={appLinks.signIn}>{t.navigation.signIn}</a>
+        <a class="button button-small" href={appLinks.signUp}>{t.navigation.signUp}</a>
+      </nav>
+    </details>
+  </div>
+</header>
+
+<style>
+  .site-header { position: sticky; top: 0; z-index: 50; border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent); background: color-mix(in srgb, var(--paper) 90%, transparent); backdrop-filter: blur(18px); }
+  .header-inner { display: flex; min-height: 4.6rem; align-items: center; justify-content: space-between; gap: 2rem; }
+  .desktop-nav, .desktop-actions { display: flex; align-items: center; gap: 1.75rem; }
+  .desktop-nav a, .text-link { color: var(--ink-soft); font-size: .93rem; font-weight: 590; text-decoration: none; }
+  .desktop-nav a:hover, .text-link:hover { color: var(--ink); }
+  .mobile-menu { display: none; position: relative; }
+  .mobile-menu summary { display: grid; width: 2.75rem; height: 2.75rem; place-content: center; gap: 4px; border: 1px solid var(--line); border-radius: .8rem; cursor: pointer; list-style: none; }
+  .mobile-menu summary::-webkit-details-marker { display: none; }
+  .mobile-menu summary span { width: 18px; height: 2px; border-radius: 2px; background: var(--ink); }
+  .mobile-menu nav { position: absolute; top: 3.25rem; right: 0; display: grid; min-width: 14rem; gap: .25rem; padding: .65rem; border: 1px solid var(--line); border-radius: 1rem; background: white; box-shadow: var(--shadow-lg); }
+  .mobile-menu nav a:not(.button) { padding: .7rem .75rem; color: var(--ink); text-decoration: none; }
+  @media (max-width: 760px) { .desktop-nav, .desktop-actions { display: none; } .mobile-menu { display: block; } }
+</style>

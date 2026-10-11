@@ -1,0 +1,62 @@
+<div class="preview-wrap" aria-label="Przykładowy dzienny plan nauki w Sylabio">
+  <div class="preview-glow"></div>
+  <div class="app-window">
+    <div class="app-rail">
+      <span class="rail-logo">S</span>
+      <div class="rail-items"><span class="active"></span><span></span><span></span><span></span></div>
+      <span class="avatar">AK</span>
+    </div>
+    <div class="app-main">
+      <div class="app-top"><span>Dzisiaj</span><div><i></i><i></i></div></div>
+      <div class="app-content">
+        <div class="welcome">
+          <div><small>NIEDZIELA, 11 PAŹDZIERNIKA</small><h2>Dzień dobry, Ania</h2><p>Masz dziś 24 minuty zaplanowanej nauki.</p></div>
+          <div class="streak"><strong>8</strong><span>dni z rzędu</span></div>
+        </div>
+        <div class="progress-card">
+          <div class="progress-head"><div><span class="eyebrow">CEL: BIOLOGIA</span><strong>Egzamin za 18 dni</strong></div><span class="on-track">Dobre tempo</span></div>
+          <div class="progress-track"><span></span></div>
+          <div class="progress-labels"><span>Materiał opanowany</span><strong>68%</strong></div>
+        </div>
+        <div class="section-head"><div><span>Plan na dziś</span><small>3 zadania</small></div><span>24 min</span></div>
+        <div class="tasks">
+          <div class="task"><span class="task-icon repeat">↻</span><div><strong>Powtórka: Genetyka</strong><small>12 pytań · około 8 min</small></div><button>Rozpocznij</button></div>
+          <div class="task"><span class="task-icon learn">⌁</span><div><strong>Nowy materiał: Ekologia</strong><small>3 zagadnienia · około 10 min</small></div><button class="secondary">Otwórz</button></div>
+          <div class="task muted-task"><span class="task-icon check">✓</span><div><strong>Budowa komórki</strong><small>Ukończono · 6 min</small></div><span class="done">Gotowe</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .preview-wrap { position: relative; width: min(100%, 66rem); margin-inline: auto; }
+  .preview-glow { position: absolute; inset: 6% 10% -5%; z-index: -1; border-radius: 50%; background: rgba(48, 149, 137, .27); filter: blur(70px); }
+  .app-window { display: grid; grid-template-columns: 4.4rem 1fr; aspect-ratio: 16 / 9.15; overflow: hidden; border: 1px solid rgba(20, 64, 60, .16); border-radius: 1.25rem; background: #f9fbfa; box-shadow: 0 38px 80px rgba(20, 55, 51, .18), 0 8px 24px rgba(20, 55, 51, .08); }
+  .app-rail { display: flex; align-items: center; flex-direction: column; padding: 1rem .7rem; border-right: 1px solid #e2ebe9; background: white; }
+  .rail-logo { display: grid; width: 2.4rem; height: 2.4rem; place-items: center; border-radius: .7rem; color: white; background: var(--brand); font-size: .9rem; font-weight: 800; }
+  .rail-items { display: grid; gap: .9rem; width: 100%; margin-top: 3rem; }
+  .rail-items span { display: block; width: 1.4rem; height: 1.4rem; margin: auto; border-radius: .4rem; background: #d9e3e1; }
+  .rail-items span.active { position: relative; background: #a8d9d2; }
+  .rail-items span.active::before { position: absolute; left: -1rem; width: 3px; height: 100%; border-radius: 0 3px 3px 0; background: var(--brand); content: ""; }
+  .avatar { display: grid; width: 2.1rem; height: 2.1rem; place-items: center; margin-top: auto; border-radius: 50%; color: #31504d; background: #e2ecea; font-size: .56rem; font-weight: 700; }
+  .app-main { min-width: 0; }
+  .app-top { display: flex; height: 3.75rem; align-items: center; justify-content: space-between; padding: 0 1.5rem; border-bottom: 1px solid #e2ebe9; color: #173b38; background: rgba(255,255,255,.8); font-size: .82rem; font-weight: 700; }
+  .app-top div { display: flex; gap: .55rem; }.app-top i { width: 1.7rem; height: 1.7rem; border-radius: .5rem; background: #edf2f1; }
+  .app-content { padding: 1.8rem 2rem; }
+  .welcome { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; }
+  .welcome small { color: #78918e; font-size: .52rem; font-weight: 800; letter-spacing: .11em; }
+  .welcome h2 { margin: .25rem 0 .25rem; color: #183c39; font-size: 1.45rem; letter-spacing: -.04em; }
+  .welcome p { margin: 0; color: #718582; font-size: .7rem; }
+  .streak { display: flex; align-items: baseline; gap: .35rem; padding: .65rem .85rem; border: 1px solid #ecdcbf; border-radius: .75rem; color: #7d5c26; background: #fffaf0; }
+  .streak strong { font-size: 1.15rem; }.streak span { font-size: .58rem; }
+  .progress-card { margin-top: 1.35rem; padding: 1rem 1.15rem; border: 1px solid #dce8e6; border-radius: .85rem; background: white; }
+  .progress-head, .progress-labels { display: flex; align-items: center; justify-content: space-between; }
+  .progress-head div { display: grid; gap: .16rem; }.progress-head strong { color: #24413f; font-size: .7rem; }.eyebrow { color: #74918d; font-size: .46rem; font-weight: 800; letter-spacing: .09em; }
+  .on-track { padding: .25rem .48rem; border-radius: 2rem; color: #246c61; background: #e1f3ef; font-size: .48rem; font-weight: 700; }
+  .progress-track { height: .4rem; margin-top: .75rem; overflow: hidden; border-radius: 1rem; background: #e8efee; }.progress-track span { display: block; width: 68%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #4fafa2, #2c8176); }
+  .progress-labels { margin-top: .35rem; color: #718582; font-size: .48rem; }.progress-labels strong { color: #2c625c; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; margin: 1.2rem 0 .55rem; color: #36534f; font-size: .64rem; font-weight: 700; }.section-head div { display: flex; align-items: center; gap: .5rem; }.section-head small { padding: .16rem .38rem; border-radius: 2rem; color: #7a918e; background: #eaf0ef; font-size: .45rem; }.section-head > span { color: #718582; font-size: .52rem; }
+  .tasks { display: grid; gap: .48rem; }.task { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .75rem; padding: .62rem .7rem; border: 1px solid #e0e8e7; border-radius: .72rem; background: white; }.task-icon { display: grid; width: 1.9rem; height: 1.9rem; place-items: center; border-radius: .55rem; font-size: .8rem; font-weight: 700; }.repeat { color: #246b61; background: #dff1ed; }.learn { color: #70602e; background: #f6efcf; }.check { color: #66817d; background: #e9efee; }.task div { display: grid; gap: .15rem; }.task strong { color: #2c4744; font-size: .58rem; }.task small { color: #82938f; font-size: .48rem; }.task button { padding: .36rem .55rem; border: 0; border-radius: .45rem; color: white; background: #317f75; font: inherit; font-size: .48rem; font-weight: 700; }.task button.secondary { color: #35635d; background: #e5efed; }.muted-task { opacity: .7; }.done { color: #47726c; font-size: .48rem; font-weight: 700; }
+  @media (max-width: 720px) { .app-window { grid-template-columns: 2.8rem 1fr; aspect-ratio: 1.05 / 1; } .app-rail { padding-inline: .3rem; } .rail-logo { width: 1.8rem; height: 1.8rem; }.rail-items span { width: 1rem; height: 1rem; }.avatar { width: 1.6rem; height: 1.6rem; }.app-content { padding: 1rem; }.app-top { height: 3rem; padding-inline: 1rem; }.welcome h2 { font-size: 1rem; }.welcome p { font-size: .56rem; }.streak { display: none; }.progress-card { margin-top: .9rem; }.task { padding: .55rem; }.task-icon { width: 1.65rem; height: 1.65rem; }.task button { display: none; } }
+</style>

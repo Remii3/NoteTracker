@@ -1,0 +1,9 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Nie znaleziono strony" description="Ta strona nie istnieje." noindex>
+  <section class="not-found"><div class="shell"><span>404</span><h1>Ta notatka gdzieś się zapodziała.</h1><p>Adres mógł się zmienić albo strona już nie istnieje.</p><a class="button" href="/">Wróć na stronę główną</a></div></section>
+</BaseLayout>
+
+<style>.not-found { display: grid; min-height: 65vh; place-items: center; padding: 5rem 0; text-align: center; }.not-found span { color: var(--mint); font-family: var(--font-display); font-size: clamp(5rem, 16vw, 11rem); font-weight: 800; line-height: .8; }.not-found h1 { max-width: 680px; margin: 2rem auto 1rem; font-size: clamp(2.2rem, 5vw, 4rem); }.not-found p { margin-bottom: 2rem; color: var(--ink-soft); }</style>

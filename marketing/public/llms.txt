@@ -1,0 +1,17 @@
+# Sylabio
+
+Sylabio to polska aplikacja internetowa wspierająca przygotowanie do egzaminów. Łączy notatki, planowanie terminu, pytania, inteligentne powtórki i statystyki nauki.
+
+## Najważniejsze strony
+
+- [Strona główna](https://sylabio.com/) — opis produktu
+- [Możliwości](https://sylabio.com/features) — funkcje i proces nauki
+- [Cennik](https://sylabio.com/pricing) — aktualne zasady dostępu
+- [Polityka prywatności](https://sylabio.com/privacy)
+- [Regulamin](https://sylabio.com/terms)
+- [Kontakt](https://sylabio.com/contact)
+
+## Aplikacja
+
+- [Rejestracja](https://app.sylabio.com/register)
+- [Logowanie](https://app.sylabio.com/login)
