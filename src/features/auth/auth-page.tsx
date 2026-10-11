@@ -52,20 +52,24 @@ const formSchema = z
   );
 
 type AuthFormValues = z.infer<typeof formSchema>;
-type Mode = AuthFormValues["mode"];
+export type AuthMode = AuthFormValues["mode"];
 
-export function AuthPage() {
+type AuthPageProps = {
+  initialMode?: AuthMode;
+  onModeChange?: (mode: AuthMode) => void;
+};
+
+export function AuthPage({
+  initialMode = "sign-in",
+  onModeChange,
+}: AuthPageProps) {
   const { requestPasswordReset, signIn, signUp } = useAuth();
   const [message, setMessage] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const form = useForm<AuthFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      mode: "sign-in",
-      email: "",
-      password: "",
-    },
+    defaultValues: getDefaultValues(initialMode),
   });
 
   const mode = useWatch({
@@ -73,7 +77,7 @@ export function AuthPage() {
     name: "mode",
   });
 
-  function changeMode(nextMode: Mode) {
+  function changeMode(nextMode: AuthMode) {
     setMessage(null);
     setCaptchaToken(null);
     setCaptchaResetKey((key) => key + 1);
@@ -87,6 +91,7 @@ export function AuthPage() {
         password: "",
       });
 
+      onModeChange?.(nextMode);
       return;
     }
 
@@ -99,6 +104,7 @@ export function AuthPage() {
         passwordConfirmation: "",
       });
 
+      onModeChange?.(nextMode);
       return;
     }
 
@@ -106,6 +112,7 @@ export function AuthPage() {
       mode: "reset",
       email: form.getValues("email"),
     });
+    onModeChange?.(nextMode);
   }
 
   async function handleSubmit(data: AuthFormValues) {
@@ -159,7 +166,7 @@ export function AuthPage() {
             <BookOpen className="size-5" />
           </span>
           <div>
-            <p className="font-semibold leading-tight">NoteTracker</p>
+            <p className="font-semibold leading-tight">Sylabio</p>
             <p className="text-xs text-foreground/70">Twoja przestrzeń nauki</p>
           </div>
         </div>
@@ -354,7 +361,29 @@ export function AuthPage() {
             </p>
           )}
         </section>
+        <p className="mt-5 text-center text-sm text-muted-foreground">
+          <a
+            className="hover:text-foreground hover:underline"
+            href="https://sylabio.com"
+          >
+            ← Wróć do sylabio.com
+          </a>
+        </p>
       </div>
     </main>
   );
+}
+
+function getDefaultValues(mode: AuthMode): AuthFormValues {
+  if (mode === "sign-up") {
+    return {
+      mode,
+      email: "",
+      name: "",
+      password: "",
+      passwordConfirmation: "",
+    };
+  }
+  if (mode === "reset") return { mode, email: "" };
+  return { mode, email: "", password: "" };
 }

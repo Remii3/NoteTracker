@@ -25,7 +25,9 @@ it("does not synchronize content after TipTap has destroyed the editor", () => {
     isEmpty: false,
     getJSON,
     get commands(): never {
-      throw new TypeError("Cannot read properties of null (reading 'commands')");
+      throw new TypeError(
+        "Cannot read properties of null (reading 'commands')",
+      );
     },
   };
   useEditor.mockReturnValue(destroyedEditor);

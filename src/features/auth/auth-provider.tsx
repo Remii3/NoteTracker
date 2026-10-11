@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
         options: {
           data: { full_name: name.trim() },
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: new URL("/login", window.location.origin).href,
           captchaToken,
         },
       });
@@ -191,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
     } finally {
       setPendingPasswordRecovery(false);
-      window.history.replaceState(null, "", "/");
+      window.history.replaceState(null, "", "/login");
       setIsPasswordRecovery(false);
     }
   }, []);

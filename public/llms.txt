@@ -1,7 +1,8 @@
-# NoteTracker
+# Sylabio
 
-NoteTracker jest prywatną aplikacją do organizowania rozdziałów, tematów,
-notatek i postępów w nauce. Zawartość użytkowników wymaga uwierzytelnienia i nie
-jest publicznie dostępna.
+Sylabio jest prywatną aplikacją do organizowania materiałów, planowania nauki,
+tworzenia pytań i inteligentnych powtórek. Zawartość użytkowników wymaga
+uwierzytelnienia i nie jest publicznie dostępna.
 
-- [Aplikacja NoteTracker](https://note-tracker-orcin.vercel.app/)
+- [Strona Sylabio](https://sylabio.com/)
+- [Aplikacja Sylabio](https://app.sylabio.com/)

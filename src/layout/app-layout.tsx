@@ -85,11 +85,11 @@ function AppSidebarHeader({ onOpenHome }: { onOpenHome: () => void }) {
     <SidebarHeader className="h-14 shrink-0 flex-row items-center border-b px-2 py-0">
       <NavLink
         to={"/"}
-        className={`${buttonVariants({ variant: "ghost" })} "min-w-0 justify-start px-2 font-semibold focus-visible:ring-2 focus-visible:ring-ring/70"`}
+        className={`${buttonVariants({ variant: "ghost" })} min-w-0 justify-start px-2 font-semibold focus-visible:ring-2 focus-visible:ring-ring/70`}
         onClick={handleOpenHome}
       >
         <BookOpen className="text-primary" />
-        <span className="truncate">NoteTracker</span>
+        <span className="truncate">Sylabio</span>
       </NavLink>
     </SidebarHeader>
   );

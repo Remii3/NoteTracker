@@ -1,6 +1,6 @@
-# NoteTracker
+# Sylabio
 
-NoteTracker to aplikacja do tworzenia hierarchicznych notatek i nauki na ich
+Sylabio to aplikacja do tworzenia hierarchicznych notatek i nauki na ich
 podstawie. Użytkownik może organizować materiał w rozdziały i tematy, edytować
 treść w TipTap, dodawać zdjęcia oraz korzystać z banku pytań i sesji nauki.
 Statystyki modułowe i globalne pokazują aktywność, skuteczność, serie nauki,

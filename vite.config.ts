@@ -27,8 +27,8 @@ export default defineConfig(({ mode }) => {
         registerType: "prompt",
         injectRegister: false,
         manifest: {
-          name: "NoteTracker",
-          short_name: "NoteTracker",
+          name: "Sylabio",
+          short_name: "Sylabio",
           description: "Notatki, powtórki i plany nauki w jednym miejscu.",
           lang: "pl",
           start_url: "/",
@@ -36,7 +36,7 @@ export default defineConfig(({ mode }) => {
           display: "standalone",
           orientation: "any",
           background_color: "#ffffff",
-          theme_color: "#7e14ff",
+          theme_color: "#267e73",
           categories: ["education", "productivity"],
           icons: [
             {

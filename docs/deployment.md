@@ -7,6 +7,10 @@ frontendu wymaga aktualizacji obu stron.
 
 Skonfiguruj projekt jako Vite z katalogiem głównym repozytorium.
 
+Produkcyjna domena aplikacji to `app.sylabio.com`. Strona marketingowa działa
+jako osobny projekt Vercel z katalogu `marketing/` pod `sylabio.com`, a
+`www.sylabio.com` przekierowuje do domeny bez `www`.
+
 W ustawieniach środowiska dodaj:
 
 ```text
@@ -28,6 +32,29 @@ Komenda instalacji to `pnpm install --frozen-lockfile`, komenda buildu to
 Po zmianie zmiennych wykonaj nowy deploy — Vite wstawia wartości `VITE_*` w
 czasie budowania. `vercel.json` zapewnia fallback SPA i nagłówki
 bezpieczeństwa.
+
+## Supabase Auth — adresy produkcyjne
+
+W `Authentication > URL Configuration` ustaw:
+
+```text
+Site URL: https://app.sylabio.com
+
+Redirect URLs:
+https://app.sylabio.com/login
+https://app.sylabio.com/update-password
+http://localhost:5173/login
+http://localhost:5173/update-password
+```
+
+Jeżeli korzystasz z deploymentów Preview Vercela, dodaj osobny, możliwie
+wąski wildcard odpowiadający nazwie projektu i konta. Nie używaj ogólnego
+`https://**.vercel.app/**`.
+
+Szablon wiadomości potwierdzającej konto powinien korzystać z przekazanego
+adresu `RedirectTo`, aby rejestracja wracała na `/login`. Link odzyskiwania
+hasła wraca na `/update-password`; po poprawnym ustawieniu nowego hasła
+użytkownik pozostaje zalogowany i trafia do aplikacji.
 
 Build generuje również `manifest.webmanifest` oraz `sw.js`. Vercel nie może
 długotrwale cache'ować tych dwóch plików; reguły w `vercel.json` wymuszają ich
@@ -78,8 +105,9 @@ pnpm --filter notetracker-question-generator-worker deploy
 - Worker generatora pytań przechodzi typecheck i dry run;
 - wymagane skrypty SQL zostały sprawdzone na projekcie testowym;
 - wykonano backup przed zmianą schematu;
-- `Authentication > URL Configuration` w Supabase zawiera produkcyjny origin
-  jako `Site URL` oraz `<origin>/update-password` na liście `Redirect URLs`;
+- `Authentication > URL Configuration` w Supabase zawiera
+  `https://app.sylabio.com` jako `Site URL` oraz dokładne adresy `/login` i
+  `/update-password` na liście `Redirect URLs`;
 - widget Cloudflare Turnstile zawiera produkcyjną domenę frontendu, a jego
   secret i provider są skonfigurowane w
   `Authentication > Bot and Abuse Protection` w Supabase;
@@ -93,25 +121,28 @@ pnpm --filter notetracker-question-generator-worker deploy
 
 1. Otwórz aplikację w prywatnym oknie i sprawdź Turnstile oraz rejestrację lub
    logowanie.
-2. Utwórz rozdział i temat, zapisz sformatowaną treść, odśwież stronę i sprawdź
+2. Otwórz bezpośrednio `/login`, `/register` i `/reset-password`, a następnie
+   odśwież każdą stronę. Sprawdź też link potwierdzenia konta i pełny przepływ
+   odzyskiwania hasła kończący się na `/update-password`.
+3. Utwórz rozdział i temat, zapisz sformatowaną treść, odśwież stronę i sprawdź
    dane.
-3. Dodaj, otwórz, przestaw i usuń zdjęcie.
-4. Dodaj pytanie i ukończ krótką sesję nauki.
-5. Wygeneruj pytania dla tematu, wykonaj reroll, usuń odpowiedź, zatwierdź
+4. Dodaj, otwórz, przestaw i usuń zdjęcie.
+5. Dodaj pytanie i ukończ krótką sesję nauki.
+6. Wygeneruj pytania dla tematu, wykonaj reroll, usuń odpowiedź, zatwierdź
    partię i sprawdź podsumowanie pominiętych duplikatów.
-6. Wygeneruj streszczenie kilku tematów, skopiuj je, wykonaj reroll i zapisz
+7. Wygeneruj streszczenie kilku tematów, skopiuj je, wykonaj reroll i zapisz
    jako notatkę w rozdziale `Streszczenia AI`.
-7. Sprawdź konsolę przeglądarki, Sentry oraz błędy Workerów w Cloudflare.
-8. Potwierdź, że niezalogowane żądanie do Workera zwraca `401`, a origin spoza
+8. Sprawdź konsolę przeglądarki, Sentry oraz błędy Workerów w Cloudflare.
+9. Potwierdź, że niezalogowane żądanie do Workera zwraca `401`, a origin spoza
    allowlisty nie otrzymuje nagłówka CORS.
-9. Zainstaluj PWA, uruchom je w osobnym oknie i sprawdź ikonę oraz ekran
-   startowy.
-10. Oznacz moduł jako dostępny offline, odłącz sieć i sprawdź nawigację oraz
+10. Zainstaluj PWA, uruchom je w osobnym oknie i sprawdź ikonę oraz ekran
+    startowy.
+11. Oznacz moduł jako dostępny offline, odłącz sieć i sprawdź nawigację oraz
     odczyt jego tematów. Powtórz próbę z opcją zdjęć wyłączoną i włączoną.
-11. Zmień notatkę offline, przywróć sieć i sprawdź automatyczny zapis oraz
+12. Zmień notatkę offline, przywróć sieć i sprawdź automatyczny zapis oraz
     zachowanie szkicu w przypadku konfliktu z wersją serwerową. Wywołaj konflikt
     zmianą tej samej notatki w drugiej karcie i sprawdź obie decyzje w dialogu.
-12. Wdróż kolejną wersję i sprawdź, że aplikacja proponuje aktualizację zamiast
+13. Wdróż kolejną wersję i sprawdź, że aplikacja proponuje aktualizację zamiast
     przeładować się automatycznie.
 
 ## Rollback

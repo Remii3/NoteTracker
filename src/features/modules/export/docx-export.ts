@@ -92,9 +92,9 @@ export async function createModuleDocx(
   }
 
   return new Document({
-    creator: "NoteTracker",
+    creator: "Sylabio",
     title: module.name,
-    description: `Eksport modułu ${module.name} z NoteTracker`,
+    description: `Eksport modułu ${module.name} z Sylabio`,
     numbering: {
       config: [
         {

@@ -1,7 +1,4 @@
-export function calculateMovingAverage(
-  values: number[],
-  windowSize: number,
-) {
+export function calculateMovingAverage(values: number[], windowSize: number) {
   const size = Math.max(1, Math.floor(windowSize));
   let sum = 0;
 

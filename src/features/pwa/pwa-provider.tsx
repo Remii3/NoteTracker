@@ -190,7 +190,7 @@ export function PwaProvider({ children }: { children: ReactNode }) {
     if (!offlineReady) return;
     toast.add({
       data: { type: "success" },
-      description: "NoteTracker jest gotowy do szybkiego uruchamiania.",
+      description: "Sylabio jest gotowe do szybkiego uruchamiania.",
     });
     setOfflineReady(false);
   }, [offlineReady, setOfflineReady]);
@@ -290,7 +290,7 @@ export function InstallAppButton() {
           <h2 className="font-semibold">Aplikacja na urządzeniu</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {pwa.canInstall
-              ? "Zainstaluj NoteTracker, aby otwierać go jak zwykłą aplikację."
+              ? "Zainstaluj Sylabio, aby otwierać je jak zwykłą aplikację."
               : "W Safari wybierz Udostępnij, a następnie Dodaj do ekranu początkowego."}
           </p>
         </div>

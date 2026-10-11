@@ -187,7 +187,7 @@ export function PreferencesPanel({ userId }: { userId: string }) {
               Włącz przypomnienia
             </span>
             <span className="block text-sm text-muted-foreground">
-              Są pokazywane tylko podczas korzystania z NoteTrackera.
+              Są pokazywane tylko podczas korzystania z Sylabio.
             </span>
           </span>
         </label>
