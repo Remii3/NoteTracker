@@ -53,6 +53,7 @@ import { ModuleImportDialog } from "@/features/modules/import/module-import-dial
 import type { QuestionGenerationService } from "../data/question-generation-service";
 import { AiQuestionGenerationDialog } from "./ai-question-generation-dialog";
 import { BulkAssignQuestionsDialog } from "./bulk-assign-questions-dialog";
+import { SpotlightGuide } from "@/features/onboarding/components/spotlight-guide";
 
 const PAGE_SIZE = 20;
 type FilterOption = { value: string; label: string };
@@ -72,6 +73,8 @@ type Props = {
   onOpenSession: (mode: StudyMode, id: string) => void;
   onOpenHistory: () => void;
   generationService?: QuestionGenerationService;
+  onboarding?: boolean;
+  onFinishOnboarding?: () => void;
 };
 
 export function QuestionsPage({
@@ -83,6 +86,8 @@ export function QuestionsPage({
   onOpenSession,
   onOpenHistory,
   generationService,
+  onboarding = false,
+  onFinishOnboarding,
 }: Props) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [total, setTotal] = useState(0);
@@ -179,6 +184,7 @@ export function QuestionsPage({
             size="sm"
             variant="outline"
             aria-label="Generuj pytania z AI"
+            data-onboarding="generate-questions"
             onClick={() => setGenerationOpen(true)}
           >
             <Sparkles />
@@ -207,6 +213,7 @@ export function QuestionsPage({
           size="sm"
           variant="outline"
           aria-label="Sprawdź się w fiszkach"
+          data-onboarding="start-flashcards"
           disabled={!availability || availability.flashcardsCount === 0}
           title={
             availability?.flashcardsCount === 0
@@ -236,12 +243,44 @@ export function QuestionsPage({
         <Button
           size="sm"
           aria-label="Dodaj pytanie"
+          data-onboarding="add-question"
           onClick={() => setEditing(null)}
         >
           <Plus />
           <span className="hidden sm:inline">Dodaj</span>
         </Button>
       </AppHeaderActions>
+      {onboarding && availability && (
+        <SpotlightGuide
+          target={
+            availability.flashcardsCount > 0
+              ? '[data-onboarding="start-flashcards"]'
+              : generationService && moduleId
+                ? '[data-onboarding="generate-questions"]'
+                : '[data-onboarding="add-question"]'
+          }
+          title={
+            availability.flashcardsCount > 0
+              ? "Rozpocznij pierwszą sesję"
+              : generationService && moduleId
+                ? "Utwórz pytania z materiału"
+                : "Dodaj pierwsze pytanie"
+          }
+          description={
+            availability.flashcardsCount > 0
+              ? "Krótka sesja pokaże, jak Sylabio planuje kolejne powtórki."
+              : generationService && moduleId
+                ? "Wybierz tematy, przejrzyj propozycje AI i zatwierdź najlepsze pytania."
+                : "Dodaj pytanie i poprawną odpowiedź, aby uruchomić pierwszą sesję."
+          }
+          step={availability.flashcardsCount > 0 ? 4 : 3}
+          steps={4}
+          onTargetClick={() => {
+            if (availability.flashcardsCount > 0) onFinishOnboarding?.();
+          }}
+          onSkip={() => onFinishOnboarding?.()}
+        />
+      )}
       <main className="min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
         <div className="mx-auto max-w-6xl">
           <div>
@@ -544,8 +583,12 @@ export function QuestionsPage({
               chapters={chapters}
               repository={repository}
               loadTopics={loadTopics}
-              onClose={() => setEditing(undefined)}
-              onSaved={load}
+              onClose={() => {
+                setEditing(undefined);
+              }}
+              onSaved={async () => {
+                await load();
+              }}
             />
           )}
           {bulkAssignOpen && (
@@ -601,8 +644,12 @@ export function QuestionsPage({
               service={generationService}
               repository={repository}
               loadTopics={loadTopics}
-              onClose={() => setGenerationOpen(false)}
-              onApproved={load}
+              onClose={() => {
+                setGenerationOpen(false);
+              }}
+              onApproved={async () => {
+                await load();
+              }}
             />
           )}
         </div>

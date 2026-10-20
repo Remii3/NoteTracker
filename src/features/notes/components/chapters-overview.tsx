@@ -51,6 +51,7 @@ type Props = {
   onOpenChapter: (chapterId: string, topicId: string) => void;
   onImport: () => void;
   onSummarize?: () => void;
+  onAddContent?: () => void;
 };
 
 export function ChaptersOverview({
@@ -60,6 +61,7 @@ export function ChaptersOverview({
   onOpenChapter,
   onImport,
   onSummarize,
+  onAddContent,
 }: Props) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -298,10 +300,21 @@ export function ChaptersOverview({
               })}
             </div>
           ) : (
-            <div className="mt-8 rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
-              {chapters.length
-                ? `Nie znaleziono rozdziału pasującego do „${query.trim()}”.`
-                : "Dodaj pierwszy rozdział, aby rozpocząć naukę."}
+            <div className="mt-8 rounded-xl border border-dashed px-5 py-12 text-center text-sm text-muted-foreground">
+              <p>
+                {chapters.length
+                  ? `Nie znaleziono rozdziału pasującego do „${query.trim()}”.`
+                  : "Dodaj pierwszy rozdział, aby rozpocząć naukę."}
+              </p>
+              {!chapters.length && onAddContent && (
+                <Button
+                  className="mt-5"
+                  data-onboarding="add-content"
+                  onClick={onAddContent}
+                >
+                  Dodaj rozdział i tematy
+                </Button>
+              )}
             </div>
           )}
 

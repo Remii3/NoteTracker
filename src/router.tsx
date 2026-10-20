@@ -38,8 +38,16 @@ const router = createBrowserRouter([
           {
             index: true,
             lazy: () =>
-              import("@/features/today/pages/today-page").then(
-                ({ TodayPage }) => ({ Component: TodayPage }),
+              import("@/features/onboarding/pages/start-page").then(
+                ({ StartPage }) => ({ Component: StartPage }),
+              ),
+            HydrateFallback: AppLoading,
+          },
+          {
+            path: "welcome",
+            lazy: () =>
+              import("@/features/onboarding/pages/welcome-page").then(
+                ({ WelcomePage }) => ({ Component: WelcomePage }),
               ),
             HydrateFallback: AppLoading,
           },

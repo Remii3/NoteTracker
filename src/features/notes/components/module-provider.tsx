@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Outlet } from "react-router";
+import { Outlet, useNavigate } from "react-router";
 import { LoadError } from "@/components/load-error";
 import { toast } from "@/components/ui/toast";
 import { AccountMenu } from "@/features/auth";
@@ -73,6 +73,7 @@ export function ModuleProvider({
   onOpenModules,
   onModuleProgressChange,
 }: Props) {
+  const appNavigate = useNavigate();
   const { isOnline } = usePwa();
   const [isSearchPending, setIsSearchPending] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
@@ -612,6 +613,7 @@ export function ModuleProvider({
             userName={userName}
             userEmail={userEmail}
             onOpenAccount={onOpenAccount}
+            onOpenGuide={() => appNavigate("/welcome")}
           />
         )}
         header={header ? <WorkspaceHeader {...header} /> : undefined}

@@ -60,6 +60,7 @@ export function GlobalRoutes() {
           userName={getUserDisplayName(user)}
           userEmail={user.email}
           onOpenAccount={onOpenAccount}
+          onOpenGuide={() => navigate("/welcome")}
         />
       )}
       onOpenHome={() => navigate("/")}

@@ -70,6 +70,7 @@ type Props = {
   onDeleted?: (module: Module) => void;
   onLoaded?: (modules: Module[]) => void;
   offlineService?: OfflineModuleService;
+  onOnboardingFinished?: (module: Module) => void;
 };
 
 const PAGE_SIZE = 12;
@@ -82,6 +83,7 @@ export function ModulePicker({
   onDeleted,
   onLoaded,
   offlineService,
+  onOnboardingFinished,
 }: Props) {
   const cachedModules = cacheKey
     ? readMemoryCache<Module[]>(cacheKey)
@@ -115,7 +117,6 @@ export function ModulePicker({
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const requestIdRef = useRef(0);
   const loadingMoreRef = useRef(false);
-
   const refreshOfflineSnapshots = useCallback(async () => {
     if (!offlineService) return [];
     try {
@@ -278,6 +279,7 @@ export function ModulePicker({
       if (!query && cacheKey)
         writeMemoryCache(cacheKey, [...pinnedModules, ...modules, created]);
       setCreateOpen(false);
+      onOnboardingFinished?.(created);
     } catch {
       throw new Error("create-module-failed");
     }
@@ -297,6 +299,7 @@ export function ModulePicker({
       data: { type: "success" },
       description: `Zaimportowano moduł „${imported.name}”.`,
     });
+    onOnboardingFinished?.(imported);
   }
 
   async function togglePinned(module: Module) {
@@ -445,6 +448,7 @@ export function ModulePicker({
           size="sm"
           variant="outline"
           aria-label="Importuj materiały"
+          data-onboarding="import-module"
           onClick={() => setImportOpen(true)}
         >
           <FileUp />
@@ -453,6 +457,7 @@ export function ModulePicker({
         <Button
           size="sm"
           aria-label="Nowy moduł"
+          data-onboarding="create-module"
           onClick={() => setCreateOpen(true)}
         >
           <Plus />

@@ -1,12 +1,14 @@
 import { forgetRecentModule, reconcileRecentModules } from "@/lib/memory-cache";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { Module } from "../data/modules-repository";
 import { ModulePicker } from "../module-picker";
 import { R2TopicImagesService } from "@/features/notes/data/r2-topic-images-service";
 import { SupabaseModulesRepository } from "../data/supabase-modules-repository";
 import { supabase } from "@/lib/supabase/client";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
+import { SpotlightGuide } from "@/features/onboarding/components/spotlight-guide";
+import { dismissOnboarding } from "@/features/onboarding/lib/onboarding-storage";
 import { useUser } from "@/features/auth";
 import { OfflineModuleService } from "@/features/notes/offline/offline-module-service";
 import { SupabaseNotesRepository } from "@/features/notes/data/supabase-notes-repository";
@@ -15,6 +17,13 @@ export function ModulesPage() {
   const user = useUser();
   const userId = user.id;
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedAction = searchParams.get("onboarding");
+  const onboardingAction =
+    requestedAction === "create" || requestedAction === "import"
+      ? requestedAction
+      : undefined;
+  const [showGuide, setShowGuide] = useState(Boolean(onboardingAction));
   const repository = useMemo(
     () => new SupabaseModulesRepository(supabase, userId ?? ""),
     [userId],
@@ -58,16 +67,55 @@ export function ModulesPage() {
   );
 
   return (
-    <ModulePicker
-      repository={repository}
-      imagesService={imagesService}
-      offlineService={offlineService}
-      cacheKey={`modules:${user.id}`}
-      onLoaded={handleModulesLoaded}
-      onDeleted={(module) => forgetRecentModule(user.id, module.id)}
-      onSelect={(module) =>
-        navigate(`/${module.slug}`, { state: { moduleId: module.id } })
-      }
-    />
+    <>
+      <ModulePicker
+        repository={repository}
+        imagesService={imagesService}
+        offlineService={offlineService}
+        cacheKey={`modules:${user.id}`}
+        onLoaded={handleModulesLoaded}
+        onDeleted={(module) => forgetRecentModule(user.id, module.id)}
+        onSelect={(module) =>
+          navigate(`/${module.slug}`, { state: { moduleId: module.id } })
+        }
+        onOnboardingFinished={
+          onboardingAction
+            ? (module) => {
+                setShowGuide(false);
+                const destination =
+                  onboardingAction === "import"
+                    ? `/${module.slug}/questions?onboarding=questions`
+                    : `/${module.slug}?onboarding=content`;
+                navigate(destination, {
+                  replace: true,
+                  state: { moduleId: module.id },
+                });
+              }
+            : undefined
+        }
+      />
+      {showGuide && onboardingAction && (
+        <SpotlightGuide
+          target={`[data-onboarding="${onboardingAction}-module"]`}
+          title={
+            onboardingAction === "import"
+              ? "Zaimportuj swoje materiały"
+              : "Utwórz pierwszy moduł"
+          }
+          description={
+            onboardingAction === "import"
+              ? "Wybierz plik lub źródło. Przed zapisaniem zobaczysz podgląd importu."
+              : "Moduł to przedmiot lub większy obszar nauki, na przykład Anatomia."
+          }
+          step={1}
+          steps={4}
+          onSkip={() => {
+            dismissOnboarding(user.id);
+            setShowGuide(false);
+            navigate("/modules", { replace: true });
+          }}
+        />
+      )}
+    </>
   );
 }

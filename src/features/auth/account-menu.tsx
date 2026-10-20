@@ -1,4 +1,4 @@
-import { LoaderCircle, LogOut } from "lucide-react";
+import { LoaderCircle, LogOut, Map } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { clearUserMemoryCache } from "@/lib/memory-cache";
@@ -12,9 +12,15 @@ type Props = {
   userName?: string;
   userEmail?: string;
   onOpenAccount: () => void;
+  onOpenGuide: () => void;
 };
 
-export function AccountMenu({ userName, userEmail, onOpenAccount }: Props) {
+export function AccountMenu({
+  userName,
+  userEmail,
+  onOpenAccount,
+  onOpenGuide,
+}: Props) {
   const { signOut, user } = useAuth();
   const { isMobile, setOpenMobile } = useSidebar();
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -25,6 +31,11 @@ export function AccountMenu({ userName, userEmail, onOpenAccount }: Props) {
   function handleOpenAccount() {
     if (isMobile) setOpenMobile(false);
     onOpenAccount();
+  }
+
+  function handleOpenGuide() {
+    if (isMobile) setOpenMobile(false);
+    onOpenGuide();
   }
 
   async function handleSignOut() {
@@ -64,6 +75,16 @@ export function AccountMenu({ userName, userEmail, onOpenAccount }: Props) {
             {userEmail ?? "konto prywatne"}
           </span>
         </span>
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        aria-label="Uruchom przewodnik ponownie"
+        title="Uruchom przewodnik ponownie"
+        onClick={handleOpenGuide}
+        className="h-full aspect-square"
+      >
+        <Map />
       </Button>
       <Button
         type="button"
