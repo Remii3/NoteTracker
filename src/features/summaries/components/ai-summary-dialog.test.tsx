@@ -16,7 +16,7 @@ afterEach(cleanup);
 
 it("generates a summary for a selected chapter and saves it as a note", async () => {
   const service = {
-    getConfig: vi.fn().mockResolvedValue({ maxTopics: 5 }),
+    getConfig: vi.fn().mockResolvedValue({ maxTopics: 5, available: true }),
     generate: vi.fn().mockResolvedValue({
       maxTopics: 5,
       cached: false,

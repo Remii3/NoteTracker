@@ -6,7 +6,7 @@ import type {
 } from "../model/types";
 
 export interface SummaryGenerationService {
-  getConfig(): Promise<{ maxTopics: number }>;
+  getConfig(): Promise<{ maxTopics: number; available: boolean }>;
   generate(input: {
     moduleId: string;
     topicIds: string[];

@@ -30,7 +30,7 @@ it("generates a selected chapter preview and approves its questions", async () =
     ],
   };
   const service = {
-    getConfig: vi.fn().mockResolvedValue({ maxTopics: 5 }),
+    getConfig: vi.fn().mockResolvedValue({ maxTopics: 5, available: true }),
     generate: vi.fn().mockResolvedValue({
       maxTopics: 5,
       topics: [

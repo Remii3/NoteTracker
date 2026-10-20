@@ -23,10 +23,16 @@ type WorkerTopic = {
 export class OpenAiQuestionGenerationService implements QuestionGenerationService {
   private readonly client: SupabaseClient<Database>;
   private readonly apiUrl: string;
+  private readonly onUnavailable?: (reason: string) => void;
 
-  constructor(client: SupabaseClient<Database>, apiUrl: string) {
+  constructor(
+    client: SupabaseClient<Database>,
+    apiUrl: string,
+    onUnavailable?: (reason: string) => void,
+  ) {
     this.client = client;
     this.apiUrl = apiUrl;
+    this.onUnavailable = onUnavailable;
   }
 
   private async request(
@@ -57,6 +63,7 @@ export class OpenAiQuestionGenerationService implements QuestionGenerationServic
       } catch {
         // The fallback remains useful when an upstream proxy returns non-JSON.
       }
+      if (response.status === 503) this.onUnavailable?.(message);
       throw new Error(message);
     }
     return response.json() as Promise<unknown>;
@@ -68,11 +75,13 @@ export class OpenAiQuestionGenerationService implements QuestionGenerationServic
       typeof value !== "object" ||
       value === null ||
       !("maxTopics" in value) ||
-      typeof value.maxTopics !== "number"
+      typeof value.maxTopics !== "number" ||
+      !("available" in value) ||
+      typeof value.available !== "boolean"
     ) {
       throw new Error("Generator zwrócił nieprawidłową konfigurację.");
     }
-    return { maxTopics: value.maxTopics };
+    return { maxTopics: value.maxTopics, available: value.available };
   }
 
   async generate(input: {

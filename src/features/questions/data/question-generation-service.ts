@@ -4,7 +4,7 @@ import type {
 } from "../model/types";
 
 export interface QuestionGenerationService {
-  getConfig(): Promise<{ maxTopics: number }>;
+  getConfig(): Promise<{ maxTopics: number; available: boolean }>;
   generate(input: {
     moduleId: string;
     topicIds: string[];

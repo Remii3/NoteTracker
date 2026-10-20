@@ -17,6 +17,11 @@ Ustaw `ALLOWED_ORIGINS` w `wrangler.jsonc` na listę originów oddzielonych
 przecinkami. Po wdrożeniu dodaj adres Workera do frontendu jako
 `VITE_QUESTION_GENERATOR_API_URL`.
 
+Jeśli `OPENAI_API_KEY` lub `OPENAI_MODEL` nie są ustawione, Worker pozostaje
+dostępny, ale zgłasza funkcje AI jako wyłączone. Frontend ukrywa wtedy generowanie
+pytań i streszczeń, a przyczynę zapisuje w konsoli. Odrzucenie klucza przez OpenAI
+również wyłącza funkcje AI bez wpływu na pozostałą część aplikacji.
+
 Sprawdzenie przed wdrożeniem:
 
 ```sh

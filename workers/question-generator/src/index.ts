@@ -1,6 +1,6 @@
 interface Env {
-  OPENAI_API_KEY: string;
-  OPENAI_MODEL: string;
+  OPENAI_API_KEY?: string;
+  OPENAI_MODEL?: string;
   SUPABASE_URL: string;
   SUPABASE_PUBLISHABLE_KEY: string;
   ALLOWED_ORIGINS: string;
@@ -58,6 +58,26 @@ const MAX_TOPIC_TEXT_CHARS = 60_000;
 const MAX_DIRECT_SUMMARY_SOURCE_CHARS = 80_000;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+class AiUnavailableError extends Error {}
+
+function hasOpenAiConfiguration(env: Env) {
+  return Boolean(env.OPENAI_API_KEY?.trim() && env.OPENAI_MODEL?.trim());
+}
+
+function reportOpenAiFailure(operation: string, status: number) {
+  console.error(
+    JSON.stringify({
+      message: "OpenAI is unavailable; AI features have been disabled",
+      operation,
+      status,
+      reason:
+        status === 401 || status === 403
+          ? "missing or invalid OPENAI_API_KEY"
+          : "OpenAI request failed",
+    }),
+  );
+}
 
 function allowedOrigin(request: Request, env: Env) {
   const origin = request.headers.get("Origin");
@@ -487,13 +507,12 @@ async function requestStructuredJson(
     }),
   });
   if (!response.ok) {
-    console.error(
-      JSON.stringify({
-        message: "openai structured request failed",
-        operation: options.name,
-        status: response.status,
-      }),
-    );
+    reportOpenAiFailure(options.name, response.status);
+    if (response.status === 401 || response.status === 403) {
+      throw new AiUnavailableError(
+        "Funkcje AI są niedostępne: brak lub nieprawidłowy klucz OpenAI.",
+      );
+    }
     throw new Error("OpenAI nie wygenerował streszczenia. Spróbuj ponownie.");
   }
   const raw: unknown = await response.json();
@@ -723,12 +742,12 @@ async function generateQuestions(
     }),
   });
   if (!response.ok) {
-    console.error(
-      JSON.stringify({
-        message: "openai request failed",
-        status: response.status,
-      }),
-    );
+    reportOpenAiFailure("generated_question_set", response.status);
+    if (response.status === 401 || response.status === 403) {
+      throw new AiUnavailableError(
+        "Funkcje AI są niedostępne: brak lub nieprawidłowy klucz OpenAI.",
+      );
+    }
     throw new Error("OpenAI nie wygenerował pytań. Spróbuj ponownie.");
   }
   const raw: unknown = await response.json();
@@ -1133,10 +1152,37 @@ export default {
       Math.min(50, Number(env.MAX_TOPICS_PER_GENERATION) || 5),
     );
     if (request.method === "GET" && path === "/config") {
-      return json(request, env, { maxTopics });
+      const available = hasOpenAiConfiguration(env);
+      if (!available) {
+        console.warn(
+          JSON.stringify({
+            message: "AI features are disabled",
+            reason: "missing OPENAI_API_KEY or OPENAI_MODEL",
+          }),
+        );
+      }
+      return json(request, env, { maxTopics, available });
     }
     if (request.method !== "POST")
       return json(request, env, { error: "Method not allowed" }, 405);
+
+    if (path !== "/summaries/save" && !hasOpenAiConfiguration(env)) {
+      console.warn(
+        JSON.stringify({
+          message: "AI operation skipped; AI features are disabled",
+          path,
+          reason: "missing OPENAI_API_KEY or OPENAI_MODEL",
+        }),
+      );
+      return json(
+        request,
+        env,
+        {
+          error: "Funkcje AI są niedostępne: brak konfiguracji OpenAI.",
+        },
+        503,
+      );
+    }
 
     const rateLimit = await env.GENERATION_RATE_LIMITER.limit({ key: user.id });
     if (!rateLimit.success)
@@ -1172,7 +1218,7 @@ export default {
               ? error.message
               : "Nie udało się wykonać operacji AI.",
         },
-        500,
+        error instanceof AiUnavailableError ? 503 : 500,
       );
     }
   },

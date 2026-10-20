@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getUserDisplayName, useAuth } from "@/features/auth";
 import { supabase } from "@/lib/supabase/client";
@@ -200,28 +200,71 @@ export function ModulePage() {
       new SupabaseQuestionsRepository(supabase, userId ?? "", moduleId ?? ""),
     [moduleId, userId],
   );
-  const questionGeneratorApiUrl = import.meta.env
-    .VITE_QUESTION_GENERATOR_API_URL as string | undefined;
-  const questionGenerationService = useMemo(
+  const questionGeneratorApiUrl = (
+    import.meta.env.VITE_QUESTION_GENERATOR_API_URL as string | undefined
+  )?.trim();
+  const [aiAvailable, setAiAvailable] = useState(false);
+  const disableAi = useCallback((reason: string) => {
+    setAiAvailable(false);
+    console.warn(`[AI] Funkcje AI zostały wyłączone. ${reason}`);
+  }, []);
+  const configuredQuestionGenerationService = useMemo(
     () =>
       questionGeneratorApiUrl
         ? new OpenAiQuestionGenerationService(
             supabase,
             questionGeneratorApiUrl.replace(/\/$/, ""),
+            disableAi,
           )
         : undefined,
-    [questionGeneratorApiUrl],
+    [disableAi, questionGeneratorApiUrl],
   );
-  const summaryGenerationService = useMemo(
+  const configuredSummaryGenerationService = useMemo(
     () =>
       questionGeneratorApiUrl
         ? new OpenAiSummaryGenerationService(
             supabase,
             questionGeneratorApiUrl.replace(/\/$/, ""),
+            disableAi,
           )
         : undefined,
-    [questionGeneratorApiUrl],
+    [disableAi, questionGeneratorApiUrl],
   );
+
+  useEffect(() => {
+    if (!configuredQuestionGenerationService) {
+      console.warn(
+        "[AI] Funkcje AI zostały wyłączone. Brak VITE_QUESTION_GENERATOR_API_URL.",
+      );
+      return;
+    }
+    let active = true;
+    void configuredQuestionGenerationService
+      .getConfig()
+      .then((config) => {
+        if (!active) return;
+        if (config.available) setAiAvailable(true);
+        else disableAi("Brak klucza lub modelu OpenAI w konfiguracji Workera.");
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        disableAi(
+          error instanceof Error
+            ? error.message
+            : "Nie udało się sprawdzić konfiguracji Workera.",
+        );
+      });
+    return () => {
+      active = false;
+    };
+  }, [configuredQuestionGenerationService, disableAi]);
+
+  const questionGenerationService = aiAvailable
+    ? configuredQuestionGenerationService
+    : undefined;
+  const summaryGenerationService = aiAvailable
+    ? configuredSummaryGenerationService
+    : undefined;
 
   useEffect(() => {
     if (!moduleId || !navigator.onLine) return;
