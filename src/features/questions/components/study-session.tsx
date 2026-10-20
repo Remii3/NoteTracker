@@ -186,6 +186,7 @@ function LoadedStudySession({
             ? {
                 ...entry,
                 result,
+                rating,
                 selectedOptionId: selectedOptionId ?? null,
                 activeDurationSeconds: duration,
               }
@@ -216,28 +217,36 @@ function LoadedStudySession({
     (item) => item.result === "forgotten" || item.result === "incorrect",
   ).length;
   const answered = successful + failed;
+  const ratingCounts = session.items.reduce<Record<FsrsRating, number>>(
+    (counts, item) => {
+      if (item.rating) counts[item.rating] += 1;
+      return counts;
+    },
+    { 1: 0, 2: 0, 3: 0, 4: 0 },
+  );
   if (session.status === "completed")
     return (
       <main className="grid flex-1 place-items-center p-5">
         <div className="w-full max-w-xl rounded-2xl border p-8 text-center">
           <h1 className="text-3xl font-semibold">Sesja ukończona</h1>
           <p className="mt-3 text-muted-foreground">
-            Wynik: {successful} z {answered}
+            {session.mode === "test"
+              ? `Wynik: ${successful} z ${answered}`
+              : `Oceniono ${answered} ${flashcardCountLabel(answered)}`}
           </p>
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-primary/10 p-4">
-              <p className="text-2xl font-semibold">{successful}</p>
-              <p className="text-sm">
-                {session.mode === "test" ? "Poprawne" : "Pamiętam"}
-              </p>
+          {session.mode === "test" ? (
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <ResultCard value={successful} label="Poprawne" emphasized />
+              <ResultCard value={failed} label="Błędne" />
             </div>
-            <div className="rounded-xl bg-muted p-4">
-              <p className="text-2xl font-semibold">{failed}</p>
-              <p className="text-sm">
-                {session.mode === "test" ? "Błędne" : "Nie pamiętam"}
-              </p>
+          ) : (
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <ResultCard value={ratingCounts[1]} label="Nie pamiętam" />
+              <ResultCard value={ratingCounts[2]} label="Trudne" />
+              <ResultCard value={ratingCounts[3]} label="Pamiętam" emphasized />
+              <ResultCard value={ratingCounts[4]} label="Łatwe" />
             </div>
-          </div>
+          )}
           <p className="mt-4 text-sm text-muted-foreground">
             Aktywna nauka:{" "}
             {formatDuration(
@@ -300,6 +309,7 @@ function LoadedStudySession({
                     ...entry,
                     selectedOptionId: optionId,
                     result,
+                    rating: isCorrect ? 3 : 1,
                     activeDurationSeconds: duration,
                   }
                 : entry,
@@ -327,6 +337,7 @@ function LoadedStudySession({
                       ...entry,
                       selectedOptionId: null,
                       result: null,
+                      rating: null,
                       activeDurationSeconds: item.activeDurationSeconds,
                     }
                   : entry,
@@ -497,9 +508,38 @@ function LoadedStudySession({
   );
 }
 
+function ResultCard({
+  value,
+  label,
+  emphasized = false,
+}: {
+  value: number;
+  label: string;
+  emphasized?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-xl p-4 ${emphasized ? "bg-primary/10" : "bg-muted"}`}
+    >
+      <p className="text-2xl font-semibold">{value}</p>
+      <p className="text-sm">{label}</p>
+    </div>
+  );
+}
+
 function formatDuration(seconds: number) {
   const minutes = Math.max(1, Math.round(seconds / 60));
   return `${minutes} min`;
+}
+
+function flashcardCountLabel(count: number) {
+  if (count === 1) return "fiszkę";
+  const lastTwo = count % 100;
+  const last = count % 10;
+  if (lastTwo < 12 || lastTwo > 14) {
+    if (last >= 2 && last <= 4) return "fiszki";
+  }
+  return "fiszek";
 }
 
 function formatCountdown(seconds: number) {

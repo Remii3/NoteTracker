@@ -168,7 +168,7 @@ export function PreferencesPanel({ userId }: { userId: string }) {
       <PreferenceSection
         icon={BellRing}
         title="Rutynowe przypomnienia sprawdzające"
-        description="Aplikacja przypomni Ci o krótkiej powtórce, korzystając z pytań, które masz już w bazie."
+        description="Aplikacja przypomni Ci o krótkiej sesji, gdy pytania wyznaczone przez FSRS będą gotowe do powtórki."
       >
         <label className="flex cursor-pointer items-start gap-3">
           <Checkbox

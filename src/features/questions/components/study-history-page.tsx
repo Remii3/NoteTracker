@@ -206,8 +206,8 @@ function SessionCard({
   onResume: () => void;
   onAbandon: () => void;
 }) {
-  const percentage = session.totalCount
-    ? Math.round((session.successfulCount / session.totalCount) * 100)
+  const percentage = session.answeredCount
+    ? Math.round((session.successfulCount / session.answeredCount) * 100)
     : 0;
   const inProgress = session.status === "in_progress";
 
@@ -234,16 +234,15 @@ function SessionCard({
             <Progress
               className="max-w-sm"
               value={
-                inProgress
-                  ? (session.answeredCount / Math.max(1, session.totalCount)) *
-                    100
-                  : percentage
+                (session.answeredCount / Math.max(1, session.totalCount)) * 100
               }
             />
             <span className="shrink-0 text-sm font-medium">
               {inProgress
                 ? `${session.answeredCount}/${session.totalCount}`
-                : `${session.successfulCount}/${session.totalCount} (${percentage}%)`}
+                : session.mode === "test"
+                  ? `${session.successfulCount}/${session.answeredCount} (${percentage}%) · odpowiedziano ${session.answeredCount}/${session.totalCount}`
+                  : `${session.answeredCount}/${session.totalCount} ocenionych`}
             </span>
           </div>
         </div>
@@ -346,7 +345,7 @@ function SessionDetails({
                             </p>
                           )}
                           {session.mode === "flashcards" && (
-                            <p>{successful ? "Pamiętam" : "Nie pamiętam"}</p>
+                            <p>Ocena: {ratingLabel(item.rating)}</p>
                           )}
                         </div>
                       ) : (
@@ -369,6 +368,14 @@ function SessionDetails({
       </DialogContent>
     </Dialog>
   );
+}
+
+function ratingLabel(rating: StudySession["items"][number]["rating"]) {
+  if (rating === 1) return "Nie pamiętam";
+  if (rating === 2) return "Trudne";
+  if (rating === 3) return "Pamiętam";
+  if (rating === 4) return "Łatwe";
+  return "Brak oceny";
 }
 
 function StatusBadge({ status }: { status: StudySessionSummary["status"] }) {

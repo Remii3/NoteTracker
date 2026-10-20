@@ -459,6 +459,18 @@ select pg_temp.assert_true(
     where id = '10000007-0000-4000-8000-000000000000'),
   'FSRS review RPC: atomically records an authoritative FSRS v6 transition'
 );
+select pg_temp.assert_true(
+  (public.get_study_assessment(
+    '10000001-0000-4000-8000-000000000000', 30, 'UTC'
+  )->'flashcards'->>'answers')::integer = 1
+  and (public.get_study_assessment(
+    '10000001-0000-4000-8000-000000000000', 30, 'UTC'
+  )->'flashcards'->>'good')::integer = 1
+  and (public.get_study_assessment(
+    '10000001-0000-4000-8000-000000000000', 30, 'UTC'
+  )->'tests'->>'answers')::integer = 0,
+  'Study assessment: separates objective tests from flashcard self-ratings'
+);
 do $$ declare queue_question_id uuid; item_index integer; begin
   for item_index in 1..9 loop
     queue_question_id := gen_random_uuid();
@@ -1559,6 +1571,55 @@ do $$ declare before_position integer; original jsonb; affected integer; begin
    '{"type":"doc"}'::jsonb, original
  ), 'Stale content cannot overwrite a newer note');
 end; $$;
+-- Mixed learning imports are atomic, including validation failures in questions.
+do $$
+declare
+ imported_module_id uuid;
+ rejected boolean := false;
+begin
+ imported_module_id := public.import_learning_module(
+  'Atomic learning import', 3000,
+  '[{"title":"Imported chapter","slug":"imported-chapter","position":1000,"topics":[{"title":"Imported topic","slug":"imported-topic","position":1000,"content":{"type":"doc"}}]}]'::jsonb,
+  '[{"chapterTitle":"Imported chapter","chapterSlug":"imported-chapter","topicTitle":"Imported topic","topicSlug":"imported-topic","content":"Imported question","explanation":"Explanation","options":[{"content":"Correct","isCorrect":true},{"content":"Wrong","isCorrect":false}]}]'::jsonb
+ );
+ perform pg_temp.assert_true(
+  (select count(*) = 1 from public.questions
+   where module_id = imported_module_id),
+  'Mixed module import: creates questions with learning material'
+ );
+ perform pg_temp.assert_true(
+  exists (
+   select 1
+   from public.questions as question
+   join public.topics as topic on topic.id = question.topic_id
+   join public.chapters as chapter on chapter.id = question.chapter_id
+   where question.module_id = imported_module_id
+     and topic.title = 'Imported topic'
+     and chapter.title = 'Imported chapter'
+  ),
+  'Mixed module import: assigns questions to imported content'
+ );
+
+ begin
+  perform public.import_learning_module(
+   'Rejected atomic import', 4000,
+   '[{"title":"Temporary chapter","slug":"temporary-chapter","position":1000,"topics":[]}]'::jsonb,
+   '[]'::jsonb
+  );
+ exception when others then rejected := true;
+ end;
+ perform pg_temp.assert_true(
+  rejected,
+  'Mixed module import: rejects invalid questions'
+ );
+ perform pg_temp.assert_true(
+  not exists (
+   select 1 from public.modules where name = 'Rejected atomic import'
+  ),
+  'Mixed module import: rolls back a module after a question import failure'
+ );
+end;
+$$;
 -- Chapter names and slugs are unique inside a module, not across all modules.
 insert into public.modules(id,user_id,name,position)
 values (

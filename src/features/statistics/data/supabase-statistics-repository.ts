@@ -19,11 +19,16 @@ export class SupabaseStatisticsRepository implements StatisticsRepository {
   }
 
   async get(options: Parameters<StatisticsRepository["get"]>[0]) {
-    const [study, progress, goal] = await Promise.all([
+    const [study, assessment, progress, goal] = await Promise.all([
       this.client.rpc("get_study_statistics", {
         target_module_id: options.moduleId,
         range_days: options.range,
         study_mode: options.mode === "all" ? null : options.mode,
+        timezone_name: options.timezone,
+      }),
+      this.client.rpc("get_study_assessment", {
+        target_module_id: options.moduleId,
+        range_days: options.range,
         timezone_name: options.timezone,
       }),
       this.client.rpc("get_progress_overview_statistics", {
@@ -38,11 +43,13 @@ export class SupabaseStatisticsRepository implements StatisticsRepository {
         .maybeSingle(),
     ]);
     throwIfPostgrestError(study.error);
+    throwIfPostgrestError(assessment.error);
     throwIfPostgrestError(progress.error);
     throwIfPostgrestError(goal.error);
     const progressData = progress.data as unknown as ProgressStatistics;
     return {
       ...(study.data as unknown as Omit<StudyStatistics, "progress">),
+      assessment: assessment.data as unknown as StudyStatistics["assessment"],
       progress: {
         ...progressData,
         weeklyGoal: {

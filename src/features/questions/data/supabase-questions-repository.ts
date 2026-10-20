@@ -245,7 +245,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
 
     const itemsResult = await this.client
       .from("study_session_items")
-      .select("session_id,result")
+      .select("id,session_id,result")
       .eq("user_id", this.userId)
       .in(
         "session_id",
@@ -253,11 +253,30 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
       );
     throwIfPostgrestError(itemsResult.error);
 
+    const itemRows = itemsResult.data ?? [];
+    const ratingsResult = itemRows.length
+      ? await this.client
+          .from("question_review_logs")
+          .select("session_item_id,rating")
+          .in(
+            "session_item_id",
+            itemRows.map((item) => item.id),
+          )
+      : { data: [], error: null };
+    throwIfPostgrestError(ratingsResult.error);
+    const ratingByItem = new Map(
+      (ratingsResult.data ?? []).map((log) => [
+        log.session_item_id,
+        log.rating,
+      ]),
+    );
+
     const resultsBySession = new Map<
       string,
       { total: number; answered: number; successful: number }
     >();
-    for (const item of itemsResult.data ?? []) {
+    const ratingsBySession = new Map<string, Record<FsrsRating, number>>();
+    for (const item of itemRows) {
       const counts = resultsBySession.get(item.session_id) ?? {
         total: 0,
         answered: 0,
@@ -268,6 +287,12 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
       if (item.result === "correct" || item.result === "remembered")
         counts.successful += 1;
       resultsBySession.set(item.session_id, counts);
+      const rating = asFsrsRating(ratingByItem.get(item.id));
+      if (rating) {
+        const ratings = ratingsBySession.get(item.session_id) ?? emptyRatings();
+        ratings[rating] += 1;
+        ratingsBySession.set(item.session_id, ratings);
+      }
     }
 
     return {
@@ -287,6 +312,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
           totalCount: counts.total,
           answeredCount: counts.answered,
           successfulCount: counts.successful,
+          ratingCounts: ratingsBySession.get(session.id) ?? emptyRatings(),
         } satisfies StudySessionSummary;
       }),
       total: sessionsResult.count ?? 0,
@@ -337,6 +363,20 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
     const stateByQuestion = new Map(
       (states.data ?? []).map((state) => [state.question_id, state]),
     );
+    const itemIds = (items.data ?? []).map((item) => item.id);
+    const ratings = itemIds.length
+      ? await this.client
+          .from("question_review_logs")
+          .select("session_item_id,rating")
+          .in("session_item_id", itemIds)
+      : { data: [], error: null };
+    throwIfPostgrestError(ratings.error);
+    const ratingByItem = new Map(
+      (ratings.data ?? []).map((log) => [
+        log.session_item_id,
+        asFsrsRating(log.rating),
+      ]),
+    );
     const now = new Date().toISOString();
     return {
       id: session.data.id,
@@ -360,6 +400,7 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
         selectedOptionId: item.selected_option_id,
         result: item.result,
         activeDurationSeconds: item.active_duration_seconds,
+        rating: ratingByItem.get(item.id) ?? null,
         fsrs: this.mapFsrsState(stateByQuestion.get(item.question_id!), now),
       })),
     };
@@ -530,4 +571,14 @@ export class SupabaseQuestionsRepository implements QuestionsRepository {
         })),
     };
   }
+}
+
+function asFsrsRating(value: number | undefined): FsrsRating | null {
+  return value === 1 || value === 2 || value === 3 || value === 4
+    ? value
+    : null;
+}
+
+function emptyRatings(): Record<FsrsRating, number> {
+  return { 1: 0, 2: 0, 3: 0, 4: 0 };
 }

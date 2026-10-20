@@ -86,7 +86,7 @@ export function StatisticsPage({
   const [range, setRange] = useState<StatisticsRange>(30);
   const [mode, setMode] = useState<StatisticsMode>("all");
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  const requestKey = `v4:${moduleId ?? "all"}:${range}:${mode}:${timezone}`;
+  const requestKey = `v5:${moduleId ?? "all"}:${range}:${mode}:${timezone}`;
   const cacheKey = cacheScope
     ? `statistics:${cacheScope}:${requestKey}`
     : undefined;
@@ -364,11 +364,17 @@ export function StatisticsPage({
                     <Medal className="size-5 text-primary" />
                     <h2 className="text-lg font-semibold">Jakość powtórek</h2>
                   </div>
-                  <ReviewQualityChart data={data} />
+                  <ReviewQualityChart data={data} mode={mode} />
                   <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
                     <Record
-                      value={`${data.records.bestAccuracy}%`}
-                      label="Najlepsza sesja"
+                      value={
+                        mode === "test" ? `${data.records.bestAccuracy}%` : "—"
+                      }
+                      label={
+                        mode === "test"
+                          ? "Najlepszy test"
+                          : "Wynik tylko w filtrze Testy"
+                      }
                     />
                     <Record
                       value={data.records.mostAnswersInDay}
@@ -387,9 +393,9 @@ export function StatisticsPage({
               </section>
 
               {moduleId ? (
-                <AreasTable data={data} />
+                <AreasTable data={data} mode={mode} />
               ) : (
-                <ModulesTable data={data} />
+                <ModulesTable data={data} mode={mode} />
               )}
 
               <section className="rounded-2xl border p-5 sm:p-6">
@@ -413,9 +419,15 @@ export function StatisticsPage({
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold">{session.accuracy}%</p>
+                          <p className="font-semibold">
+                            {session.mode === "test"
+                              ? `${session.accuracy}%`
+                              : `${session.answers} fiszek`}
+                          </p>
                           <p className="text-xs text-muted-foreground">
-                            {session.answers} odpowiedzi
+                            {session.mode === "test"
+                              ? `${session.answers} odpowiedzi`
+                              : "dokładne oceny w historii"}
                           </p>
                         </div>
                       </div>
@@ -725,39 +737,89 @@ function SessionTrendChart({
   );
 }
 
-function ReviewQualityChart({ data }: { data: StudyStatistics }) {
-  const successful = data.summary.successful;
-  const unsuccessful = Math.max(0, data.summary.answers - successful);
-  const accuracy = data.summary.answers ? data.summary.accuracy : 0;
+function ReviewQualityChart({
+  data,
+  mode,
+}: {
+  data: StudyStatistics;
+  mode: StatisticsMode;
+}) {
+  const tests = data.assessment.tests;
+  const flashcards = data.assessment.flashcards;
+  if (mode === "flashcards") return <FlashcardRatings ratings={flashcards} />;
+
   return (
-    <div className="mt-5 grid items-center gap-5 sm:grid-cols-[8rem_1fr] lg:grid-cols-1 xl:grid-cols-[8rem_1fr]">
+    <div className={mode === "all" ? "mt-5 space-y-6" : "mt-5"}>
+      <TestAccuracy tests={tests} />
+      {mode === "all" && (
+        <div className="border-t pt-5">
+          <p className="mb-3 text-sm font-medium">Samoocena fiszek</p>
+          <FlashcardRatings ratings={flashcards} compact />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TestAccuracy({
+  tests,
+}: {
+  tests: StudyStatistics["assessment"]["tests"];
+}) {
+  const incorrect = Math.max(0, tests.answers - tests.correct);
+  return (
+    <div className="grid items-center gap-5 sm:grid-cols-[8rem_1fr] lg:grid-cols-1 xl:grid-cols-[8rem_1fr]">
       <div
         className="relative mx-auto grid size-28 place-items-center rounded-full"
         style={{
-          background: `conic-gradient(var(--primary) ${accuracy}%, color-mix(in oklch, var(--destructive) 55%, transparent) 0)`,
+          background: `conic-gradient(var(--primary) ${tests.accuracy}%, color-mix(in oklch, var(--destructive) 55%, transparent) 0)`,
         }}
         role="img"
-        aria-label={`Skuteczność odpowiedzi ${accuracy}%`}
+        aria-label={`Poprawność testów ${tests.accuracy}%`}
       >
         <div className="grid size-20 place-items-center rounded-full bg-background text-center">
           <div>
-            <p className="text-xl font-semibold">{accuracy}%</p>
-            <p className="text-[10px] text-muted-foreground">skuteczności</p>
+            <p className="text-xl font-semibold">{tests.accuracy}%</p>
+            <p className="text-[10px] text-muted-foreground">testy</p>
           </div>
         </div>
       </div>
       <div className="space-y-3 text-sm">
-        <QualityRow
-          color="bg-primary"
-          label="Poprawne / zapamiętane"
-          value={successful}
-        />
+        <QualityRow color="bg-primary" label="Poprawne" value={tests.correct} />
         <QualityRow
           color="bg-destructive/60"
-          label="Błędne / zapomniane"
-          value={unsuccessful}
+          label="Błędne"
+          value={incorrect}
         />
       </div>
+    </div>
+  );
+}
+
+function FlashcardRatings({
+  ratings,
+  compact = false,
+}: {
+  ratings: StudyStatistics["assessment"]["flashcards"];
+  compact?: boolean;
+}) {
+  return (
+    <div className={`${compact ? "" : "mt-5"} grid gap-2 sm:grid-cols-2`}>
+      <QualityRow
+        color="bg-destructive/60"
+        label="Nie pamiętam"
+        value={ratings.again}
+      />
+      <QualityRow color="bg-amber-500" label="Trudne" value={ratings.hard} />
+      <QualityRow color="bg-primary" label="Pamiętam" value={ratings.good} />
+      <QualityRow color="bg-chart-2" label="Łatwe" value={ratings.easy} />
+      {ratings.unrated > 0 && (
+        <QualityRow
+          color="bg-muted"
+          label="Starsze bez oceny"
+          value={ratings.unrated}
+        />
+      )}
     </div>
   );
 }
@@ -788,7 +850,13 @@ function ChartLegend({ color, label }: { color: string; label: string }) {
   );
 }
 
-function AreasTable({ data }: { data: StudyStatistics }) {
+function AreasTable({
+  data,
+  mode,
+}: {
+  data: StudyStatistics;
+  mode: StatisticsMode;
+}) {
   return (
     <section className="overflow-hidden rounded-2xl border">
       <div className="p-5 sm:p-6">
@@ -803,7 +871,7 @@ function AreasTable({ data }: { data: StudyStatistics }) {
             <tr>
               <th className="px-5 py-3 font-medium">Obszar</th>
               <th className="px-5 py-3 font-medium">Odpowiedzi</th>
-              <th className="px-5 py-3 font-medium">Skuteczność</th>
+              <th className="px-5 py-3 font-medium">{qualityLabel(mode)}</th>
               <th className="px-5 py-3 font-medium">Ostatnia nauka</th>
               <th className="px-5 py-3 font-medium">Status</th>
             </tr>
@@ -834,7 +902,9 @@ function AreasTable({ data }: { data: StudyStatistics }) {
                   </td>
                   <td className="px-5 py-3">
                     <span className="rounded-full bg-muted px-2 py-1 text-xs">
-                      {areaStatus(area.answers, area.accuracy)}
+                      {mode === "test"
+                        ? areaStatus(area.answers, area.accuracy)
+                        : "Dane aktywności"}
                     </span>
                   </td>
                 </tr>
@@ -853,7 +923,13 @@ function AreasTable({ data }: { data: StudyStatistics }) {
   );
 }
 
-function ModulesTable({ data }: { data: StudyStatistics }) {
+function ModulesTable({
+  data,
+  mode,
+}: {
+  data: StudyStatistics;
+  mode: StatisticsMode;
+}) {
   return (
     <section className="overflow-hidden rounded-2xl border">
       <div className="p-5 sm:p-6">
@@ -879,7 +955,10 @@ function ModulesTable({ data }: { data: StudyStatistics }) {
             <span className="text-sm text-muted-foreground">
               {module.answers} odp.
             </span>
-            <span className="w-12 text-right font-semibold">
+            <span
+              className="w-12 text-right font-semibold"
+              title={qualityLabel(mode)}
+            >
               {module.accuracy}%
             </span>
           </div>
@@ -887,6 +966,12 @@ function ModulesTable({ data }: { data: StudyStatistics }) {
       </div>
     </section>
   );
+}
+
+function qualityLabel(mode: StatisticsMode) {
+  if (mode === "test") return "Poprawność";
+  if (mode === "flashcards") return "Pozytywna samoocena";
+  return "Pozytywne wyniki";
 }
 
 function Record({ value, label }: { value: ReactNode; label: string }) {

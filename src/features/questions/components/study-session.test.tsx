@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import type { QuestionsRepository } from "../data/questions-repository";
@@ -36,6 +42,7 @@ function createSession(hideFlashcardOptions: boolean): StudySessionModel {
         selectedOptionId: null,
         result: null,
         activeDurationSeconds: 0,
+        rating: null,
         fsrs: {
           dueAt: new Date().toISOString(),
           lastReviewedAt: null,
@@ -102,4 +109,32 @@ it("keeps variants hidden until reveal when the session option is enabled", asyn
 
   expect(await screen.findByText("Warszawa")).toBeTruthy();
   expect(screen.queryByText("Kraków")).toBeNull();
+});
+
+it("preserves the exact flashcard self-rating in the session summary", async () => {
+  const session = createSession(false);
+  const repository = createRepository(session);
+  repository.answerItem = vi.fn().mockResolvedValue(undefined);
+  repository.completeSession = vi.fn().mockResolvedValue(undefined);
+
+  render(
+    <StudySession
+      sessionId="session"
+      repository={repository}
+      onClose={vi.fn()}
+    />,
+  );
+
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Pokaż prawidłową odpowiedź" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Trudne" }));
+
+  await waitFor(() =>
+    expect(repository.answerItem).toHaveBeenCalledWith("item", 2, undefined, 1),
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "Zakończ sesję" }));
+
+  expect(await screen.findByText("Oceniono 1 fiszkę")).toBeTruthy();
+  expect(screen.getAllByText("Trudne").length).toBeGreaterThan(0);
 });

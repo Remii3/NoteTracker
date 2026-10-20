@@ -68,6 +68,7 @@ export type StudyItem = {
   selectedOptionId: string | null;
   result: StudyResult | null;
   activeDurationSeconds: number;
+  rating: FsrsRating | null;
   fsrs: FsrsCardState;
 };
 export type StudySession = {
@@ -91,4 +92,5 @@ export type StudySessionSummary = {
   totalCount: number;
   answeredCount: number;
   successfulCount: number;
+  ratingCounts: Record<FsrsRating, number>;
 };

@@ -40,7 +40,22 @@ export class SupabaseTodayRepository implements TodayRepository {
     ]);
     throwIfPostgrestError(dashboard.error);
     throwIfPostgrestError(assignments.error);
-    const result = dashboard.data as unknown as TodayDashboard;
+    let result = dashboard.data as unknown as TodayDashboard;
+    if (result.recentSummary) {
+      const session = await this.client
+        .from("study_sessions")
+        .select("mode")
+        .eq("id", result.recentSummary.sessionId)
+        .eq("user_id", this.userId)
+        .maybeSingle();
+      throwIfPostgrestError(session.error);
+      result = {
+        ...result,
+        recentSummary: session.data
+          ? { ...result.recentSummary, mode: session.data.mode }
+          : null,
+      };
+    }
     const topicIds = [
       ...new Set((assignments.data ?? []).map((item) => item.topic_id)),
     ];

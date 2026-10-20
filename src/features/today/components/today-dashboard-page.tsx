@@ -362,7 +362,9 @@ function SummaryCard({ data }: { data: TodayDashboard }) {
                 {summary.successful}/{summary.answers}
               </span>
               <span className="text-xs text-muted-foreground">
-                poprawnych odpowiedzi
+                {summary.mode === "test"
+                  ? "poprawnych odpowiedzi"
+                  : "zapamiętanych fiszek"}
               </span>
             </div>
             <p className="text-xs text-muted-foreground">

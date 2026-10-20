@@ -45,6 +45,7 @@ export type TodayDashboard = {
   };
   recentSummary: {
     sessionId: string;
+    mode: "flashcards" | "test";
     completedAt: string;
     answers: number;
     successful: number;

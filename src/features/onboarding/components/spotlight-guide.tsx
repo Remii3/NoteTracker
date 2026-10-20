@@ -32,33 +32,43 @@ export function SpotlightGuide({
   useLayoutEffect(() => {
     let element: HTMLElement | null = null;
     let resizeObserver: ResizeObserver | null = null;
-    const update = () => {
-      element ??= document.querySelector<HTMLElement>(target);
+    let animationFrame: number | null = null;
+    const measure = () => {
       if (!element) return;
-      element.scrollIntoView({ block: "center", inline: "center" });
-      window.requestAnimationFrame(() => {
+      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = null;
         if (element) setRect(element.getBoundingClientRect());
       });
     };
-    update();
+    const reveal = () => {
+      element ??= document.querySelector<HTMLElement>(target);
+      if (!element) return;
+      element.scrollIntoView({ block: "center", inline: "center" });
+      measure();
+    };
+    reveal();
     if (element) {
-      resizeObserver = new ResizeObserver(update);
+      resizeObserver = new ResizeObserver(measure);
       resizeObserver.observe(element);
     }
     const mutationObserver = new MutationObserver(() => {
       if (element) return;
       element = document.querySelector<HTMLElement>(target);
       if (!element) return;
-      resizeObserver = new ResizeObserver(update);
+      resizeObserver = new ResizeObserver(measure);
       resizeObserver.observe(element);
-      update();
+      reveal();
     });
     mutationObserver.observe(document.body, { childList: true, subtree: true });
-    window.addEventListener("resize", update);
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
     return () => {
       mutationObserver.disconnect();
       resizeObserver?.disconnect();
-      window.removeEventListener("resize", update);
+      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
     };
   }, [target]);
 

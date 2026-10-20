@@ -13,10 +13,87 @@ import { Button } from "@/components/ui/button";
 import { getUserDisplayName, useUser } from "@/features/auth";
 import { dismissOnboarding } from "../lib/onboarding-storage";
 import { SupabaseModulesRepository } from "@/features/modules/data/supabase-modules-repository";
-import { SupabaseNotesRepository } from "@/features/notes/data/supabase-notes-repository";
-import { SupabaseQuestionsRepository } from "@/features/questions/data/supabase-questions-repository";
 import { supabase } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/toast";
+
+const sampleChapters = [
+  {
+    slug: "pierwsze-kroki",
+    title: "Pierwsze kroki",
+    position: 1000,
+    topics: [
+      {
+        slug: "aktywne-przypominanie",
+        title: "Aktywne przypominanie",
+        position: 1000,
+        content: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "text",
+                  text: "Aktywne przypominanie polega na samodzielnym odtwarzaniu informacji z pamięci. Pytania i fiszki są skuteczniejsze niż samo ponowne czytanie notatek.",
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  },
+];
+
+const sampleQuestions = [
+  {
+    chapterTitle: "Pierwsze kroki",
+    chapterSlug: "pierwsze-kroki",
+    topicTitle: "Aktywne przypominanie",
+    topicSlug: "aktywne-przypominanie",
+    content: "Na czym polega aktywne przypominanie?",
+    explanation: "Próba odtworzenia wiedzy wzmacnia ślad pamięciowy.",
+    options: [
+      {
+        content: "Na samodzielnym odtwarzaniu informacji z pamięci",
+        isCorrect: true,
+      },
+      {
+        content: "Na wielokrotnym czytaniu tego samego tekstu",
+        isCorrect: false,
+      },
+    ],
+  },
+  {
+    chapterTitle: "Pierwsze kroki",
+    chapterSlug: "pierwsze-kroki",
+    topicTitle: "Aktywne przypominanie",
+    topicSlug: "aktywne-przypominanie",
+    content: "Dlaczego warto rozkładać powtórki w czasie?",
+    explanation:
+      "Powtórka wykonana po przerwie wymaga wysiłku i lepiej utrwala wiedzę.",
+    options: [
+      { content: "Pomaga utrzymać wiedzę na dłużej", isCorrect: true },
+      { content: "Pozwala całkowicie uniknąć zapominania", isCorrect: false },
+    ],
+  },
+  {
+    chapterTitle: "Pierwsze kroki",
+    chapterSlug: "pierwsze-kroki",
+    topicTitle: "Aktywne przypominanie",
+    topicSlug: "aktywne-przypominanie",
+    content: "Co zrobić, gdy nie pamiętasz odpowiedzi?",
+    explanation:
+      "Szczera ocena pozwala algorytmowi zaplanować wcześniejszą powtórkę.",
+    options: [
+      {
+        content: "Oznaczyć odpowiedź zgodnie z rzeczywistością",
+        isCorrect: true,
+      },
+      { content: "Zawsze wybrać najwyższą ocenę", isCorrect: false },
+    ],
+  },
+];
 
 const choices = [
   {
@@ -62,107 +139,14 @@ export function WelcomePage() {
     setCreatingSample(true);
     try {
       const modules = await modulesRepository.list();
-      const baseName = "Jak uczyć się z Sylabio";
-      let name = baseName;
-      let suffix = 2;
-      const names = new Set(
-        modules.map((module) => module.name.toLocaleLowerCase("pl")),
-      );
-      while (names.has(name.toLocaleLowerCase("pl")))
-        name = `${baseName} ${suffix++}`;
       const position =
         Math.max(0, ...modules.map((module) => module.position)) + 1000;
-      const module = await modulesRepository.create(name, position);
-      const chapterId = crypto.randomUUID();
-      const topicId = crypto.randomUUID();
-      const notes = new SupabaseNotesRepository(supabase, user.id, module.id);
-      await notes.createChapterWithTopics(
-        {
-          id: chapterId,
-          slug: "pierwsze-kroki",
-          title: "Pierwsze kroki",
-          position: 1000,
-          topicsCount: 1,
-          completedTopicsCount: 0,
-          firstIncompleteTopicId: topicId,
-          firstIncompleteTopicSlug: "aktywne-przypominanie",
-        },
-        [
-          {
-            id: topicId,
-            slug: "aktywne-przypominanie",
-            title: "Aktywne przypominanie",
-            position: 1000,
-            completed: false,
-            contentLoaded: true,
-            content: {
-              type: "doc",
-              content: [
-                {
-                  type: "paragraph",
-                  content: [
-                    {
-                      type: "text",
-                      text: "Aktywne przypominanie polega na samodzielnym odtwarzaniu informacji z pamięci. Pytania i fiszki są skuteczniejsze niż samo ponowne czytanie notatek.",
-                    },
-                  ],
-                },
-              ],
-            },
-          },
-        ],
+      const module = await modulesRepository.importLearningModule(
+        "Jak uczyć się z Sylabio",
+        position,
+        sampleChapters,
+        sampleQuestions,
       );
-      const questions = new SupabaseQuestionsRepository(
-        supabase,
-        user.id,
-        module.id,
-      );
-      await Promise.all([
-        questions.save({
-          chapterId,
-          topicId,
-          content: "Na czym polega aktywne przypominanie?",
-          explanation: "Próba odtworzenia wiedzy wzmacnia ślad pamięciowy.",
-          options: [
-            {
-              content: "Na samodzielnym odtwarzaniu informacji z pamięci",
-              isCorrect: true,
-            },
-            {
-              content: "Na wielokrotnym czytaniu tego samego tekstu",
-              isCorrect: false,
-            },
-          ],
-        }),
-        questions.save({
-          chapterId,
-          topicId,
-          content: "Dlaczego warto rozkładać powtórki w czasie?",
-          explanation:
-            "Powtórka wykonana po przerwie wymaga wysiłku i lepiej utrwala wiedzę.",
-          options: [
-            { content: "Pomaga utrzymać wiedzę na dłużej", isCorrect: true },
-            {
-              content: "Pozwala całkowicie uniknąć zapominania",
-              isCorrect: false,
-            },
-          ],
-        }),
-        questions.save({
-          chapterId,
-          topicId,
-          content: "Co zrobić, gdy nie pamiętasz odpowiedzi?",
-          explanation:
-            "Szczera ocena pozwala algorytmowi zaplanować wcześniejszą powtórkę.",
-          options: [
-            {
-              content: "Oznaczyć odpowiedź zgodnie z rzeczywistością",
-              isCorrect: true,
-            },
-            { content: "Zawsze wybrać najwyższą ocenę", isCorrect: false },
-          ],
-        }),
-      ]);
       navigate(`/${module.slug}/questions?onboarding=questions`, {
         state: { moduleId: module.id },
       });

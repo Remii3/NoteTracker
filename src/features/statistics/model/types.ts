@@ -125,6 +125,17 @@ export type ProgressStatistics = {
 };
 
 export type StudyStatistics = {
+  assessment: {
+    tests: { answers: number; correct: number; accuracy: number };
+    flashcards: {
+      answers: number;
+      again: number;
+      hard: number;
+      good: number;
+      easy: number;
+      unrated: number;
+    };
+  };
   progress: ProgressStatistics;
   summary: StatisticsSummary;
   daily: DailyStatistics[];

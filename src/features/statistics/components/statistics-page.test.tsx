@@ -14,6 +14,17 @@ import type { StudyStatistics } from "../model/types";
 afterEach(cleanup);
 
 const statistics: StudyStatistics = {
+  assessment: {
+    tests: { answers: 20, correct: 16, accuracy: 80 },
+    flashcards: {
+      answers: 20,
+      again: 4,
+      hard: 5,
+      good: 8,
+      easy: 3,
+      unrated: 0,
+    },
+  },
   progress: {
     summary: {
       totalModules: 1,
@@ -144,7 +155,7 @@ it("loads the complete statistics summary", async () => {
     screen.getByRole("img", { name: "Ukończono 50% materiału" }),
   ).toBeTruthy();
   expect(
-    screen.getByRole("img", { name: "Skuteczność odpowiedzi 80%" }),
+    screen.getByRole("img", { name: "Poprawność testów 80%" }),
   ).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Pokaż linię trendu" }));
   expect(

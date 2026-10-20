@@ -601,6 +601,14 @@ export type Database = {
         };
         Returns: Json;
       };
+      get_study_assessment: {
+        Args: {
+          target_module_id?: string | null;
+          range_days?: number;
+          timezone_name?: string;
+        };
+        Returns: Json;
+      };
       get_exam_planning_scope: {
         Args: {
           target_module_id: string;
@@ -669,6 +677,15 @@ export type Database = {
       import_docx_module: {
         Args: {
           imported_chapters: Json;
+          target_name: string;
+          target_position: number;
+        };
+        Returns: string;
+      };
+      import_learning_module: {
+        Args: {
+          imported_chapters: Json;
+          imported_questions: Json;
           target_name: string;
           target_position: number;
         };

@@ -4,9 +4,8 @@ import { useNavigate } from "react-router";
 import { toast } from "@/components/ui/toast";
 import { useAuth } from "@/features/auth/auth-context";
 import { supabase } from "@/lib/supabase/client";
-import { isReminderDue } from "../lib/review-reminder";
+import { showReminderIfDue } from "../lib/review-reminder-service";
 
-const checkingUsers = new Set<string>();
 const REMINDER_CHECK_INTERVAL_MS = 60 * 60 * 1000;
 
 export function InAppReviewReminder() {
@@ -16,9 +15,28 @@ export function InAppReviewReminder() {
   useEffect(() => {
     if (!user) return;
 
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
     const check = () =>
-      void showReminderIfDue(user.id, (moduleSlug) => {
-        navigate(`/${moduleSlug}/questions`);
+      void showReminderIfDue(user.id, timezone, async (target) => {
+        const { data, error } = await supabase.rpc(
+          "create_fsrs_study_session",
+          {
+            target_module_id: target.moduleId,
+            requested_question_count: 10,
+            timezone_name: timezone,
+          },
+        );
+        if (error || !data) {
+          toast.add({
+            data: { type: "error" },
+            description: "Nie udało się rozpocząć powtórki.",
+          });
+          return;
+        }
+        navigate(`/${target.moduleSlug}/study/flashcards/${data}?from=today`, {
+          state: { moduleId: target.moduleId },
+        });
       });
     check();
     const interval = window.setInterval(check, REMINDER_CHECK_INTERVAL_MS);
@@ -26,68 +44,4 @@ export function InAppReviewReminder() {
   }, [navigate, user]);
 
   return null;
-}
-
-async function showReminderIfDue(
-  userId: string,
-  openQuestions: (moduleSlug: string) => void,
-) {
-  if (checkingUsers.has(userId)) return;
-  checkingUsers.add(userId);
-  try {
-    const { data: preferences, error: preferencesError } = await supabase
-      .from("study_goals")
-      .select(
-        "review_reminders_enabled, review_reminder_interval_days, last_review_reminder_at",
-      )
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (preferencesError || !preferences?.review_reminders_enabled) return;
-    if (
-      !isReminderDue(
-        preferences.last_review_reminder_at,
-        preferences.review_reminder_interval_days,
-      )
-    ) {
-      return;
-    }
-
-    const { data: question, error: questionError } = await supabase
-      .from("questions")
-      .select("content, module_id")
-      .is("trash_id", null)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (questionError || !question) return;
-
-    const { data: module, error: moduleError } = await supabase
-      .from("modules")
-      .select("slug")
-      .eq("id", question.module_id)
-      .is("trash_id", null)
-      .maybeSingle();
-    if (moduleError || !module) return;
-
-    const now = new Date().toISOString();
-    const { error: updateError } = await supabase
-      .from("study_goals")
-      .update({ last_review_reminder_at: now, updated_at: now })
-      .eq("user_id", userId);
-    if (updateError) return;
-
-    toast.add({
-      data: { type: "info" },
-      title: "Czas na krótką powtórkę",
-      description: question.content,
-      timeout: 12_000,
-      actionProps: {
-        children: "Powtórz",
-        onClick: () => openQuestions(module.slug),
-      },
-    });
-  } finally {
-    checkingUsers.delete(userId);
-  }
 }

@@ -211,6 +211,27 @@ export class SupabaseModulesRepository implements ModulesRepository {
     return imported;
   }
 
+  async importLearningModule(
+    name: string,
+    position: number,
+    chapters: Json,
+    questions: Json,
+  ) {
+    const { data, error } = await this.client.rpc("import_learning_module", {
+      target_name: name,
+      target_position: position,
+      imported_chapters: chapters,
+      imported_questions: questions,
+    });
+    throwIfPostgrestError(error);
+    if (!data) throw new Error("Nie udało się utworzyć modułu.");
+    this.clearStatisticsCache();
+    const imported = await this.get(data);
+    if (!imported)
+      throw new Error("Nie udało się odczytać modułu po utworzeniu.");
+    return imported;
+  }
+
   async rename(id: string, name: string) {
     const { error } = await this.client
       .from("modules")
