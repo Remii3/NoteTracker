@@ -1559,4 +1559,62 @@ do $$ declare before_position integer; original jsonb; affected integer; begin
    '{"type":"doc"}'::jsonb, original
  ), 'Stale content cannot overwrite a newer note');
 end; $$;
+-- Chapter names and slugs are unique inside a module, not across all modules.
+insert into public.modules(id,user_id,name,position)
+values (
+ '10000011-0000-4000-8000-000000000000',
+ '10000000-0000-4000-8000-000000000000',
+ 'Module with repeated chapter', 2000
+);
+insert into public.chapters(id,user_id,module_id,slug,title,position)
+values (
+ '10000012-0000-4000-8000-000000000000',
+ '10000000-0000-4000-8000-000000000000',
+ '10000011-0000-4000-8000-000000000000',
+ 'chapter', 'Chapter', 1000
+);
+select pg_temp.assert_true(
+ exists (
+  select 1 from public.chapters
+  where id = '10000012-0000-4000-8000-000000000000'
+ ),
+ 'Chapter uniqueness: allows the same title and slug in another module'
+);
+do $$
+declare
+ duplicate_title_rejected boolean := false;
+ duplicate_slug_rejected boolean := false;
+begin
+ begin
+  insert into public.chapters(id,user_id,module_id,slug,title,position)
+  values (
+   '10000013-0000-4000-8000-000000000000',
+   '10000000-0000-4000-8000-000000000000',
+   '10000011-0000-4000-8000-000000000000',
+   'another-chapter', '  CHAPTER  ', 2000
+  );
+ exception when unique_violation then duplicate_title_rejected := true;
+ end;
+
+ begin
+  insert into public.chapters(id,user_id,module_id,slug,title,position)
+  values (
+   '10000014-0000-4000-8000-000000000000',
+   '10000000-0000-4000-8000-000000000000',
+   '10000011-0000-4000-8000-000000000000',
+   'chapter', 'Different chapter', 3000
+  );
+ exception when unique_violation then duplicate_slug_rejected := true;
+ end;
+
+ perform pg_temp.assert_true(
+  duplicate_title_rejected,
+  'Chapter uniqueness: rejects a normalized duplicate title in one module'
+ );
+ perform pg_temp.assert_true(
+  duplicate_slug_rejected,
+  'Chapter uniqueness: rejects a duplicate slug in one module'
+ );
+end;
+$$;
 rollback;

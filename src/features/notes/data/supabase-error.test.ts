@@ -28,6 +28,18 @@ describe("Supabase error mapping", () => {
     );
   });
 
+  it.each([
+    ["chapters_module_title_unique_idx", "Rozdział o tej nazwie już istnieje."],
+    [
+      "chapters_module_slug_idx",
+      "Rozdział o takim adresie już istnieje. Spróbuj ponownie.",
+    ],
+  ])("maps the module-scoped chapter index %s", (index, message) => {
+    const error = postgrestError("23505", "duplicate key", index);
+
+    expect(() => throwIfPostgrestError(error)).toThrow(message);
+  });
+
   it("maps the active question duplicate index", () => {
     const error = postgrestError(
       "23505",

@@ -8,6 +8,10 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
   chapters_id_users_id_unique:
     "Nie udało się zapisać rozdziału. Odśwież stronę i spróbuj ponownie.",
   chapters_title_not_blank: "Nazwa rozdziału nie może być pusta.",
+  chapters_module_slug_idx:
+    "Rozdział o takim adresie już istnieje. Spróbuj ponownie.",
+  chapters_module_title_unique_idx: "Rozdział o tej nazwie już istnieje.",
+  // Legacy production constraint names kept for errors during a rolling deploy.
   chapters_user_id_slug_key:
     "Rozdział o takim adresie już istnieje. Spróbuj ponownie.",
   chapters_user_title_unique_idx: "Rozdział o tej nazwie już istnieje.",
