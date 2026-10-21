@@ -44,7 +44,7 @@ z katalogu głównego przez `pnpm install --frozen-lockfile`.
    `ALLOWED_ORIGINS` powinno mieć wartość:
 
    ```text
-   http://localhost:5173,http://127.0.0.1:5173,https://note-tracker-orcin.vercel.app
+   http://localhost:5173,http://127.0.0.1:5173,https://note-tracker-orcin.vercel.app,https://app.sylabio.com
    ```
 
 4. Wdróż Worker:
