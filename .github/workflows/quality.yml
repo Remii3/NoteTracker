@@ -1,0 +1,53 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Run application tests
+        run: pnpm test
+
+      - name: Build application
+        run: pnpm build
+
+      - name: Build marketing site
+        run: pnpm marketing:build
+
+      - name: Type-check topic images Worker
+        run: pnpm --filter notetracker-topic-images-worker typecheck
+
+      - name: Type-check question generator Worker
+        run: pnpm --filter notetracker-question-generator-worker typecheck
