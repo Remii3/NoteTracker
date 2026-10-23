@@ -26,7 +26,13 @@ if [ "$ready" != true ]; then
   exit 1
 fi
 run_sql() {
-  docker exec -i "$test_container" psql -X -U postgres -v ON_ERROR_STOP=1 -q -o /dev/null < "$1"
+  local sql_file="$1"
+  if ! docker exec -i "$test_container" \
+    psql -X -U postgres -v ON_ERROR_STOP=1 -q --echo-errors -o /dev/null \
+    < "$sql_file"; then
+    printf 'Error while applying %s\n' "$sql_file" >&2
+    return 1
+  fi
 }
 run_sql supabase/tests/auth-fixture.sql
 for migration in supabase/migrations/*.sql; do
