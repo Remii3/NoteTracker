@@ -119,6 +119,16 @@ pnpm --filter notetracker-question-generator-worker deploy
 
 ## Smoke test po wdrożeniu
 
+Automatyczny test dostępności aplikacji, obu Workerów i Supabase działa co
+6 godzin w workflow `Production smoke`. Można go też uruchomić lokalnie:
+
+```bash
+pnpm test:smoke
+```
+
+W ustawieniach ochrony gałęzi `master` wymagaj przed scaleniem checków `checks`
+z workflow `Quality` oraz `migrations-and-rls` z workflow `Database`.
+
 1. Otwórz aplikację w prywatnym oknie i sprawdź Turnstile oraz rejestrację lub
    logowanie.
 2. Otwórz bezpośrednio `/login`, `/register` i `/reset-password`, a następnie

@@ -5,11 +5,12 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "test": "NODE_OPTIONS=--no-experimental-webstorage vitest run --config vitest.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260823.1",
     "typescript": "~6.0.2",
-    "wrangler": "4.125.0"
+    "wrangler": "4.152.0"
   }
 }

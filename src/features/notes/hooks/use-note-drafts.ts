@@ -27,7 +27,7 @@ function normalizeDrafts(value: unknown): Drafts {
   );
 }
 
-function readLegacyDrafts(key?: string): Drafts {
+function readSessionDrafts(key?: string): Drafts {
   if (!key) return {};
   try {
     return normalizeDrafts(
@@ -42,14 +42,14 @@ function storageKey(scope?: string) {
   return scope ? `notetracker:drafts:v3:${scope}` : undefined;
 }
 
-function legacyStorageKey(scope?: string) {
-  return scope ? `notetracker:drafts:v2:${scope}` : undefined;
+function fallbackStorageKey(scope?: string) {
+  return scope ? `notetracker:drafts:v3-fallback:${scope}` : undefined;
 }
 
 export function useNoteDrafts(scope?: string) {
   const [key] = useState(() => storageKey(scope));
-  const [legacyKey] = useState(() => legacyStorageKey(scope));
-  const [initial] = useState(() => readLegacyDrafts(legacyKey));
+  const [fallbackKey] = useState(() => fallbackStorageKey(scope));
+  const [initial] = useState(() => readSessionDrafts(fallbackKey));
   const drafts = useRef<Drafts>(initial);
   const persistQueue = useRef(Promise.resolve());
   const [dirtyTopicIds, setDirtyTopicIds] = useState(
@@ -66,10 +66,10 @@ export function useNoteDrafts(scope?: string) {
     try {
       if (Object.keys(snapshot).length)
         window.sessionStorage.setItem(
-          legacyKey ?? key,
+          fallbackKey ?? key,
           JSON.stringify(snapshot),
         );
-      else window.sessionStorage.removeItem(legacyKey ?? key);
+      else window.sessionStorage.removeItem(fallbackKey ?? key);
     } catch {
       fallbackSaved = false;
     }
@@ -90,7 +90,7 @@ export function useNoteDrafts(scope?: string) {
       );
     void persistQueue.current.then(
       () => {
-        if (legacyKey) window.sessionStorage.removeItem(legacyKey);
+        if (fallbackKey) window.sessionStorage.removeItem(fallbackKey);
         setStorageError(null);
       },
       () => {
@@ -99,7 +99,7 @@ export function useNoteDrafts(scope?: string) {
         );
       },
     );
-  }, [key, legacyKey, scope]);
+  }, [fallbackKey, key, scope]);
   const schedulePersist = useCallback(() => {
     if (persistTimer.current) clearTimeout(persistTimer.current);
     persistTimer.current = setTimeout(() => {

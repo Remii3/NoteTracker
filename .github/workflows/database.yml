@@ -2,17 +2,9 @@ name: Database
 
 on:
   pull_request:
-    paths:
-      - "supabase/**"
-      - "scripts/test-database.sh"
-      - ".github/workflows/database.yml"
   push:
     branches:
-      - main
-    paths:
-      - "supabase/**"
-      - "scripts/test-database.sh"
-      - ".github/workflows/database.yml"
+      - master
 
 permissions:
   contents: read

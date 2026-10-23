@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - main
+      - master
 
 permissions:
   contents: read
@@ -40,6 +40,9 @@ jobs:
       - name: Run application tests
         run: pnpm test
 
+      - name: Run Worker integration tests
+        run: pnpm test:workers
+
       - name: Build application
         run: pnpm build
 
@@ -51,3 +54,9 @@ jobs:
 
       - name: Type-check question generator Worker
         run: pnpm --filter notetracker-question-generator-worker typecheck
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run end-to-end tests
+        run: pnpm test:e2e

@@ -67,6 +67,9 @@ oraz
 | `pnpm preview`      | uruchamia lokalny podgląd buildu                  |
 | `pnpm test`         | wykonuje testy logiki, interakcji i błędów API    |
 | `pnpm test:db`      | odtwarza bazę i testuje RLS w kontenerze Docker   |
+| `pnpm test:e2e`     | uruchamia scenariusze aplikacji w Chromium        |
+| `pnpm test:workers` | testuje oba Workery w lokalnym runtime Cloudflare |
+| `pnpm test:smoke`   | sprawdza publiczne usługi produkcyjne             |
 | `pnpm test:watch`   | uruchamia testy w trybie obserwowania             |
 | `pnpm lint`         | uruchamia ESLint                                  |
 | `pnpm format:check` | sprawdza formatowanie Prettierem                  |
@@ -75,6 +78,8 @@ Przed wysłaniem zmian uruchom:
 
 ```bash
 pnpm test
+pnpm test:workers
+pnpm test:e2e
 pnpm lint
 pnpm format:check
 pnpm build
@@ -83,6 +88,7 @@ pnpm build
 Po zmianie Workera dodatkowo uruchom:
 
 ```bash
+pnpm test:workers
 pnpm --filter notetracker-topic-images-worker typecheck
 pnpm --filter notetracker-topic-images-worker exec wrangler deploy --dry-run
 pnpm --filter notetracker-question-generator-worker typecheck

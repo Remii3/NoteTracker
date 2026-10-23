@@ -14,6 +14,7 @@ function topic(id: string, workloadPoints = 2): ExamPlanTopic {
     workloadSource: "automatic",
     questionCount: 4,
     dueReviewCount: 0,
+    reviewDueDateCounts: [],
   };
 }
 
@@ -56,7 +57,7 @@ describe("generateExamPlan", () => {
     const scheduledTopic = {
       ...topic("due"),
       questionCount: 1,
-      reviewDueDates: ["2026-09-16"],
+      reviewDueDateCounts: [{ date: "2026-09-16", count: 1 }],
     };
     const result = generateExamPlan({
       today: "2026-09-14",

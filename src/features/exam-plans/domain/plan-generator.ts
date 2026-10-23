@@ -80,11 +80,7 @@ function distributeReviews(
   const expectedPasses = 1.25 + targetRetention;
   const knownDueDateCounts = [
     ...unassignedReviewDueDateCounts,
-    ...topics.flatMap((topic) =>
-      topic.reviewDueDateCounts?.length
-        ? topic.reviewDueDateCounts
-        : (topic.reviewDueDates ?? []).map((date) => ({ date, count: 1 })),
-    ),
+    ...topics.flatMap((topic) => topic.reviewDueDateCounts),
   ];
   const knownDueByDay = new Map<string, number>();
   for (const due of knownDueDateCounts) {
