@@ -74,6 +74,13 @@ oraz
 | `pnpm lint`         | uruchamia ESLint                                  |
 | `pnpm format:check` | sprawdza formatowanie Prettierem                  |
 
+Przed pierwszym lokalnym uruchomieniem testów E2E zainstaluj Chromium używane
+przez Playwrighta:
+
+```bash
+pnpm exec playwright install chromium
+```
+
 Przed wysłaniem zmian uruchom:
 
 ```bash
