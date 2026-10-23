@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+if ! command -v docker >/dev/null 2>&1; then
+  printf 'Error: Docker is required for pnpm test:db but was not found in PATH.\n' >&2
+  printf 'Install/start Docker, then run pnpm test:db again.\n' >&2
+  exit 1
+fi
+
 # A new, unexposed container each time. No production URL or local data volume.
 test_container="notetracker-db-test-$$"
 trap 'docker rm -f "$test_container" >/dev/null 2>&1 || true' EXIT

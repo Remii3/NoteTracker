@@ -54,6 +54,29 @@ select pg_temp.assert_true(not exists (
  select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
  where n.nspname = 'public' and c.relkind = 'r' and has_table_privilege('authenticated', c.oid, 'TRUNCATE')
 ), 'Authenticated users cannot bypass RLS with TRUNCATE');
+select pg_temp.assert_true(
+  pg_catalog.to_regclass('public.topic_learning_sessions') is null,
+  'Retired topic learning sessions are absent'
+);
+select pg_temp.assert_true(not exists (
+  select 1
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public'
+    and p.proname in (
+      'begin_topic_learning',
+      'get_learning_statistics',
+      'record_topic_learning',
+      'import_flashcard_module',
+      'rls_auto_enable'
+    )
+), 'Retired and internal functions are absent from public');
+select pg_temp.assert_true(exists (
+  select 1
+  from pg_event_trigger
+  where evtname = 'ensure_rls'
+    and evtenabled <> 'D'
+), 'Automatic RLS enforcement is enabled');
 set local role authenticated;
 set local request.jwt.claim.role = 'authenticated';
 

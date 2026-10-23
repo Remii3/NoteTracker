@@ -48,8 +48,9 @@ urządzenia. Pozostałe mutacje wymagają połączenia.
 
 ## Granice bezpieczeństwa
 
-- Klient używa wyłącznie publishable key Supabase. `service_role` nie może
-  znaleźć się w frontendzie ani Workerze.
+- Klient używa wyłącznie publishable key Supabase. Sekret administracyjny nie
+  może znaleźć się we frontendzie; może być używany tylko przez zaufany kod
+  serwerowy, obecnie Worker zdjęć podczas czyszczenia kont i obiektów R2.
 - RLS ogranicza rekordy do `auth.uid() = user_id`.
 - Worker przekazuje token użytkownika do Supabase REST, więc zapytania o
   metadane zdjęć nadal podlegają RLS.
@@ -66,16 +67,26 @@ Najważniejsze relacje:
 
 ```text
 auth.users
-└── chapters
-    └── topics
-        ├── topic_images  -> obiekt w R2 wskazany przez storage_key
-        └── questions
-            └── question_options
-
-auth.users
-└── study_sessions
+├── modules
+│   ├── chapters
+│   │   └── topics
+│   │       └── topic_images  -> obiekt w R2 wskazany przez storage_key
+│   └── questions
+│       └── question_options
+├── study_sessions
 │   └── study_session_items
-└── study_goals
+│       └── question_review_logs
+├── question_review_states
+├── fsrs_profiles
+├── study_goals
+├── study_task_deferrals
+├── exam_plans
+│   ├── exam_plan_topics
+│   ├── exam_plan_assignments
+│   └── exam_plan_daily_targets
+├── ai_question_generation_cache
+├── ai_summary_generation_cache
+└── trash_items
 ```
 
 Każda tabela aplikacyjna posiada `user_id`. Kolejność rozdziałów, tematów,

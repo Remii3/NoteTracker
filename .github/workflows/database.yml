@@ -1,0 +1,29 @@
+name: Database
+
+on:
+  pull_request:
+    paths:
+      - "supabase/**"
+      - "scripts/test-database.sh"
+      - ".github/workflows/database.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/**"
+      - "scripts/test-database.sh"
+      - ".github/workflows/database.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  migrations-and-rls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Rebuild schema and test RLS
+        run: bash scripts/test-database.sh
