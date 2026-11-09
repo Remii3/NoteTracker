@@ -13,6 +13,9 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      VITE_SUPABASE_URL: https://example.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: ci-test-publishable-key
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
