@@ -18,9 +18,9 @@ utrudnić nadużycia i niekontrolowany wzrost kosztów.
 Wymagane są Node.js 22+ i pnpm 12. Zależności całego workspace'u instaluj
 z katalogu głównego przez `pnpm install --frozen-lockfile`.
 
-1. Uruchom w Supabase SQL Editor:
-
-   `supabase/manual/topic-images-r2.sql`
+1. Wdróż aktualne migracje z `supabase/migrations` zgodnie z
+   [`docs/database-setup.md`](../../docs/database-setup.md). Nie uruchamiaj
+   skryptów z `supabase/manual` — są archiwalne.
 
 2. Zaloguj Wrangler i utwórz prywatny bucket:
 
@@ -77,10 +77,8 @@ i nie commituj generowanego `worker-configuration.d.ts`.
 do zmiennych Vite ani udostępniać w przeglądarce. Worker używa go wyłącznie do
 godzinnego czyszczenia kosza po upływie 24 godzin.
 
-Kosz i trwałe usuwanie wymagają migracji `supabase/manual/trash.sql`.
-
-Paginowane sortowanie galerii korzysta z funkcji z migracji
-`supabase/manual/gallery-sorting.sql`.
+Kosz, trwałe usuwanie i paginowane sortowanie galerii są częścią aktualnej
+historii `supabase/migrations`.
 
 Pełna checklista wdrożenia i rollback znajdują się w
 [`docs/deployment.md`](../../docs/deployment.md).

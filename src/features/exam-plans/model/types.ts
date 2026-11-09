@@ -32,9 +32,7 @@ export type ExamPlanTopic = {
   workloadSource: "automatic" | "manual";
   questionCount: number;
   dueReviewCount: number;
-  reviewDueDateCounts?: ReviewDueDateCount[];
-  /** @deprecated Kept temporarily for previously serialized plan inputs. */
-  reviewDueDates?: string[];
+  reviewDueDateCounts: ReviewDueDateCount[];
 };
 
 export type ExamPlanAssignment = {

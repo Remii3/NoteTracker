@@ -12,6 +12,10 @@ node_modules
 dist
 dist-ssr
 .astro
+.wrangler
+blob-report
+playwright-report
+test-results
 *.local
 .dev.vars
 

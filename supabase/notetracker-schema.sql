@@ -1,5 +1,5 @@
-
-
+-- HISTORICAL SNAPSHOT (2026-09-16). DO NOT USE FOR DEPLOYMENTS.
+-- The authoritative schema is the ordered set of files in supabase/migrations/.
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3047,8 +3047,4 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
-
-
-
 

@@ -1,8 +1,4 @@
-drop function if exists public.create_study_session(
-  uuid, text, text, uuid, uuid, integer, integer
-);
-
-create function public.create_study_session(
+create or replace function public.create_study_session(
   target_module_id uuid,
   study_mode text,
   scope_mode text,
@@ -112,7 +108,10 @@ begin
     group by question.id, chapter.title, topic.title
     having study_mode = 'flashcards' or pg_catalog.count(option.id) >= 2
     order by pg_catalog.random()
-    limit greatest(1, requested_question_count)
+    limit case
+      when requested_question_count is null then null
+      else greatest(1, requested_question_count)
+    end
   )
   insert into public.study_session_items (
     user_id,
@@ -156,4 +155,4 @@ revoke all on function public.create_study_session(
 ) from public, anon;
 grant execute on function public.create_study_session(
   uuid, text, text, uuid, uuid, integer, integer, boolean
-) to authenticated;
+) to authenticated, service_role;

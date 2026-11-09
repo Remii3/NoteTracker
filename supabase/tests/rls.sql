@@ -54,6 +54,29 @@ select pg_temp.assert_true(not exists (
  select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
  where n.nspname = 'public' and c.relkind = 'r' and has_table_privilege('authenticated', c.oid, 'TRUNCATE')
 ), 'Authenticated users cannot bypass RLS with TRUNCATE');
+select pg_temp.assert_true(
+  pg_catalog.to_regclass('public.topic_learning_sessions') is null,
+  'Retired topic learning sessions are absent'
+);
+select pg_temp.assert_true(not exists (
+  select 1
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public'
+    and p.proname in (
+      'begin_topic_learning',
+      'get_learning_statistics',
+      'record_topic_learning',
+      'import_flashcard_module',
+      'rls_auto_enable'
+    )
+), 'Retired and internal functions are absent from public');
+select pg_temp.assert_true(exists (
+  select 1
+  from pg_event_trigger
+  where evtname = 'ensure_rls'
+    and evtenabled <> 'D'
+), 'Automatic RLS enforcement is enabled');
 set local role authenticated;
 set local request.jwt.claim.role = 'authenticated';
 
@@ -148,6 +171,65 @@ do $$ declare rejected boolean := false; begin
   perform pg_temp.assert_true(rejected,
     'AI summary cache: rejects writes for another user');
 end; $$;
+do $$
+declare
+  limited_session_id uuid;
+  all_session_id uuid;
+  available_count integer;
+begin
+  for question_number in 1..11 loop
+    perform public.save_question(
+      '10000001-0000-4000-8000-000000000000',
+      null,
+      'Flashcard limit regression ' || question_number,
+      '',
+      null,
+      null,
+      '[{"content":"Answer","isCorrect":true}]'::jsonb
+    );
+  end loop;
+
+  select count(*)::integer
+  into available_count
+  from public.questions as question
+  where question.user_id = '10000000-0000-4000-8000-000000000000'
+    and question.module_id = '10000001-0000-4000-8000-000000000000'
+    and question.trash_id is null
+    and exists (
+      select 1
+      from public.question_options as option
+      where option.question_id = question.id
+        and option.user_id = question.user_id
+    );
+
+  limited_session_id := public.create_study_session(
+    '10000001-0000-4000-8000-000000000000',
+    'flashcards', 'all', null, null, 3, 10, false
+  );
+  perform pg_temp.assert_true(
+    (select count(*) = 10
+     from public.study_session_items
+     where session_id = limited_session_id),
+    'Flashcard session respects a numeric question limit'
+  );
+
+  all_session_id := public.create_study_session(
+    '10000001-0000-4000-8000-000000000000',
+    'flashcards', 'all', null, null, 3, null, false
+  );
+  perform pg_temp.assert_true(
+    (select count(*) = available_count
+     from public.study_session_items
+     where session_id = all_session_id),
+    'Flashcard session includes every available question when the limit is null'
+  );
+
+  delete from public.study_sessions
+  where id in (limited_session_id, all_session_id);
+  delete from public.questions
+  where content like 'Flashcard limit regression %';
+end;
+$$;
 do $$
 declare
   saved jsonb;

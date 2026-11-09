@@ -64,10 +64,14 @@ export function clearDeletedUserLocalData(userId: string) {
 
   try {
     window.localStorage.removeItem(recentModulesKey(userId));
-    const draftPrefix = `notetracker:drafts:v2:${userId}:`;
+    const draftPrefixes = [
+      `notetracker:drafts:v3-fallback:${userId}:`,
+      `notetracker:drafts:v2:${userId}:`,
+    ];
     for (let index = window.sessionStorage.length - 1; index >= 0; index--) {
       const key = window.sessionStorage.key(index);
-      if (key?.startsWith(draftPrefix)) window.sessionStorage.removeItem(key);
+      if (key && draftPrefixes.some((prefix) => key.startsWith(prefix)))
+        window.sessionStorage.removeItem(key);
     }
   } catch {
     // Dane lokalne są tylko pamięcią podręczną aplikacji.

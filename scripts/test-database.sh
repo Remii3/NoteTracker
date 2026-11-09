@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+if ! command -v docker >/dev/null 2>&1; then
+  printf 'Error: Docker is required for pnpm test:db but was not found in PATH.\n' >&2
+  printf 'Install/start Docker, then run pnpm test:db again.\n' >&2
+  exit 1
+fi
+
 # A new, unexposed container each time. No production URL or local data volume.
 test_container="notetracker-db-test-$$"
 trap 'docker rm -f "$test_container" >/dev/null 2>&1 || true' EXIT
@@ -19,7 +26,13 @@ if [ "$ready" != true ]; then
   exit 1
 fi
 run_sql() {
-  docker exec -i "$test_container" psql -X -U postgres -v ON_ERROR_STOP=1 -q -o /dev/null < "$1"
+  local sql_file="$1"
+  if ! docker exec -i "$test_container" \
+    psql -X -U postgres -v ON_ERROR_STOP=1 -q --echo-errors -o /dev/null \
+    < "$sql_file"; then
+    printf 'Error while applying %s\n' "$sql_file" >&2
+    return 1
+  fi
 }
 run_sql supabase/tests/auth-fixture.sql
 for migration in supabase/migrations/*.sql; do

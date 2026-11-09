@@ -2,11 +2,15 @@
 
 ## Pełny schemat
 
-Źródłem schematu dla nowych środowisk jest
-[`supabase/migrations/20260908155555_initial_schema.sql`](../supabase/migrations/20260908155555_initial_schema.sql).
-Zawiera dziewięć tabel aplikacji, indeksy, klucze obce, polityki RLS, funkcje
-RPC i obsługę kosza. Schemat odtworzono z kodu aplikacji i skryptów ręcznych,
-a następnie wyeksportowano z lokalnego Postgresa. Nie jest to zrzut produkcji.
+Źródłem schematu dla nowych i istniejących środowisk jest cały katalog
+[`supabase/migrations`](../supabase/migrations), wykonywany rosnąco według
+znacznika czasu w nazwie pliku. Pierwszy plik jest migracją bazową, a kolejne
+zawierają wszystkie późniejsze zmiany. Sam plik bazowy nie przedstawia dziś
+pełnego schematu.
+
+Migracje tworzą obecnie 20 tabel aplikacji, indeksy, klucze obce, polityki RLS,
+funkcje RPC i obsługę kosza. Historyczny `supabase/notetracker-schema.sql` nie
+jest aktualizowany automatycznie i nie służy do wdrożeń.
 
 Migracja zakłada istnienie standardowych elementów Supabase: `auth.users`,
 `auth.uid()`, `auth.role()` oraz ról `anon`, `authenticated`, `service_role`.
@@ -35,6 +39,8 @@ a następnie uruchom `pnpm dev`.
 
    ```bash
    supabase link --project-ref <NOWY_PROJECT_REF>
+   supabase migration list
+   supabase db push --dry-run
    supabase db push
    ```
 
@@ -53,9 +59,14 @@ Najpierw wykonaj backup i porównaj rzeczywisty schemat z migracją na osobnym
 Migracja bazowa nie zastępuje backupu danych.
 
 Katalog `supabase/manual` pozostaje archiwum wcześniejszych zmian i zawiera
-również nieaktualne warianty. Nie uruchamiaj jego plików po migracji bazowej.
+również nieaktualne warianty. Nie uruchamiaj jego plików na środowisku
+zbudowanym z `supabase/migrations`.
 Kolejne zmiany zapisuj jako nowe migracje tworzone przez
 `supabase migration new <nazwa>`.
+
+Nie edytuj migracji zastosowanej już na stagingu lub produkcji. Nawet mała
+poprawka istniejącej funkcji powinna dostać nową migrację, aby historia lokalna
+i zdalna pozostały zgodne.
 
 ## Automatyczna weryfikacja
 
@@ -69,7 +80,7 @@ Nie używa danych, portów ani adresu projektu produkcyjnego.
 
 Testy sprawdzają:
 
-- RLS na wszystkich dziewięciu tabelach i brak anonimowego dostępu;
+- RLS na wszystkich 20 tabelach i brak anonimowego dostępu;
 - odczyt, modyfikację i usuwanie rekordów przez dwa różne konta;
 - zakaz zmiany właściciela i podpinania tematu pod cudzy rozdział;
 - ochronę operacji kosza przed użyciem identyfikatorów innego użytkownika;
@@ -81,6 +92,23 @@ Test działa na prawdziwym Postgresie, ale nie uruchamia Supabase Auth,
 PostgREST ani R2. Pełny test logowania i zdjęć wykonuj dodatkowo na środowisku
 integracyjnym. Pomocniczy audyt schematu jest w
 `supabase/manual/audit-security.sql`.
+
+## Staging przed produkcją
+
+Najbezpieczniejszy przepływ używa osobnego projektu Supabase jako stagingu.
+Ma on własny URL, klucze, użytkowników i dane testowe. Migrację wdrażaj kolejno:
+
+1. lokalny test `pnpm test:db`;
+2. `supabase link`, `supabase migration list`, `supabase db push --dry-run` i
+   `supabase db push` do projektu stagingowego;
+3. smoke test przez aplikację wskazującą staging;
+4. backup produkcji;
+5. `supabase link` do produkcji, ponowne `migration list` oraz `db push
+--dry-run` i dopiero `supabase db push`.
+
+Nie współdziel sekretów ani danych użytkowników pomiędzy stagingiem i
+produkcją. Zwykły test PostgreSQL chroni przed błędnym SQL i regresją RLS, ale
+staging dodatkowo wykrywa problemy z Auth, PostgREST i konfiguracją projektu.
 
 Oficjalny opis procesu:
 [Database migrations](https://supabase.com/docs/guides/local-development/database-migrations).
