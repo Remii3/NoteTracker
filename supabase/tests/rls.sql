@@ -173,6 +173,65 @@ do $$ declare rejected boolean := false; begin
 end; $$;
 do $$
 declare
+  limited_session_id uuid;
+  all_session_id uuid;
+  available_count integer;
+begin
+  for question_number in 1..11 loop
+    perform public.save_question(
+      '10000001-0000-4000-8000-000000000000',
+      null,
+      'Flashcard limit regression ' || question_number,
+      '',
+      null,
+      null,
+      '[{"content":"Answer","isCorrect":true}]'::jsonb
+    );
+  end loop;
+
+  select count(*)::integer
+  into available_count
+  from public.questions as question
+  where question.user_id = '10000000-0000-4000-8000-000000000000'
+    and question.module_id = '10000001-0000-4000-8000-000000000000'
+    and question.trash_id is null
+    and exists (
+      select 1
+      from public.question_options as option
+      where option.question_id = question.id
+        and option.user_id = question.user_id
+    );
+
+  limited_session_id := public.create_study_session(
+    '10000001-0000-4000-8000-000000000000',
+    'flashcards', 'all', null, null, 3, 10, false
+  );
+  perform pg_temp.assert_true(
+    (select count(*) = 10
+     from public.study_session_items
+     where session_id = limited_session_id),
+    'Flashcard session respects a numeric question limit'
+  );
+
+  all_session_id := public.create_study_session(
+    '10000001-0000-4000-8000-000000000000',
+    'flashcards', 'all', null, null, 3, null, false
+  );
+  perform pg_temp.assert_true(
+    (select count(*) = available_count
+     from public.study_session_items
+     where session_id = all_session_id),
+    'Flashcard session includes every available question when the limit is null'
+  );
+
+  delete from public.study_sessions
+  where id in (limited_session_id, all_session_id);
+  delete from public.questions
+  where content like 'Flashcard limit regression %';
+end;
+$$;
+do $$
+declare
   saved jsonb;
   rejected boolean := false;
 begin
